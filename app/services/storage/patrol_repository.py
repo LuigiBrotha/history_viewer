@@ -41,7 +41,6 @@ class PatrolRepository:
             },
         )
         await self._session.execute(stmt)
-        await self._session.commit()
 
         patrol_id = await self._session.scalar(
             select(Patrol.id).where(Patrol.external_id == summary.external_id)
