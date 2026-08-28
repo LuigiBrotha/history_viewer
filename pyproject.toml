@@ -6,8 +6,24 @@ authors = ["LuigiBrotha <d_verhoef@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.12,<3.15"
+wireup = "^2.12.0"
+fastapi = "^0.139.2"
+pydantic-settings = "^2.14.2"
+uvicorn = "^0.51.0"
+requests = "^2.34.2"
+selectolax = "^0.4.11"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.51"}
+aiosqlite = "^0.22.1"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^1.4.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["poetry-core"]
