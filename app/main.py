@@ -1,3 +1,5 @@
+import asyncio
+
 import uvicorn
 import wireup.integration.fastapi
 from wireup.ioc.container.async_container import async_container_force_sync_scope
@@ -5,7 +7,11 @@ from wireup.ioc.container.async_container import async_container_force_sync_scop
 from app.services.request_handler_registry import RequestHandlerRegistry
 from app.core.config import settings
 from app.core.container import container
+from app.core.database import engine
+from app.services.storage.database import init_models
 from fastapi import FastAPI
+
+asyncio.run(init_models(engine))
 
 app = FastAPI(
     title=settings.APP_NAME,
