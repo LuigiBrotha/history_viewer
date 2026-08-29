@@ -9,6 +9,14 @@ from app.services.scraping.uboat_net.text import clean_text
 from app.services.scraping.uboat_net.types import PatrolSummary
 
 _DAYS_RE = re.compile(r"(\d+)")
+_INT_RE = re.compile(r"\d+")
+
+
+def _int_or_none(text: str | None) -> int | None:
+    if not text:
+        return None
+    match = _INT_RE.search(text.replace(",", ""))
+    return int(match.group()) if match else None
 
 
 def parse_patrol_list(html: str, page_url: str) -> list[PatrolSummary]:
@@ -35,16 +43,20 @@ def parse_patrol_list(html: str, page_url: str) -> list[PatrolSummary]:
 
         tonnage_text = cells[7].text(strip=True)
 
+        patrol_number = _int_or_none(cells[0].text(strip=True))
+        if patrol_number is None:
+            patrol_number = len(summaries) + 1
+
         summaries.append(PatrolSummary(
             external_id=external_id,
-            patrol_number=int(cells[0].text(strip=True) or 0),
+            patrol_number=patrol_number,
             commander=clean_text(cells[1]) or None,
             departure_date=parse_date(cells[2].text(strip=True)),
             departure_port=cells[3].text(strip=True) or None,
             arrival_date=parse_date(cells[4].text(strip=True)),
             arrival_port=cells[5].text(strip=True) or None,
             days_at_sea=int(days_match.group(1)) if days_match else None,
-            tonnage=int(tonnage_text.replace(",", "")) if tonnage_text else None,
+            tonnage=_int_or_none(tonnage_text),
             detail_url=detail_url,
         ))
     return summaries

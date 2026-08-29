@@ -50,3 +50,41 @@ def test_parse_patrol_list_stores_fate_text_as_arrival_port_when_boat_was_lost()
 
 def test_parse_patrol_list_missing_table_returns_empty_list():
     assert parse_patrol_list("<html><body>nothing here</body></html>", _PAGE_URL) == []
+
+
+def _row_html(patrol_number_text, tonnage_text, external_id="patrol_9999"):
+    return f"""
+    <table class="table_subtle">
+    <tr bgcolor="#f0f0f0">
+        <td class="width20 right">{patrol_number_text}</td>
+        <td>Kptlt. Someone</td>
+        <td class="right non-breaking">18 Jun 1940</td>
+        <td>Kiel</td>
+        <td class="right non-breaking">25 Jun 1940</td>
+        <td>Wilhelmshaven</td>
+        <td class="right">8 days</td>
+        <td class="right">{tonnage_text}</td>
+        <td>&nbsp;P</td>
+        <td>&nbsp;<a href="{external_id}.html">View</a></td>
+    </tr>
+    </table>
+    """
+
+
+def test_parse_patrol_list_non_numeric_patrol_number_cell_does_not_raise():
+    html = _row_html("⌊", "")
+
+    summaries = parse_patrol_list(html, _PAGE_URL)
+
+    assert len(summaries) == 1
+    assert summaries[0].patrol_number == 1
+    assert summaries[0].external_id == "patrol_9999"
+
+
+def test_parse_patrol_list_non_numeric_tonnage_cell_does_not_raise():
+    html = _row_html("1", "n/a")
+
+    summaries = parse_patrol_list(html, _PAGE_URL)
+
+    assert len(summaries) == 1
+    assert summaries[0].tonnage is None
