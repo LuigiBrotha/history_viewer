@@ -2,6 +2,7 @@ import asyncio
 
 import uvicorn
 import wireup.integration.fastapi
+from fastapi.middleware.cors import CORSMiddleware
 from wireup.ioc.container.async_container import async_container_force_sync_scope
 
 from app.services.request_handler_registry import RequestHandlerRegistry
@@ -18,6 +19,13 @@ app = FastAPI(
     version=settings.APP_VERSION,
     description=settings.DESCRIPTION,
     debug=settings.DEBUG,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET"],
+    allow_headers=["*"],
 )
 
 with async_container_force_sync_scope(container) as scope:
