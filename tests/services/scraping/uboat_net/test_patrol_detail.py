@@ -46,7 +46,7 @@ def test_parse_patrol_detail_missing_route_script_returns_empty_points():
     assert detail.description == "No map on this page."
 
 
-def test_parse_patrol_detail_more_coordinates_than_dates_leaves_extra_points_undated():
+def test_parse_patrol_detail_mismatched_date_and_coordinate_counts_nulls_all_dates():
     html = """
     <script>var patrolRouteCoordinates = [[1.0, 2.0],[3.0, 4.0]];</script>
     <a href="/boats/patrols/u1/1940-01-01.html">1 Jan 1940</a>
@@ -55,5 +55,20 @@ def test_parse_patrol_detail_more_coordinates_than_dates_leaves_extra_points_und
     detail = parse_patrol_detail(html)
 
     assert len(detail.route_points) == 2
-    assert detail.route_points[0].date == date(1940, 1, 1)
+    assert detail.route_points[0].date is None
     assert detail.route_points[1].date is None
+
+
+def test_parse_patrol_detail_ignores_date_link_appearing_before_coordinates_block():
+    html = """
+    <a href="/boats/patrols/u1/1940-01-01.html">1 Jan 1940</a>
+    <script>var patrolRouteCoordinates = [[1.0, 2.0],[3.0, 4.0]];</script>
+    <a href="/boats/patrols/u1/1940-01-02.html">2 Jan 1940</a>
+    <a href="/boats/patrols/u1/1940-01-03.html">3 Jan 1940</a>
+    """
+
+    detail = parse_patrol_detail(html)
+
+    assert len(detail.route_points) == 2
+    assert detail.route_points[0].date == date(1940, 1, 2)
+    assert detail.route_points[1].date == date(1940, 1, 3)

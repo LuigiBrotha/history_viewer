@@ -19,11 +19,20 @@ def parse_patrol_detail(html: str) -> PatrolDetail:
 
     coords_match = _COORDS_BLOCK_RE.search(html)
     coord_pairs = _COORD_PAIR_RE.findall(coords_match.group(1)) if coords_match else []
-    dates = _DAILY_LINK_RE.findall(html)
+    # Only look for daily-position links after the coordinates block: those are
+    # the ones the spec's ordered-zip actually pairs with the route polyline. A
+    # date-shaped link appearing earlier in the page (e.g. in unrelated nav/body
+    # content) must not be picked up here.
+    dates = _DAILY_LINK_RE.findall(html[coords_match.end():]) if coords_match else []
+
+    # Per spec: if the two ordered lists don't line up in length, don't guess —
+    # store every point in this patrol with date = NULL rather than zipping only
+    # the first N and leaving the remainder undated.
+    dates_match_coords = len(dates) == len(coord_pairs)
 
     points = []
     for index, (lat, lng) in enumerate(coord_pairs):
-        point_date = parse_iso_date(dates[index]) if index < len(dates) else None
+        point_date = parse_iso_date(dates[index]) if dates_match_coords else None
         points.append(RoutePointData(sequence=index, lat=float(lat), lng=float(lng), date=point_date))
 
     return PatrolDetail(description=description, route_points=points)
