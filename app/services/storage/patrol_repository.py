@@ -64,14 +64,27 @@ class PatrolRepository:
             .order_by(Boat.slug, Patrol.patrol_number)
         )
         result = await self._session.execute(stmt)
-        routes = []
-        for patrol, boat_slug, boat_number in result.all():
+        rows = result.all()
+
+        # Fetch every route point for every patrol in one query instead of one
+        # SELECT per patrol (an N+1 that's invisible at 43 patrols but becomes
+        # ~5000 sequential awaits at full ~1153-boat scale).
+        patrol_ids = [patrol.id for patrol, _, _ in rows]
+        points_by_patrol_id: dict[int, list[RoutePoint]] = {}
+        if patrol_ids:
             points_result = await self._session.execute(
-                select(RoutePoint).where(RoutePoint.patrol_id == patrol.id).order_by(RoutePoint.sequence)
+                select(RoutePoint)
+                .where(RoutePoint.patrol_id.in_(patrol_ids))
+                .order_by(RoutePoint.patrol_id, RoutePoint.sequence)
             )
+            for point in points_result.scalars().all():
+                points_by_patrol_id.setdefault(point.patrol_id, []).append(point)
+
+        routes = []
+        for patrol, boat_slug, boat_number in rows:
             points = [
                 RoutePointOut(sequence=pt.sequence, lat=pt.lat, lng=pt.lng, date=pt.date)
-                for pt in points_result.scalars().all()
+                for pt in points_by_patrol_id.get(patrol.id, [])
             ]
             routes.append(PatrolRouteOut(
                 boat_slug=boat_slug,
