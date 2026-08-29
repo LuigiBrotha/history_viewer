@@ -1,0 +1,177 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  parseDate,
+  datedPoints,
+  interpolatePosition,
+  activeBoatsOnDate,
+  dateRange,
+} from "../js/time-model.js";
+
+test("parseDate parses a YYYY-MM-DD string as UTC midnight", () => {
+  const d = parseDate("1940-06-18");
+  assert.equal(d.getUTCFullYear(), 1940);
+  assert.equal(d.getUTCMonth(), 5);
+  assert.equal(d.getUTCDate(), 18);
+});
+
+test("parseDate returns null for null, undefined, and empty input", () => {
+  assert.equal(parseDate(null), null);
+  assert.equal(parseDate(undefined), null);
+  assert.equal(parseDate(""), null);
+});
+
+test("datedPoints filters out points with a null date, preserving order", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 1, lng: 1, date: "2020-01-01" },
+      { sequence: 1, lat: 2, lng: 2, date: null },
+      { sequence: 2, lat: 3, lng: 3, date: "2020-01-03" },
+    ],
+  };
+
+  const dated = datedPoints(patrol);
+
+  assert.equal(dated.length, 2);
+  assert.deepEqual(dated.map((p) => p.sequence), [0, 2]);
+});
+
+test("interpolatePosition returns exact coordinates on an exact date match", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
+      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+    ],
+  };
+
+  const result = interpolatePosition(patrol, parseDate("1940-06-18"));
+
+  assert.deepEqual(result, { lat: 54.0, lng: 10.0 });
+});
+
+test("interpolatePosition linearly interpolates halfway between two dated points", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
+      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+    ],
+  };
+
+  const result = interpolatePosition(patrol, parseDate("1940-06-19"));
+
+  assert.deepEqual(result, { lat: 55.0, lng: 11.0 });
+});
+
+test("interpolatePosition ignores an undated point sitting between two dated points", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 0, lng: 0, date: "2020-01-01" },
+      { sequence: 1, lat: 99, lng: 99, date: null },
+      { sequence: 2, lat: 4, lng: 8, date: "2020-01-03" },
+    ],
+  };
+
+  const result = interpolatePosition(patrol, parseDate("2020-01-02"));
+
+  assert.deepEqual(result, { lat: 2, lng: 4 });
+});
+
+test("interpolatePosition returns null before the patrol's first dated point", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
+      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+    ],
+  };
+
+  assert.equal(interpolatePosition(patrol, parseDate("1940-06-17")), null);
+});
+
+test("interpolatePosition returns null after the patrol's last dated point", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
+      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+    ],
+  };
+
+  assert.equal(interpolatePosition(patrol, parseDate("1940-06-21")), null);
+});
+
+test("interpolatePosition returns null for a patrol with zero dated points", () => {
+  const patrol = {
+    points: [
+      { sequence: 0, lat: 1, lng: 1, date: null },
+      { sequence: 1, lat: 2, lng: 2, date: null },
+    ],
+  };
+
+  assert.equal(interpolatePosition(patrol, parseDate("2020-01-01")), null);
+});
+
+test("interpolatePosition returns the single point for a patrol with exactly one dated point", () => {
+  const patrol = { points: [{ sequence: 0, lat: 5, lng: 5, date: "2020-01-01" }] };
+
+  const result = interpolatePosition(patrol, parseDate("2020-01-01"));
+
+  assert.deepEqual(result, { lat: 5, lng: 5 });
+});
+
+test("activeBoatsOnDate includes only patrols active on the given date", () => {
+  const routes = [
+    {
+      boat_slug: "u1",
+      boat_number: "U-1",
+      external_id: "patrol_1",
+      points: [
+        { sequence: 0, lat: 0, lng: 0, date: "2020-01-01" },
+        { sequence: 1, lat: 10, lng: 10, date: "2020-01-05" },
+      ],
+    },
+    {
+      boat_slug: "u2",
+      boat_number: "U-2",
+      external_id: "patrol_2",
+      points: [
+        { sequence: 0, lat: 20, lng: 20, date: "2020-02-01" },
+        { sequence: 1, lat: 30, lng: 30, date: "2020-02-05" },
+      ],
+    },
+  ];
+
+  const active = activeBoatsOnDate(routes, parseDate("2020-01-03"));
+
+  assert.equal(active.length, 1);
+  assert.equal(active[0].boatSlug, "u1");
+  assert.equal(active[0].boatNumber, "U-1");
+  assert.equal(active[0].externalId, "patrol_1");
+});
+
+test("dateRange returns the min and max dated point across all routes, ignoring undated points", () => {
+  const routes = [
+    {
+      points: [
+        { sequence: 0, lat: 0, lng: 0, date: "2020-03-01" },
+        { sequence: 1, lat: 1, lng: 1, date: null },
+      ],
+    },
+    {
+      points: [
+        { sequence: 0, lat: 0, lng: 0, date: "2020-01-01" },
+        { sequence: 1, lat: 1, lng: 1, date: "2020-05-01" },
+      ],
+    },
+  ];
+
+  const range = dateRange(routes);
+
+  assert.equal(range.min.getTime(), parseDate("2020-01-01").getTime());
+  assert.equal(range.max.getTime(), parseDate("2020-05-01").getTime());
+});
+
+test("dateRange returns null when no route has any dated point", () => {
+  const routes = [{ points: [{ sequence: 0, lat: 0, lng: 0, date: null }] }];
+
+  assert.equal(dateRange(routes), null);
+});
