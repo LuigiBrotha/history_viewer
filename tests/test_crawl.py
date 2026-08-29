@@ -1,4 +1,4 @@
-from app.crawl import crawl_boats
+from app.crawl import crawl_boats, select_boats_to_crawl
 from app.services.scraping.uboat_net.types import BoatData, BoatRef, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_crawl_state_repository import BoatCrawlStateRepository
 from app.services.storage.boat_repository import BoatRepository
@@ -122,3 +122,54 @@ async def test_crawl_boats_patrol_list_failure_records_boat_failure(tmp_path):
 
     assert state.status == "failed"
     assert "patrol list boom" in state.last_error
+
+
+async def test_select_boats_to_crawl_applies_limit_after_skipping_already_successful(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    refs = [BoatRef(slug=f"u{i}", number=f"U-{i}") for i in range(1, 5)]
+
+    # First run "crawls" u1 and u2 successfully.
+    await crawl_boats(
+        refs[:2], session_factory,
+        fetch_boat=lambda slug: _boat_data(slug),
+        fetch_patrol_list=lambda slug: [],
+        fetch_patrol_detail=lambda url: _patrol_detail(),
+    )
+
+    # A second invocation with --limit 2 should mean "2 boats that still need
+    # it" (u3, u4), not silently re-select the already-successful u1/u2.
+    selected = await select_boats_to_crawl(refs, session_factory, limit=2, force=False)
+
+    assert [ref.slug for ref in selected] == ["u3", "u4"]
+
+
+async def test_select_boats_to_crawl_with_force_ignores_status_and_limits_the_raw_listing(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    refs = [BoatRef(slug=f"u{i}", number=f"U-{i}") for i in range(1, 5)]
+
+    await crawl_boats(
+        refs[:2], session_factory,
+        fetch_boat=lambda slug: _boat_data(slug),
+        fetch_patrol_list=lambda slug: [],
+        fetch_patrol_detail=lambda url: _patrol_detail(),
+    )
+
+    selected = await select_boats_to_crawl(refs, session_factory, limit=2, force=True)
+
+    assert [ref.slug for ref in selected] == ["u1", "u2"]
+
+
+async def test_select_boats_to_crawl_no_limit_returns_all_boats_needing_crawl(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    refs = [BoatRef(slug="u1", number="U-1"), BoatRef(slug="u2", number="U-2")]
+
+    await crawl_boats(
+        refs[:1], session_factory,
+        fetch_boat=lambda slug: _boat_data(slug),
+        fetch_patrol_list=lambda slug: [],
+        fetch_patrol_detail=lambda url: _patrol_detail(),
+    )
+
+    selected = await select_boats_to_crawl(refs, session_factory, limit=None, force=False)
+
+    assert [ref.slug for ref in selected] == ["u2"]

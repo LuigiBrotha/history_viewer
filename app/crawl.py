@@ -13,14 +13,45 @@ from app.services.storage.database import create_engine, create_session_factory,
 from app.services.storage.patrol_repository import PatrolRepository
 
 
+async def _boat_needs_crawl(slug, session_factory) -> bool:
+    async with session_factory() as session:
+        existing = await BoatCrawlStateRepository(session).get(slug)
+    return existing is None or existing.status != "success"
+
+
+async def select_boats_to_crawl(boat_refs, session_factory, limit=None, force=False):
+    """Filter boat_refs down to those that still need crawling, then apply --limit.
+
+    Applying --limit to the raw listing BEFORE the resumability skip would make
+    `--limit N` silently re-select the same already-successful boats on a rerun
+    (crawl_boats then skips all of them, issuing zero requests). Filtering first
+    means `--limit N` always means "crawl up to N boats that still need it".
+
+    With force=True, no boats are pre-filtered by status, so --limit applies to
+    the same N boats from the listing every time, re-crawled regardless of prior
+    status.
+    """
+    if force:
+        selected = list(boat_refs)
+    else:
+        selected = [ref for ref in boat_refs if await _boat_needs_crawl(ref.slug, session_factory)]
+    if limit is not None:
+        selected = selected[:limit]
+    return selected
+
+
 async def crawl_boats(boat_refs, session_factory, fetch_boat, fetch_patrol_list, fetch_patrol_detail, force=False):
-    for ref in boat_refs:
+    succeeded = 0
+    failed = 0
+    total = len(boat_refs)
+    for i, ref in enumerate(boat_refs, start=1):
         if not force:
             async with session_factory() as session:
                 existing = await BoatCrawlStateRepository(session).get(ref.slug)
             if existing is not None and existing.status == "success":
                 continue
 
+        print(f"[{i}/{total}] {ref.slug}")
         try:
             boat_data = await asyncio.to_thread(fetch_boat, ref.slug)
             async with session_factory() as session:
@@ -36,9 +67,14 @@ async def crawl_boats(boat_refs, session_factory, fetch_boat, fetch_patrol_list,
 
             async with session_factory() as session:
                 await BoatCrawlStateRepository(session).record_success(ref.slug)
+            succeeded += 1
         except Exception as exc:
             async with session_factory() as session:
                 await BoatCrawlStateRepository(session).record_failure(ref.slug, str(exc))
+            print(f"  FAILED {ref.slug}: {exc}")
+            failed += 1
+
+    print(f"{succeeded} succeeded, {failed} failed.")
 
 
 def _parse_args(argv=None):
@@ -64,8 +100,8 @@ async def main(argv=None) -> None:
     if args.slugs:
         wanted = set(args.slugs.split(","))
         boat_refs = [ref for ref in boat_refs if ref.slug in wanted]
-    if args.limit is not None:
-        boat_refs = boat_refs[: args.limit]
+
+    boat_refs = await select_boats_to_crawl(boat_refs, session_factory, limit=args.limit, force=args.force)
 
     print(f"Crawling {len(boat_refs)} boat(s) with a {delay}s delay between requests...")
 
