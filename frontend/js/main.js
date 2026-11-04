@@ -1,5 +1,6 @@
 import { fetchBoats, fetchRoutes, fetchStatus } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
+import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
 import { renderBoatList, updateDateLabel } from "./sidebar.js";
@@ -34,12 +35,14 @@ function main() {
   let timeline = null;
   let followedSlug = null;
   let currentDate = null;
+  let atlas = { setDate() {} };
 
   // fit is true for user actions; live updates redraw without touching the view.
   function render(date, fit) {
     currentDate = date;
     const active = activeBoatsOnDate(routes, date);
     updateDateLabel(labelEl, date);
+    atlas.setDate(date.toISOString().slice(0, 10));
 
     followStatusEl.textContent = "";
 
@@ -114,6 +117,10 @@ function main() {
     } else if (timeline === null) {
       if (mapState === null) {
         mapState = createMap("map");
+        initAtlas(mapState.map).then((loaded) => {
+          atlas = loaded;
+          atlas.setDate(currentDate.toISOString().slice(0, 10));
+        });
       }
       currentDate = range.min;
       timeline = initTimeline({

@@ -130,6 +130,15 @@ ship costs one request. The site says some positions are unknown.
 Validation: parsing the U-99 page must reproduce the site's own figures, 39 ships sunk for 246,794
 tons and 5 damaged for 37,965 tons, 284,759 in all.
 
+## Historical map layer
+
+Both maps show the "Ww2 allied axis" world maps from Wikimedia Commons (CC BY-SA 3.0) as a
+half-transparent layer in soft tints, above the base map and below the routes. A map counts
+from the first of its month. The timeline shows the last map on or before the selected date;
+`/status` the last on or before the end of the selection. Before the first map there is none.
+The sources are in Robinson without georeferencing: `tools/build_atlas_overlays.py` holds a
+position fit (overlap with Natural Earth land 0.91) and produces Web Mercator images.
+
 ## Out of scope
 
 - Periodically checking uboat.net for changes.

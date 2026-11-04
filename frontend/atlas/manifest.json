@@ -1,0 +1,92 @@
+{
+ "bounds": [
+  [
+   -60.0,
+   -180
+  ],
+  [
+   84.0,
+   180
+  ]
+ ],
+ "legend": [
+  {
+   "name": "As",
+   "color": "#555555"
+  },
+  {
+   "name": "Westerse geallieerden",
+   "color": "#8fc1e3"
+  },
+  {
+   "name": "Sovjet-Unie",
+   "color": "#e59a92"
+  },
+  {
+   "name": "Neutraal",
+   "color": "#d6d2c4"
+  }
+ ],
+ "maps": [
+  {
+   "date": "1939-09-01",
+   "file": "atlas/1939-09.png",
+   "label": "september 1939",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1939_sep.PNG"
+  },
+  {
+   "date": "1939-12-01",
+   "file": "atlas/1939-12.png",
+   "label": "december 1939",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1939_dec.png"
+  },
+  {
+   "date": "1940-05-01",
+   "file": "atlas/1940-05.png",
+   "label": "mei 1940",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1940_may.png"
+  },
+  {
+   "date": "1940-12-01",
+   "file": "atlas/1940-12.png",
+   "label": "december 1940",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1940_dec.png"
+  },
+  {
+   "date": "1941-03-01",
+   "file": "atlas/1941-03.png",
+   "label": "maart 1941",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1941_mar.png"
+  },
+  {
+   "date": "1941-04-01",
+   "file": "atlas/1941-04.png",
+   "label": "april 1941",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1941_apr.png"
+  },
+  {
+   "date": "1941-07-01",
+   "file": "atlas/1941-07.png",
+   "label": "juli 1941",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1941_jul.png"
+  },
+  {
+   "date": "1941-12-01",
+   "file": "atlas/1941-12.png",
+   "label": "december 1941",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1941_dec.png"
+  },
+  {
+   "date": "1942-06-01",
+   "file": "atlas/1942-06.png",
+   "label": "juni 1942",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1942_jun.png"
+  },
+  {
+   "date": "1942-12-01",
+   "file": "atlas/1942-12.png",
+   "label": "december 1942",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1942_dec.png"
+  }
+ ]
+}

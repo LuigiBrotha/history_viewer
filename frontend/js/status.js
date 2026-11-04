@@ -1,5 +1,6 @@
 import { fetchRoutes, fetchStatus } from "./api.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { initAtlas } from "./atlas.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createStatusMap, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
@@ -38,6 +39,19 @@ function main() {
     countEl.textContent = `${visible} van ${total} routes`;
   }
 
+  // The map shows the situation at the end of the selection.
+  let atlas = { setDate() {} };
+  function renderAtlas() {
+    const end = state.to ?? state.history?.max ?? null;
+    if (end !== null) {
+      atlas.setDate(end);
+    }
+  }
+  initAtlas(state.map).then((loaded) => {
+    atlas = loaded;
+    renderAtlas();
+  });
+
   const slider = initPeriodSlider({
     trackEl,
     windowEl,
@@ -49,6 +63,7 @@ function main() {
     onChange: ({ from, to }) => {
       setPeriod(state, from, to);
       renderCount();
+      renderAtlas();
     },
   });
   renderCount();
@@ -66,6 +81,7 @@ function main() {
         slider.setBounds(state.history);
       }
       renderCount();
+      renderAtlas();
     },
     onStatus: (status) => {
       lastStatus = status;
