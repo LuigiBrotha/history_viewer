@@ -1,6 +1,7 @@
 import { fetchRoutes, fetchStatus } from "./api.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { rampGradient } from "./color-ramp.js";
+import { initPeriodSlider } from "./period-slider.js";
 import { createStatusMap, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -18,53 +19,40 @@ function main() {
     return;
   }
 
-  const fromEl = document.getElementById("period-from");
-  const toEl = document.getElementById("period-to");
-  const resetEl = document.getElementById("period-reset");
   const countEl = document.getElementById("route-count");
-  const legendStartEl = document.getElementById("legend-start");
-  const legendEndEl = document.getElementById("legend-end");
-  document.getElementById("legend-ramp").style.background = rampGradient();
+  const trackEl = document.getElementById("slider-track");
+  trackEl.style.background = rampGradient();
 
   let routes = [];
   let lastStatus = null;
-
-  function renderCount() {
-    const { visible, total } = visibleCount(state);
-    countEl.textContent = `${visible} van ${total} routes`;
-    resetEl.disabled = fromEl.value === "" && toEl.value === "";
-  }
-
-  function renderHistory() {
-    if (state.history !== null) {
-      legendStartEl.textContent = state.history.min.slice(0, 4);
-      legendEndEl.textContent = state.history.max.slice(0, 4);
-      for (const el of [fromEl, toEl]) {
-        el.min = state.history.min;
-        el.max = state.history.max;
-      }
-    }
-  }
-
-  function applyPeriod() {
-    setPeriod(state, fromEl.value || null, toEl.value || null);
-    renderCount();
-  }
-
-  fromEl.addEventListener("change", applyPeriod);
-  toEl.addEventListener("change", applyPeriod);
-  resetEl.addEventListener("click", () => {
-    fromEl.value = "";
-    toEl.value = "";
-    applyPeriod();
-  });
-  renderCount();
 
   function renderStatusLine() {
     if (lastStatus !== null) {
       liveStatusEl.textContent = statusLine(lastStatus, new Date(), uncomputedLegs(routes));
     }
   }
+
+  function renderCount() {
+    const { visible, total } = visibleCount(state);
+    countEl.textContent = `${visible} van ${total} routes`;
+  }
+
+  const slider = initPeriodSlider({
+    trackEl,
+    windowEl: document.getElementById("slider-window"),
+    dimLeftEl: document.getElementById("slider-dim-left"),
+    dimRightEl: document.getElementById("slider-dim-right"),
+    fromHandleEl: document.getElementById("slider-from"),
+    toHandleEl: document.getElementById("slider-to"),
+    ticksEl: document.getElementById("slider-ticks"),
+    labelEl: document.getElementById("period-label"),
+    resetEl: document.getElementById("period-reset"),
+    onChange: ({ from, to }) => {
+      setPeriod(state, from, to);
+      renderCount();
+    },
+  });
+  renderCount();
 
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
@@ -75,7 +63,9 @@ function main() {
       routes = mergeRoutes(routes, changed);
       renderStatusLine();
       updateRoutes(state, changed);
-      renderHistory();
+      if (state.history !== null) {
+        slider.setBounds(state.history);
+      }
       renderCount();
     },
     onStatus: (status) => {

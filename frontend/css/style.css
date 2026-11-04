@@ -174,55 +174,118 @@ html, body {
 }
 
 #period {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 8px;
-  align-items: end;
-}
-
-#period label {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
-  font-size: 12px;
+}
+
+#period-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+#period-reset {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+/* The margins leave room for the handles' touch areas at both ends. */
+#slider-track {
+  position: relative;
+  height: 28px;
+  margin: 8px 12px;
+  border-radius: 3px;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.slider-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-top: 2px solid white;
+  border-bottom: 2px solid white;
+  cursor: grab;
+  touch-action: none;
+}
+
+.slider-dim {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(34, 34, 34, 0.75);
+  pointer-events: none;
+}
+
+#slider-dim-left {
+  left: 0;
+  border-radius: 3px 0 0 3px;
+}
+
+#slider-dim-right {
+  right: 0;
+  border-radius: 0 3px 3px 0;
+}
+
+.slider-handle {
+  position: absolute;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.slider-handle::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 18px;
+  width: 8px;
+  box-sizing: border-box;
+  border: 1px solid #222;
+  border-radius: 3px;
+  background: white;
+}
+
+.slider-handle:focus-visible {
+  outline: none;
+}
+
+.slider-handle:focus-visible::after {
+  outline: 2px solid #ffcc00;
+}
+
+#slider-ticks {
+  position: relative;
+  height: 14px;
+  margin: 0 12px;
+  font-size: 11px;
   color: #ccc;
 }
 
-/* 16px keeps iOS from zooming in on focus; 44px is a comfortable touch target. */
-#period input,
-#period button {
-  box-sizing: border-box;
-  min-height: 44px;
-  font-size: 16px;
-}
-
-#period input {
-  width: 100%;
-  min-width: 0;
-}
-
-#period button {
-  padding: 0 12px;
+.slider-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
 }
 
 #legend {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px 8px;
+  gap: 8px;
   font-size: 12px;
   color: #ccc;
-}
-
-#route-count {
-  flex-basis: 100%;
-}
-
-#legend-ramp {
-  flex: 1;
-  min-width: 60px;
-  height: 8px;
-  border-radius: 2px;
 }
 
 #legend-last {
@@ -243,47 +306,15 @@ html, body {
   #status-header {
     flex-direction: row;
     align-items: center;
-    gap: 16px;
+    gap: 24px;
   }
 
   #status-summary {
-    flex: 1;
+    flex: 0 1 320px;
     min-width: 0;
   }
 
   #period {
-    grid-template-columns: 160px 160px auto;
+    flex: 1;
   }
-
-  #period input,
-  #period button {
-    min-height: 32px;
-    font-size: 14px;
-  }
-
-  #legend {
-    flex-wrap: nowrap;
-    width: 400px;
-    flex-shrink: 0;
-  }
-
-  #route-count {
-    flex-basis: auto;
-    white-space: nowrap;
-  }
-}
-
-/* A label for an uncertain leg; it marks the leg, never a boat position. */
-.leg-uncertain {
-  width: 18px;
-  height: 18px;
-  line-height: 16px;
-  text-align: center;
-  font-size: 12px;
-  font-weight: bold;
-  color: #666;
-  background: #eee;
-  border: 1px solid #999;
-  border-radius: 50%;
-  box-sizing: border-box;
 }

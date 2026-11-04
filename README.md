@@ -26,8 +26,9 @@ below).
   lets you follow one boat.
 - `/status` shows every crawled patrol route at once as very thin dashed water
   routes, coloured by departure date on Google's Turbo ramp from the oldest to
-  the newest patrol. The patrol that was crawled last is black and on top. Set
-  `Van` and `Tot` to see only patrols overlapping that period. Hover or tap a
+  the newest patrol. The patrol that was crawled last is black and on top. Drag
+  the slider's handles, or the selection between them, to see only patrols
+  overlapping that period; arrow keys work too. Hover or tap a
   route for its boat, patrol id and dates. The link `Tijdlijn` goes back to the
   timeline. The page is designed mobile first.
 
