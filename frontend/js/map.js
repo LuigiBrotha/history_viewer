@@ -36,7 +36,9 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   }
 }
 
-export function renderFollowedRoute(mapState, patrol, currentPosition) {
+// fit is true for user actions (boat selected, date changed). A live update passes
+// false: it redraws the route but leaves the user's zoom alone.
+export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) {
   mapState.followedRouteLayer.clearLayers();
 
   if (patrol === null) {
@@ -58,7 +60,9 @@ export function renderFollowedRoute(mapState, patrol, currentPosition) {
 
   if (shouldFitRoute(mapState.fittedExternalId, patrol)) {
     mapState.fittedExternalId = patrol.external_id;
-    mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+    if (fit) {
+      mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+    }
   }
 }
 

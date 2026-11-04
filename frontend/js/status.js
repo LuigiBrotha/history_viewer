@@ -4,10 +4,18 @@ import { createStatusMap, updateRoutes, setLastPatrol } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
+const MAP_FAILED = "Kaart kon niet laden";
 
 function main() {
   const liveStatusEl = document.getElementById("live-status");
-  const state = createStatusMap("status-map");
+  let state;
+  try {
+    state = createStatusMap("status-map");
+  } catch (error) {
+    console.error(error);
+    liveStatusEl.textContent = MAP_FAILED;
+    return;
+  }
 
   startPolling({
     intervalMs: POLL_INTERVAL_MS,

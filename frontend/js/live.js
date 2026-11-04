@@ -24,7 +24,8 @@ function ageText(crawledAt, now) {
   if (minutes < 60) return `${minutes} min geleden`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} uur geleden`;
-  return `${Math.floor(hours / 24)} dagen geleden`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 dag geleden" : `${days} dagen geleden`;
 }
 
 export function statusLine(status, now) {
@@ -56,17 +57,27 @@ export function startPolling({
   let loaded = false;
   let revision = null;
 
+  // A rendering failure is a bug, not a lost connection: log it, keep polling.
+  function guarded(handler, value) {
+    try {
+      handler(value);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   async function poll() {
     if (stopped) return;
     if (!isHidden()) {
       try {
         const status = await fetchStatus();
-        onStatus(status);
+        guarded(onStatus, status);
         if (!loaded || status.revision !== revision) {
           const changed = await fetchRoutes(revision);
-          onData(changed);
+          // The fetch succeeded, so the cursor advances even if rendering it fails.
           loaded = true;
           revision = status.revision;
+          guarded(onData, changed);
         }
       } catch (error) {
         onError(error);

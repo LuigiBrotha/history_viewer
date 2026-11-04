@@ -82,7 +82,12 @@ export function initTimeline({ sliderEl, playPauseEl, dateDisplayEl, minDate, ma
     dateDisplayEl.textContent = formatDate(current);
   }
 
-  emitDate();
+  // A failing first render must not leave the caller without a timeline to update.
+  try {
+    emitDate();
+  } catch (error) {
+    console.error(error);
+  }
 
   return { stop, setRange };
 }

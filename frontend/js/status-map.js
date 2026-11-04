@@ -37,10 +37,13 @@ export function updateRoutes(state, changed) {
       state.layer.removeLayer(existing);
       state.polylines.delete(patrol.external_id);
     }
-    if (patrol.points.length < 2) {
+    if (patrol.points.length === 0) {
       continue;
     }
-    const polyline = L.polyline(routeLatLngs(patrol), { weight: 2, opacity: 0.8 });
+    const polyline =
+      patrol.points.length === 1
+        ? L.circleMarker(routeLatLngs(patrol)[0], { radius: 4, fillOpacity: 0.8 })
+        : L.polyline(routeLatLngs(patrol), { weight: 2, opacity: 0.8 });
     polyline.bindTooltip(`${patrol.boat_number} — ${patrol.external_id}`, { sticky: true });
     polyline.addTo(state.layer);
     state.polylines.set(patrol.external_id, polyline);

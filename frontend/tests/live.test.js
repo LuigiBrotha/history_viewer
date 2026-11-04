@@ -57,6 +57,7 @@ test("statusLine age units and negative clamp", () => {
   assert.match(statusLine(at("2026-11-04T11:56:12Z"), NOW), /4 min geleden$/);
   assert.match(statusLine(at("2026-11-04T10:00:12Z"), NOW), /2 uur geleden$/);
   assert.match(statusLine(at("2026-10-31T12:00:12Z"), NOW), /4 dagen geleden$/);
+  assert.match(statusLine(at("2026-11-03T12:00:12Z"), NOW), /1 dag geleden$/);
   assert.match(statusLine(at("2026-11-04T12:05:00Z"), NOW), /0 sec geleden$/);
 });
 
@@ -149,4 +150,45 @@ test("stop prevents further polls", async () => {
   await log.timers[0].fn();
   assert.equal(log.status.length, 1);
   assert.equal(log.timers.length, 1);
+});
+
+test("an onData failure is logged, not reported as a connection error, and the revision still advances", async () => {
+  const { opts, log } = harness({ statuses: [st("r1"), st("r1")] });
+  opts.onData = () => {
+    throw new Error("render broke");
+  };
+  const logged = [];
+  const original = console.error;
+  console.error = (e) => logged.push(e);
+  try {
+    startPolling(opts);
+    await new Promise((r) => setImmediate(r));
+    await log.timers[0].fn();
+  } finally {
+    console.error = original;
+  }
+  assert.equal(log.errors.length, 0);
+  assert.equal(logged.length, 1);
+  assert.deepEqual(log.routeCalls, [null]); // not refetched
+  assert.equal(log.timers.length, 2);
+});
+
+test("an onStatus failure is logged and does not count as a connection error", async () => {
+  const { opts, log } = harness({ statuses: [st("r1")] });
+  opts.onStatus = () => {
+    throw new Error("status render broke");
+  };
+  const logged = [];
+  const original = console.error;
+  console.error = (e) => logged.push(e);
+  try {
+    startPolling(opts);
+    await new Promise((r) => setImmediate(r));
+  } finally {
+    console.error = original;
+  }
+  assert.equal(log.errors.length, 0);
+  assert.equal(logged.length, 1);
+  assert.deepEqual(log.routeCalls, [null]);
+  assert.equal(log.data.length, 1);
 });

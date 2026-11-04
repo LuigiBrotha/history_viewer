@@ -65,3 +65,19 @@ test("fetchStatus calls the status endpoint and returns parsed JSON", async () =
   assert.deepEqual(calls, ["api/uboats/status"]);
   assert.deepEqual(result, { boats_crawled: 3 });
 });
+
+test("fetchStatus and fetchRoutes pass an abort signal so a dead connection times out", async () => {
+  const options = [];
+  globalThis.fetch = async (url, init) => {
+    options.push(init);
+    return { ok: true, json: async () => [] };
+  };
+
+  await fetchStatus();
+  await fetchRoutes();
+
+  assert.equal(options.length, 2);
+  for (const init of options) {
+    assert.ok(init.signal instanceof AbortSignal);
+  }
+});

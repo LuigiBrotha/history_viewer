@@ -8,6 +8,7 @@ import { mergeRoutes, statusLine, startPolling } from "./live.js";
 const POLL_INTERVAL_MS = 5000;
 const NO_DATED_POINTS = "Geen gedateerde routepunten beschikbaar.";
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
+const MAP_FAILED = "Kaart kon niet laden";
 
 function main() {
   const sliderEl = document.getElementById("date-slider");
@@ -21,6 +22,11 @@ function main() {
   const toggleSidebarButton = document.getElementById("toggle-sidebar");
   const sidebarEl = document.getElementById("sidebar");
 
+  if (typeof L === "undefined") {
+    liveStatusEl.textContent = MAP_FAILED;
+    return;
+  }
+
   let routes = [];
   let routesBySlug = new Map();
   let boatsBySlug = new Map();
@@ -29,7 +35,8 @@ function main() {
   let followedSlug = null;
   let currentDate = null;
 
-  function render(date) {
+  // fit is true for user actions; live updates redraw without touching the view.
+  function render(date, fit) {
     currentDate = date;
     const active = activeBoatsOnDate(routes, date);
     updateDateLabel(labelEl, date);
@@ -40,7 +47,7 @@ function main() {
       const boatRoutes = routesBySlug.get(followedSlug);
       const view = followView(boatRoutes, date);
       renderActiveBoats(mapState, [], onBoatSelect);
-      renderFollowedRoute(mapState, view.patrol, view.position);
+      renderFollowedRoute(mapState, view.patrol, view.position, { fit });
       if (view.position === null) {
         followStatusEl.textContent = notOnPatrolMessage(boatRoutes[0].boat_number, date);
       }
@@ -56,14 +63,14 @@ function main() {
     followedSlug = slug;
     clearFollowedRoute(mapState);
     resetButton.hidden = false;
-    render(currentDate);
+    render(currentDate, true);
   }
 
   resetButton.addEventListener("click", () => {
     followedSlug = null;
     resetButton.hidden = true;
     clearFollowedRoute(mapState);
-    render(currentDate);
+    render(currentDate, true);
   });
 
   toggleSidebarButton.addEventListener("click", () => {
@@ -75,7 +82,7 @@ function main() {
       const boats = await fetchBoats();
       boatsBySlug = new Map(boats.map((boat) => [boat.slug, boat]));
       if (currentDate !== null) {
-        render(currentDate);
+        render(currentDate, false);
       }
     } catch (error) {
       console.error(error);
@@ -95,8 +102,10 @@ function main() {
     const range = dateRange(routes);
     if (range === null) {
       labelEl.textContent = NO_DATED_POINTS;
-    } else if (mapState === null) {
-      mapState = createMap("map");
+    } else if (timeline === null) {
+      if (mapState === null) {
+        mapState = createMap("map");
+      }
       currentDate = range.min;
       timeline = initTimeline({
         sliderEl,
@@ -104,11 +113,11 @@ function main() {
         dateDisplayEl,
         minDate: range.min,
         maxDate: range.max,
-        onDateChange: render,
+        onDateChange: (date) => render(date, true),
       });
     } else {
       timeline.setRange(range.min, range.max);
-      render(currentDate);
+      render(currentDate, false);
     }
 
     // New boats bring new type labels.
