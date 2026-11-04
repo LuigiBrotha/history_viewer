@@ -63,10 +63,13 @@ export function followedRouteChanged(prev, next) {
   );
 }
 
-// The point whose popup was open, if it is still on the route.
-export function reopenSequence(openSequence, patrol) {
-  if (openSequence === null || openSequence === undefined || patrol === null) {
+// The open popup ({ externalId, sequence, lat, lng }) if its point is still on the route.
+// A sequence restarts in every patrol, so the patrol and the coordinates must match too.
+export function reopenPoint(open, patrol) {
+  if (open === null || open === undefined || patrol === null) {
     return null;
   }
-  return patrol.points.some((point) => point.sequence === openSequence) ? openSequence : null;
+  const same = patrol.external_id === open.externalId
+    && patrol.points.some((point) => point.sequence === open.sequence && point.lat === open.lat && point.lng === open.lng);
+  return same ? open : null;
 }

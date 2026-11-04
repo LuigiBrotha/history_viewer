@@ -304,18 +304,24 @@ test("pointPopup for a point in flight shows a disabled Bezig… button", () => 
   assert.equal(clicks, 0);
 });
 
-test("renderFollowedRoute reopens the popup of the point that was open if it still exists", () => {
-  const opened = [];
+function popupLeaflet() {
+  installFakeDom();
   const markers = [];
   globalThis.L = {
     polyline: () => ({ addTo() { return this; } }),
-    circleMarker: ([lat]) => {
+    circleMarker: ([lat, lng], options) => {
       const marker = {
         lat,
+        lng,
+        options,
+        popups: [],
+        opened: 0,
+        handlers: {},
         addTo() { return this; },
-        bindPopup() { return this; },
-        on(type, handler) { (this.handlers ??= {})[type] = handler; return this; },
-        openPopup() { opened.push(this.lat); },
+        bindTooltip() { return this; },
+        bindPopup(content, popupOptions) { this.popups.push({ content, popupOptions }); return this; },
+        on(type, handler) { this.handlers[type] = handler; return this; },
+        openPopup() { this.opened += 1; },
       };
       markers.push(marker);
       return marker;
@@ -325,15 +331,80 @@ test("renderFollowedRoute reopens the popup of the point that was open if it sti
     map: { fitBounds() {} },
     followedRouteLayer: { clearLayers() {} },
     fittedExternalId: null,
-    openSequence: 3,
   };
-  const p = { external_id: "p1", points: [{ sequence: 1, lat: 1, lng: 1 }, { sequence: 3, lat: 3, lng: 3 }] };
-  renderFollowedRoute(mapState, p, null, { fit: false });
-  assert.deepEqual(opened, [3]);
+  return { markers, mapState };
+}
 
-  opened.length = 0;
-  mapState.openSequence = 2;
+const route = (externalId, ...points) => ({ external_id: externalId, boat_number: "U-1", points });
+
+test("renderFollowedRoute reopens the popup of the point that was open without panning the map", () => {
+  const { markers, mapState } = popupLeaflet();
+  mapState.openPoint = { externalId: "p1", sequence: 3, lat: 3, lng: 3 };
+  const p = route("p1", { sequence: 1, lat: 1, lng: 1 }, { sequence: 3, lat: 3, lng: 3 });
+
   renderFollowedRoute(mapState, p, null, { fit: false });
-  assert.deepEqual(opened, []);
-  assert.equal(mapState.openSequence, null, "a vanished point is not reopened by a later redraw");
+
+  assert.deepEqual(markers.map((m) => m.opened), [0, 1]);
+  assert.equal(markers[1].popups[0].popupOptions.autoPan, false);
+  assert.equal(markers[0].popups[0].popupOptions.autoPan, true);
+});
+
+test("a popup is not reopened for a vanished point", () => {
+  const { markers, mapState } = popupLeaflet();
+  mapState.openPoint = { externalId: "p1", sequence: 2, lat: 2, lng: 2 };
+  const p = route("p1", { sequence: 1, lat: 1, lng: 1 }, { sequence: 3, lat: 3, lng: 3 });
+
+  renderFollowedRoute(mapState, p, null, { fit: false });
+
+  assert.deepEqual(markers.map((m) => m.opened), [0, 0]);
+  assert.equal(mapState.openPoint, null, "a later redraw does not reopen it either");
+});
+
+test("dragging into another patrol with the same sequence does not reopen a popup", () => {
+  const { markers, mapState } = popupLeaflet();
+  const first = route("p1", { sequence: 1, lat: 1, lng: 1 }, { sequence: 2, lat: 2, lng: 2 });
+  const second = route("p2", { sequence: 1, lat: 1, lng: 1 }, { sequence: 2, lat: 2, lng: 2 });
+  renderFollowedRoute(mapState, first, null, { fit: false });
+  markers[1].handlers.popupopen();
+  assert.deepEqual(mapState.openPoint, { externalId: "p1", sequence: 2, lat: 2, lng: 2 });
+  markers.length = 0;
+
+  renderFollowedRoute(mapState, second, null, { fit: false });
+
+  assert.deepEqual(markers.map((m) => m.opened), [0, 0]);
+});
+
+test("the current-position marker carries the popup of its point and reopens it", () => {
+  const { markers, mapState } = popupLeaflet();
+  mapState.openPoint = { externalId: "p1", sequence: 2, lat: 2, lng: 2 };
+  const p = route(
+    "p1",
+    { sequence: 1, lat: 1, lng: 1, date: "1940-06-18" },
+    { sequence: 2, lat: 2, lng: 2, date: "1940-06-19", date_approximate: true },
+  );
+  const position = { lat: 2, lng: 2, date: "1940-06-19", sequence: 2, dateApproximate: true };
+  const clicks = [];
+
+  renderFollowedRoute(mapState, p, position, { fit: false, onExclude: (point) => clicks.push(point.sequence) });
+
+  const marker = markers[markers.length - 1];
+  assert.equal(marker.options.radius, 8);
+  assert.equal(marker.popups.length, 1);
+  const box = marker.popups[0].content();
+  assert.equal(box.children[0].textContent, "1940-06-19 (datum benaderd)");
+  box.children[1].click();
+  assert.deepEqual(clicks, [2]);
+  assert.deepEqual(markers.map((m) => m.opened), [0, 0, 1], "only the marker on top reopens it");
+  marker.handlers.popupopen();
+  assert.deepEqual(mapState.openPoint, { externalId: "p1", sequence: 2, lat: 2, lng: 2 });
+});
+
+test("a read-only current-position popup shows only the date", () => {
+  const { markers, mapState } = popupLeaflet();
+  const p = route("p1", { sequence: 1, lat: 1, lng: 1, date: "1940-06-18" });
+  renderFollowedRoute(mapState, p, { lat: 1, lng: 1, date: "1940-06-18", sequence: 1, dateApproximate: false }, { fit: false });
+
+  const box = markers[markers.length - 1].popups[0].content();
+  assert.equal(box.children.length, 1);
+  assert.equal(box.children[0].textContent, "1940-06-18");
 });

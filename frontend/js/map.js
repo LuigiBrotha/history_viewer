@@ -1,5 +1,5 @@
 import { boatColor } from "./boat-color.js";
-import { reopenSequence } from "./edit-state.js";
+import { reopenPoint } from "./edit-state.js";
 import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from "./time-model.js";
 
 const UNCERTAIN = new Set(["on_land", "no_route"]);
@@ -73,10 +73,10 @@ export function pointPopup(point, { onExclude, busy }) {
 // false: it redraws the route but leaves the user's zoom alone.
 // onExclude is null when editing is not allowed: the popup then only shows the date.
 // isBusy(point) says whether a request for the point is running.
-// A popup that was open is opened again on the same sequence if that point is still drawn.
+// A popup that was open is opened again, without panning, if that point of that patrol is still drawn.
 export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, onExclude = null, isBusy = () => false }) {
-  const reopen = reopenSequence(mapState.openSequence, patrol);
-  mapState.openSequence = reopen;
+  const reopen = reopenPoint(mapState.openPoint, patrol);
+  mapState.openPoint = reopen;
   // Clearing the layer closes the popup; that is not the user closing it.
   mapState.redrawing = true;
   mapState.followedRouteLayer.clearLayers();
@@ -87,6 +87,27 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
   }
 
   const layer = mapState.followedRouteLayer;
+
+  function bindPointPopup(marker, point) {
+    if (!marker.bindPopup) {
+      return;
+    }
+    const isReopen = reopen !== null && point.sequence === reopen.sequence;
+    // A reopened popup must not pan the map the user may be looking at elsewhere.
+    marker.bindPopup(() => pointPopup(point, { onExclude, busy: isBusy(point) }), { autoPan: !isReopen });
+    marker.on("popupopen", () => {
+      mapState.openPoint = { externalId: patrol.external_id, sequence: point.sequence, lat: point.lat, lng: point.lng };
+    });
+    marker.on("popupclose", () => {
+      if (!mapState.redrawing) {
+        mapState.openPoint = null;
+      }
+    });
+    if (isReopen) {
+      marker.openPopup();
+    }
+  }
+
   const fitPoints = patrol.points.map((point) => [point.lat, point.lng]);
   const color = boatColor(patrol.boat_slug ?? "");
 
@@ -115,24 +136,14 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       fillColor: color,
       fillOpacity: 1,
     }).addTo(layer);
-    if (dot.bindPopup) {
-      dot.bindPopup(() => pointPopup(point, { onExclude, busy: isBusy(point) }));
-      dot.on("popupopen", () => {
-        mapState.openSequence = point.sequence;
-      });
-      dot.on("popupclose", () => {
-        if (!mapState.redrawing) {
-          mapState.openSequence = null;
-        }
-      });
-      if (point.sequence === reopen) {
-        dot.openPopup();
-      }
+    // The marker of the current position covers its dot, so that marker carries the popup.
+    if (point.sequence !== currentPosition?.sequence) {
+      bindPointPopup(dot, point);
     }
   }
 
   if (currentPosition !== null) {
-    L.circleMarker([currentPosition.lat, currentPosition.lng], {
+    const marker = L.circleMarker([currentPosition.lat, currentPosition.lng], {
       radius: 8,
       color: "#000000",
       fillColor: color,
@@ -146,6 +157,9 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
         }),
       )
       .addTo(layer);
+    const point = patrol.points.find((candidate) => candidate.sequence === currentPosition.sequence)
+      ?? { sequence: currentPosition.sequence, lat: currentPosition.lat, lng: currentPosition.lng, date: currentPosition.date, date_approximate: currentPosition.dateApproximate };
+    bindPointPopup(marker, point);
   }
 
   if (shouldFitRoute(mapState.fittedExternalId, patrol)) {
@@ -160,6 +174,6 @@ export function clearFollowedRoute(mapState) {
   mapState.redrawing = true;
   mapState.followedRouteLayer.clearLayers();
   mapState.redrawing = false;
-  mapState.openSequence = null;
+  mapState.openPoint = null;
   mapState.fittedExternalId = null;
 }

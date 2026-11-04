@@ -10,7 +10,7 @@ import {
   followStatusText,
   followedRouteChanged,
   isBusy,
-  reopenSequence,
+  reopenPoint,
 } from "../js/edit-state.js";
 
 const patrol = { external_id: "p1", points: [{ sequence: 1 }, { sequence: 3 }] };
@@ -34,11 +34,27 @@ test("the first draw, and a draw after the route was cleared, always happens", (
   assert.equal(followedRouteChanged(null, { patrol: null, position: null, editable: false }), true);
 });
 
-test("reopenSequence keeps the popup on a point that still exists", () => {
-  assert.equal(reopenSequence(3, patrol), 3);
-  assert.equal(reopenSequence(2, patrol), null);
-  assert.equal(reopenSequence(null, patrol), null);
-  assert.equal(reopenSequence(1, null), null);
+const openAt = (externalId, sequence, lat, lng) => ({ externalId, sequence, lat, lng });
+const routeWith = (externalId, ...points) => ({ external_id: externalId, points });
+
+test("reopenPoint keeps the popup on the same point of the same patrol", () => {
+  const p = routeWith("p1", { sequence: 1, lat: 1, lng: 1 }, { sequence: 3, lat: 3, lng: 4 });
+  const open = openAt("p1", 3, 3, 4);
+  assert.equal(reopenPoint(open, p), open);
+  assert.equal(reopenPoint(openAt("p1", 2, 3, 4), p), null);
+  assert.equal(reopenPoint(null, p), null);
+  assert.equal(reopenPoint(undefined, p), null);
+  assert.equal(reopenPoint(open, null), null);
+});
+
+test("reopenPoint ignores another patrol that has the same sequence", () => {
+  const other = routeWith("p2", { sequence: 3, lat: 3, lng: 4 });
+  assert.equal(reopenPoint(openAt("p1", 3, 3, 4), other), null);
+});
+
+test("reopenPoint ignores a point whose coordinates changed", () => {
+  const p = routeWith("p1", { sequence: 3, lat: 9, lng: 9 });
+  assert.equal(reopenPoint(openAt("p1", 3, 3, 4), p), null);
 });
 
 test("an in-flight point is busy until the edit finishes, and a second attempt is refused", () => {
