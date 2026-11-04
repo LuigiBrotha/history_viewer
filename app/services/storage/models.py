@@ -136,12 +136,12 @@ class ShipHit(Base):
 
 
 class ExcludedRoutePoint(Base):
-    """A route point a user hid. Keyed on content, not sequence, so it survives a re-crawl."""
+    """A route point a user hid. Keyed on position, not sequence or date, so it survives a re-crawl.
+
+    One row hides every source row of the patrol at those coordinates."""
 
     __tablename__ = "excluded_route_points"
 
     external_id: Mapped[str] = mapped_column(String, primary_key=True)
     lat: Mapped[float] = mapped_column(Float, primary_key=True)
     lng: Mapped[float] = mapped_column(Float, primary_key=True)
-    # ISO date, or an empty string for a missing date (a primary key column cannot be NULL).
-    date: Mapped[str] = mapped_column(String, primary_key=True)
