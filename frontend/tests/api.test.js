@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { fetchBoats, fetchRoutes } from "../js/api.js";
+import { fetchBoats, fetchRoutes, fetchStatus } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -39,4 +39,29 @@ test("fetchRoutes rejects when the response is not ok", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 404 });
 
   await assert.rejects(() => fetchRoutes(), /Failed to fetch routes: 404/);
+});
+
+test("fetchRoutes adds an encoded since parameter", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => [] };
+  };
+
+  await fetchRoutes("2026-11-04T10:00:00+00:00");
+
+  assert.deepEqual(calls, ["api/uboats/routes?since=2026-11-04T10%3A00%3A00%2B00%3A00"]);
+});
+
+test("fetchStatus calls the status endpoint and returns parsed JSON", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => ({ boats_crawled: 3 }) };
+  };
+
+  const result = await fetchStatus();
+
+  assert.deepEqual(calls, ["api/uboats/status"]);
+  assert.deepEqual(result, { boats_crawled: 3 });
 });
