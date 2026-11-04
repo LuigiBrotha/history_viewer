@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter
@@ -16,6 +17,6 @@ class RequestHandler:
         self.session_factory = session_factory
 
     @router.get("/api/uboats/routes", name="uboats_routes")
-    async def handle_request(self) -> list[PatrolRouteOut]:
+    async def handle_request(self, since: datetime | None = None) -> list[PatrolRouteOut]:
         async with self.session_factory() as session:
-            return await PatrolRepository(session).list_routes()
+            return await PatrolRepository(session).list_routes(since=since)

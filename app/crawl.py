@@ -9,6 +9,7 @@ from app.services.scraping.uboat_net.patrol_detail import fetch_patrol_detail
 from app.services.scraping.uboat_net.patrol_list import fetch_patrol_list
 from app.services.storage.boat_crawl_state_repository import BoatCrawlStateRepository
 from app.services.storage.boat_repository import BoatRepository
+from app.services.storage.crawl_status_repository import CrawlStatusRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.patrol_repository import PatrolRepository
 
@@ -97,6 +98,8 @@ async def main(argv=None) -> None:
     client = PoliteHttpClient(delay_seconds=delay, user_agent=build_user_agent(settings.CRAWLER_CONTACT))
 
     boat_refs = fetch_listing(client)
+    async with session_factory() as session:
+        await CrawlStatusRepository(session).set_listing_total(len(boat_refs))
     if args.slugs:
         wanted = set(args.slugs.split(","))
         boat_refs = [ref for ref in boat_refs if ref.slug in wanted]

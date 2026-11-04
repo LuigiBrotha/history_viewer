@@ -1,8 +1,14 @@
-from datetime import date
+import asyncio
+import sqlite3
+from datetime import date, datetime, timezone
+
+from sqlalchemy import update
 
 from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_repository import BoatRepository
+from app.services.storage.crawl_status_repository import CrawlStatusRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
+from app.services.storage.models import Patrol
 from app.services.storage.patrol_repository import PatrolRepository
 
 
@@ -127,3 +133,75 @@ async def test_upsert_patrol_sets_crawled_at_and_updated_at(tmp_path):
         await session.refresh(first)
         assert first.crawled_at > first_crawled
         assert first.updated_at == first.crawled_at
+
+
+CURSOR = datetime(2026, 11, 4, 10, 0, tzinfo=timezone.utc)
+
+
+async def _seed_patrols_with_updated_at(session_factory, stamps):
+    """Insert one patrol per (external_id, updated_at) pair and force its updated_at."""
+    async with session_factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        for external_id, _ in stamps:
+            await repo.upsert_patrol(boat_id, _summary(external_id), _detail())
+        for external_id, stamp in stamps:
+            await session.execute(
+                update(Patrol).where(Patrol.external_id == external_id).values(updated_at=stamp)
+            )
+        await session.commit()
+
+
+async def test_list_routes_since_returns_only_changed_patrols(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    await _seed_patrols_with_updated_at(session_factory, [
+        ("older", datetime(2026, 11, 4, 9, 0, tzinfo=timezone.utc)),
+        ("newer", datetime(2026, 11, 4, 11, 0, tzinfo=timezone.utc)),
+    ])
+
+    async with session_factory() as session:
+        routes = await PatrolRepository(session).list_routes(since=CURSOR)
+
+    assert [r.external_id for r in routes] == ["newer"]
+
+
+async def test_list_routes_since_includes_a_patrol_exactly_at_the_cursor(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    await _seed_patrols_with_updated_at(session_factory, [("exact", CURSOR)])
+
+    async with session_factory() as session:
+        routes = await PatrolRepository(session).list_routes(since=CURSOR)
+
+    assert [r.external_id for r in routes] == ["exact"]
+
+
+async def test_list_routes_since_excludes_patrols_without_a_timestamp(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    await _seed_patrols_with_updated_at(session_factory, [("legacy", None), ("fresh", CURSOR)])
+
+    async with session_factory() as session:
+        since_routes = await PatrolRepository(session).list_routes(since=CURSOR)
+        all_routes = await PatrolRepository(session).list_routes()
+
+    assert [r.external_id for r in since_routes] == ["fresh"]
+    assert {r.external_id for r in all_routes} == {"legacy", "fresh"}
+
+
+async def test_status_reads_while_another_connection_is_writing(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    db_path = f"{tmp_path}/test.db"
+
+    writer = sqlite3.connect(db_path, isolation_level=None)
+    writer.execute("BEGIN EXCLUSIVE")
+
+    async def release_after_delay():
+        await asyncio.sleep(0.2)
+        writer.execute("COMMIT")
+        writer.close()
+
+    release = asyncio.create_task(release_after_delay())
+    async with session_factory() as session:
+        status = await CrawlStatusRepository(session).get_status()
+    await release
+
+    assert status.patrol_count == 0

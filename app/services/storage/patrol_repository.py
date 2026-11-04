@@ -64,12 +64,14 @@ class PatrolRepository:
             ))
         await self._session.commit()
 
-    async def list_routes(self) -> list[PatrolRouteOut]:
+    async def list_routes(self, since: datetime | None = None) -> list[PatrolRouteOut]:
         stmt = (
             select(Patrol, Boat.slug, Boat.number)
             .join(Boat, Patrol.boat_id == Boat.id)
             .order_by(Boat.slug, Patrol.patrol_number)
         )
+        if since is not None:
+            stmt = stmt.where(Patrol.updated_at >= since)
         result = await self._session.execute(stmt)
         rows = result.all()
 

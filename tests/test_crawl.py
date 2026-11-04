@@ -1,7 +1,9 @@
+import app.crawl as crawl
 from app.crawl import crawl_boats, select_boats_to_crawl
 from app.services.scraping.uboat_net.types import BoatData, BoatRef, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_crawl_state_repository import BoatCrawlStateRepository
 from app.services.storage.boat_repository import BoatRepository
+from app.services.storage.crawl_status_repository import CrawlStatusRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.patrol_repository import PatrolRepository
 
@@ -173,3 +175,26 @@ async def test_select_boats_to_crawl_no_limit_returns_all_boats_needing_crawl(tm
     selected = await select_boats_to_crawl(refs, session_factory, limit=None, force=False)
 
     assert [ref.slug for ref in selected] == ["u2"]
+
+
+async def test_main_records_the_full_listing_size_before_limit_is_applied(tmp_path, monkeypatch):
+    db_url = f"sqlite+aiosqlite:///{tmp_path}/test.db"
+    monkeypatch.setattr(crawl.settings, "DATABASE_URL", db_url)
+    refs = [BoatRef(slug=f"u{n}", number=f"U-{n}") for n in range(1, 6)]
+    monkeypatch.setattr(crawl, "fetch_listing", lambda client: refs)
+
+    crawled = []
+
+    async def fake_crawl_boats(boat_refs, *args, **kwargs):
+        crawled.extend(boat_refs)
+
+    monkeypatch.setattr(crawl, "crawl_boats", fake_crawl_boats)
+
+    await crawl.main(["--limit", "2", "--slugs", "u1,u2,u3", "--delay", "0"])
+
+    assert len(crawled) == 2
+    engine = create_engine(db_url)
+    async with create_session_factory(engine)() as session:
+        status = await CrawlStatusRepository(session).get_status()
+    await engine.dispose()
+    assert status.listing_total == 5
