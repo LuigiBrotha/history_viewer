@@ -159,3 +159,19 @@ async def test_backfill_continues_after_a_failing_leg(tmp_path, capsys):
     stored = await _stored(session_factory, [(points[0], points[1]), (points[1], points[2])])
     assert list(stored) == [(points[1], points[2])]
     assert "bad leg" in capsys.readouterr().out
+
+
+async def test_repository_failure_does_not_propagate(tmp_path, monkeypatch, capsys):
+    session_factory = await _session_factory(tmp_path)
+
+    async def broken(self, pairs, force=False):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(WaterRouteRepository, "missing", broken)
+
+    class P:
+        lat, lng = 1.0, 2.0
+
+    n = await compute_routes_for_points([P(), P()], session_factory, _fake_route_leg())
+    assert n == 0
+    assert "db down" in capsys.readouterr().out

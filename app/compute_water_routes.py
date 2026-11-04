@@ -24,8 +24,12 @@ async def compute_routes_for_points(points, session_factory, route_leg, force=Fa
     pairs = list(zip(coords, coords[1:]))
     if done is not None:
         pairs = [pair for pair in pairs if pair not in done]
-    async with session_factory() as session:
-        todo = await WaterRouteRepository(session).missing(pairs, force=force)
+    try:
+        async with session_factory() as session:
+            todo = await WaterRouteRepository(session).missing(pairs, force=force)
+    except Exception as exc:
+        print(f"  ROUTES SKIPPED, could not read stored routes: {exc}")
+        return 0
 
     computed = 0
     for start, end in todo:

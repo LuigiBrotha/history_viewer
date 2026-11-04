@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import importlib
 
 from app.compute_water_routes import compute_routes_for_points
 from app.core.config import settings
@@ -83,6 +84,17 @@ async def crawl_boats(
     print(f"{succeeded} succeeded, {failed} failed.")
 
 
+def load_route_leg():
+    """Return the real route_leg, or None (crawl without routes) if its dependencies are missing."""
+    try:
+        # Imported lazily: pulls in numpy/shapely; land data loads on the first routed leg.
+        water_router = importlib.import_module("app.services.routing.water_router")
+    except ImportError as exc:
+        print(f"Routing unavailable ({exc}); crawling without water routes.")
+        return None
+    return water_router.route_leg
+
+
 def _parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Crawl uboat.net for boats and patrol routes.")
     parser.add_argument("--limit", type=int, default=None, help="Crawl at most N boats from the listing.")
@@ -99,8 +111,6 @@ async def main(argv=None) -> None:
     engine = create_engine(settings.DATABASE_URL)
     await init_models(engine)
     session_factory = create_session_factory(engine)
-
-    from app.services.routing import water_router  # imports numpy/shapely; load land only when first routing
 
     client = PoliteHttpClient(delay_seconds=delay, user_agent=build_user_agent(settings.CRAWLER_CONTACT))
 
@@ -122,7 +132,7 @@ async def main(argv=None) -> None:
         fetch_patrol_list=lambda slug: fetch_patrol_list(client, slug),
         fetch_patrol_detail=lambda url: fetch_patrol_detail(client, url),
         force=args.force,
-        route_leg=water_router.route_leg,
+        route_leg=load_route_leg(),
     )
 
     await engine.dispose()

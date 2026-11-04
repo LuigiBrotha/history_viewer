@@ -78,4 +78,5 @@ poetry run python -m app.compute_water_routes [--force]
 It skips legs that are already stored (`--force` recomputes them), bumps
 `updated_at` of each patrol that got new legs so the status page picks them
 up, and prints progress plus a summary per status. Loading the land data takes
-about 5 seconds.
+about 5 seconds. `crawl --force` re-crawls boats but does not recompute stored
+water routes; use the backfill with `--force` for that.
