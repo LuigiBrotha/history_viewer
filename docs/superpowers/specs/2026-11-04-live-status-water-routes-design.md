@@ -1,0 +1,139 @@
+# Live status, water routes and point exclusion — Design
+
+Three phases, built and reviewed in this order. After each one the map works and can go to
+`master`. Accuracy beats coverage whenever the two conflict. Domain terms are in `CONTEXT.md`.
+
+## Phase 1: live updates and `/status`
+
+**Goal.** Watch a crawl fill the map without reloading.
+
+| Topic | Decision |
+|---|---|
+| Timestamps | `patrols.crawled_at` (last stored by the crawl) and `patrols.updated_at` (last change to anything the map shows). Both nullable; existing rows stay null until re-crawled. |
+| Migration | `create_all` does not alter tables, so `init_models` adds missing columns using a `PRAGMA table_info` guard. Existing `uboats.db` files must keep working. |
+| Crawl progress | One-row `crawl_progress` table holding `listing_total` (size of the full listing, before `--limit`/`--slugs`). Written at crawl start. |
+| Status API | `GET /api/uboats/status` returns `listing_total`, `boats_crawled` (status `success`), `boats_failed`, `patrol_count`, `revision` (max `updated_at`, or null) and `last_patrol` (`boat_slug`, `boat_number`, `external_id`, `crawled_at`, or null). |
+| Incremental API | `GET /api/uboats/routes?since=<revision>` returns patrols with `updated_at >= since`. Without `since`, it returns everything, as today. |
+| Polling | Every 5 seconds, skipped while the tab is hidden. Routes are fetched only when `revision` changes, then merged by `external_id`. Refetching everything at each change would be too heavy at full scale. |
+| Status line | On both pages: `47 van 1153 boten · laatste: U-99, 12 sec geleden`, plus `· 2 mislukt` when relevant. Without a total: `47 boten`. When a poll fails: `Geen verbinding, opnieuw proberen…`, keeping all data on screen. |
+| Main map | Merges new data and keeps the selected date, the followed boat and the user's zoom. The slider range grows when new dates arrive. |
+| `/status` page | Separate page at exactly `/status`, served by a route so that relative URLs still resolve to the root. Shows every patrol, in blue (`#0077cc`), with the patrol with the newest `crawled_at` in red (`#cc3300`) and on top. Fits all routes once on load and never moves on its own after that. Renders with Leaflet's canvas renderer. Tooltip: boat number and patrol. Each page links to the other. |
+
+During this phase, lines on `/status` are straight and can cross land. Phase 2 replaces them.
+
+## Phase 2: water routes
+
+**Goal.** Between two route points, draw the shortest route over water as a dashed line.
+
+**Displayed geometry.** Leaflet draws a straight line in Web Mercator, so every land check tests
+that line, sampled at 16 intervals, rather than a straight line in lat/lng. Routes are therefore
+close to shortest, not exact great circles. Length is the sum of haversine distances.
+
+**Land data.** Natural Earth 10m `land` and `minor_islands`, tag `v5.1.2`, gzipped in the repo, with
+a data README recording the source URLs and checksums. The Kiel Canal is cut out of the land as
+a 0.015° buffer around this lng/lat line: `(9.13,53.885) (9.27,54.0) (9.53,54.2) (9.68,54.30)
+(9.85,54.34) (10.02,54.36) (10.15,54.368)`. No other canal counts as water.
+
+**Algorithm**, validated in a spike on all 132 real legs whose straight line crosses land:
+1. **Snap.** A point on land within 10 km of the coast moves just offshore. Beyond 10 km the leg's
+   status is `on_land`.
+2. **Straight check.** If the display line between the snapped points misses land, the path is
+   those two points.
+3. **Grid search.** Otherwise rasterize a window around the leg and label its connected water
+   regions. For each endpoint, pick the nearest water cell within 10 km that belongs to the largest
+   region reachable within that distance. Taking the nearest water cell without this check fails:
+   Lorient snaps into an estuary pocket that is closed at grid resolution. Different regions go
+   straight to the next attempt, without searching.
+4. **Search.** A* with 8 neighbours, longitude cost scaled by cos(latitude), no diagonal corner
+   cutting. Attempts, with `ext` the larger of the leg's lat and lng extent:
+
+   | Attempt | Cell size (°) | Margin (°) |
+   |---|---|---|
+   | 1 | `clamp(ext/300, 0.005, 0.05)` | `max(0.3, ext*0.3)` |
+   | 2 | `clamp(ext/600, 0.005, 0.05)` | `max(1, ext*0.8)` |
+   | 3 | `clamp(ext/400, 0.01, 0.05)` | `max(4, ext*2)` |
+
+   If all three fail the status is `no_route`.
+5. **Shorten.** Pull the string: from each vertex, jump to the furthest later vertex with a clear
+   display line. Interior segments may clip land by up to one grid cell, which the spike showed on
+   7 of 115 routes.
+6. **Endpoints.** The stored path starts and ends on the original coordinates, never snapped ones.
+
+Spike results: 115 of 132 routed and 17 `on_land`, caused by 5 points; no `no_route`. Median 0.23 s
+per leg, slowest 2.7 s, 5 s to load the land data once.
+
+**Storage.** `water_routes`, keyed on `(from_lat, from_lng, to_lat, to_lng)`, holding `status`,
+`path` (JSON) and `length_km`. Keying on coordinates means a re-crawl, which replaces route points,
+keeps valid routes, duplicates are computed once, and interrupted runs resume.
+
+**When computed.** The crawl computes a patrol's legs before storing the patrol, so a patrol
+appears with its lines ready. A routing failure is logged and never fails the crawl. A separate
+`python -m app.compute_water_routes [--force]` fills in existing data, bumping `updated_at` per
+patrol. The API process never loads land data in this phase.
+
+**Leg status**, derived when reading, so that changing the threshold needs no recalculation:
+
+| Status | Rule | Display |
+|---|---|---|
+| `ok` | routed and not too fast | blue dashed line |
+| `suspect` | both dates known and `length_km > 815 * max(1, days)` | orange dashed line (`#e67e00`), tooltip with km and days |
+| `on_land` | stored status | no line; `?` label at the midpoint: `Route onzeker: punt ligt op land` |
+| `no_route` | stored status | no line; `?` label: `Route onzeker: geen waterroute gevonden` |
+| `not_computed` | no stored row | no line, no label |
+
+815 km per day is 18.3 knots over 24 hours, the IXC surface speed on uboat.net. Dates have no time,
+so consecutive dates can span up to nearly 2 days: this rule deliberately flags extreme jumps
+rather than proving them impossible. The `?` marks the leg and never implies a position.
+
+**API.** Each patrol in `/api/uboats/routes` gains `legs`: `from_sequence`, `to_sequence`, `status`,
+`reason`, `path`, `length_km`, `days`.
+
+**Display.** The followed route and the overview tail draw legs by the table above. The followed
+boat's route points show as small dots. A tail with an uncertain leg has no line and no label; the
+marker tooltip adds `route onzeker`. On `/status` all drawn legs are dashed, in the page's blue or
+red; suspect legs are not orange there, and uncertain legs have no label.
+
+## Phase 3: excluding a point
+
+**Goal.** Remove an unreliable point from a route, reversibly.
+
+| Topic | Decision |
+|---|---|
+| Storage | `excluded_route_points`, keyed on `(external_id, lat, lng, date)`, with an empty string for a missing date. Keyed by content rather than sequence, so exclusions survive a re-crawl. Source data stays untouched. |
+| API | `POST /api/uboats/routes/{external_id}/excluded-points` and `DELETE` on the same path, both with JSON body `{"sequence": n}`. Both return the updated patrol and bump `updated_at`. 404 for an unknown patrol or sequence. 409 when excluding would leave no point. |
+| Reading | `points` and `legs` skip excluded points, so markers, timeline and tails simply follow. Excluded points are listed in `excluded_points`. |
+| New leg | Excluding B from A-B-C computes A-C immediately on a worker thread, loading land data lazily on first use (about 5 s). If routing fails the exclusion still succeeds and the leg is `not_computed`. |
+| UI | Click a dot of the followed route for a popup with `Punt uitsluiten`. The sidebar lists `Uitgesloten punten` for the shown patrol, each with `Herstellen`. No confirmation dialog, because it is reversible. |
+| Network | This is the first write endpoint and has no login. `python -m app.main` therefore binds to `127.0.0.1`, not `0.0.0.0`. |
+
+## Phase 4: ships hit by U-boats
+
+**Goal.** See on the map which ships were sunk, damaged or captured, with their tonnage.
+
+**Source.** `uboat.net/boats/successes/{slug}.html` lists date, commander, ship name, tons,
+nationality and convoy, with `(d.)` for damaged and `(c.)` for captured. Each row links to
+`/allies/merchants/ship/{id}.html`, the only place with a position, for example
+`Position 50° 31'N, 11° 05'W - Grid BF 1144`. Coordinates are not in the successes page, so every
+ship costs one request. The site says some positions are unknown.
+
+| Topic | Decision |
+|---|---|
+| Storage | `ship_hits`, unique on `(ship_external_id, boat_slug, date)`, holding name, tons, nationality, convoy, `outcome` (`sunk`, `damaged`, `captured`), nullable `lat`/`lng`, `position_checked` and `updated_at`. One ship can be hit more than once. |
+| Crawling | Separate `python -m app.crawl_ships [--limit N] [--slugs ...] [--force] [--delay N]`, with the same courtesy as the main crawl: 10 s between requests, one at a time. Resumes per ship, so stopping loses at most one ship. A ship with no position is not retried without `--force`. |
+| API | `GET /api/uboats/ships?since=<revision>` with the same semantics as routes. `revision` in the status endpoint also covers `ship_hits`. |
+| Main map | A ship appears on its date and stays. Followed boat: only that boat's ships. Tooltip: `Magog — 2.053 ton — gezonken door U-99 op 1940-07-05`. |
+| `/status` | Shows all ships up to now, regardless of date, since the page has no timeline. |
+| Symbols | Sunk: filled dark circle (`#222222`). Damaged: hollow dark circle. Captured: filled purple circle (`#7a3db8`). |
+| Totals | In the sidebar, up to the selected date: `87 gezonken (412.000 ton) · 5 beschadigd (37.965 ton) · 1 buitgemaakt (4.000 ton)`, with parts at zero left out. The followed boat's total covers only that boat. |
+| Unknown position | Never plotted and never estimated. Counted in totals, and followed boats list them in the sidebar as `positie onbekend`. |
+
+Validation: parsing the U-99 page must reproduce the site's own figures, 39 ships sunk for 246,794
+tons and 5 damaged for 37,965 tons, 284,759 in all.
+
+## Out of scope
+
+- Periodically checking uboat.net for changes.
+- WebSockets or server-sent events: the crawl is a separate process and 5-second polling suffices.
+- Offline maps.
+- Canals other than the Kiel Canal.
+- Editing or adding coordinates.
