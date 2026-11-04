@@ -1,7 +1,7 @@
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from wireup import Inject
@@ -41,14 +41,16 @@ class RequestHandler:
     def __init__(self, session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()]):
         self.session_factory = session_factory
 
-    @router.post("/api/uboats/routes/{external_id}/excluded-points", name="uboats_exclude_point")
+    @router.post("/api/uboats/routes/{external_id}/excluded-points", name="uboats_exclude_point",
+                 dependencies=[Depends(require_loopback)])
     async def exclude(self, request: Request, external_id: str, body: ExcludedPointIn) -> PatrolRouteOut:
         require_loopback(request)
         async with self.session_factory() as session:
             await self._edit(PatrolRepository(session).exclude_point, external_id, body.sequence)
         return await self._route_after_edit(external_id)
 
-    @router.delete("/api/uboats/routes/{external_id}/excluded-points", name="uboats_restore_point")
+    @router.delete("/api/uboats/routes/{external_id}/excluded-points", name="uboats_restore_point",
+                   dependencies=[Depends(require_loopback)])
     async def restore(self, request: Request, external_id: str, body: ExcludedPointIn) -> PatrolRouteOut:
         require_loopback(request)
         async with self.session_factory() as session:
@@ -72,8 +74,12 @@ class RequestHandler:
             # Never raises for routing failures: a failed leg stays not_computed.
             added = await compute_routes_for_points(route.points, self.session_factory, route_leg)
             if added:
+                try:
+                    async with self.session_factory() as session:
+                        await PatrolRepository(session).touch(external_id)
+                except Exception as exc:
+                    # The exclusion is committed; other pages pick the leg up on their next full load.
+                    print(f"  TOUCH FAILED for {external_id}: {exc}")
                 async with self.session_factory() as session:
-                    repo = PatrolRepository(session)
-                    await repo.touch(external_id)
-                    route = await repo.get_route(external_id)
+                    route = await PatrolRepository(session).get_route(external_id)
         return route

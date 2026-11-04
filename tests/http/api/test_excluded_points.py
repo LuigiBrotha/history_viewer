@@ -16,8 +16,13 @@ from app.services.storage.database import create_engine, create_session_factory,
 from app.services.storage.models import ExcludedRoutePoint, Patrol
 from app.services.storage.patrol_repository import PatrolRepository
 
-LOCAL = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
-NETWORK = SimpleNamespace(client=SimpleNamespace(host="192.168.2.20"), headers={})
+def fake_request(peer="127.0.0.1", **headers):
+    headers = {"host": "localhost:8000", **headers}
+    return SimpleNamespace(client=SimpleNamespace(host=peer), headers=headers)
+
+
+LOCAL = fake_request()
+NETWORK = fake_request("192.168.2.20", host="192.168.2.10:8001")
 
 
 def fake_route_leg(start, end):
@@ -232,10 +237,7 @@ async def test_restoring_from_a_network_client_returns_403_and_changes_nothing(t
 
 async def test_a_spoofed_forwarded_header_does_not_make_a_network_client_local(tmp_path, routing):
     engine, sf = await make_db(tmp_path)
-    spoofed = SimpleNamespace(
-        client=SimpleNamespace(host="192.168.2.20"),
-        headers={"x-forwarded-for": "127.0.0.1", "forwarded": "for=127.0.0.1", "x-real-ip": "127.0.0.1"},
-    )
+    spoofed = fake_request("192.168.2.20", **{"x-forwarded-for": "127.0.0.1"})
     with pytest.raises(HTTPException) as exc:
         await RequestHandler(sf).exclude(request=spoofed, external_id="p1", body=ExcludedPointIn(sequence=1))
     assert exc.value.status_code == 403
@@ -255,7 +257,7 @@ async def test_a_missing_client_is_not_loopback(tmp_path, routing):
 @pytest.mark.parametrize("host", ["127.0.0.1", "::1", "::ffff:127.0.0.1"])
 async def test_loopback_clients_may_edit_including_ipv6(tmp_path, routing, host):
     engine, sf = await make_db(tmp_path)
-    request = SimpleNamespace(client=SimpleNamespace(host=host), headers={})
+    request = fake_request(host)
     result = await RequestHandler(sf).exclude(request=request, external_id="p1", body=ExcludedPointIn(sequence=1))
     assert [p.sequence for p in result.points] == [0, 2]
     await engine.dispose()
@@ -265,7 +267,56 @@ async def test_status_reports_can_edit_only_for_a_loopback_client(tmp_path):
     engine, sf = await make_db(tmp_path)
     handler = StatusHandler(sf)
     assert (await handler.handle_request(LOCAL)).can_edit is True
-    assert (await handler.handle_request(SimpleNamespace(client=SimpleNamespace(host="::1"), headers={}))).can_edit is True
+    assert (await handler.handle_request(fake_request("::1"))).can_edit is True
     assert (await handler.handle_request(NETWORK)).can_edit is False
     assert (await handler.handle_request()).can_edit is False
+    await engine.dispose()
+
+
+@pytest.mark.parametrize("headers", [
+    {"x-forwarded-for": "127.0.0.1"},
+    {"forwarded": "for=127.0.0.1"},
+    {"x-real-ip": "127.0.0.1"},
+    {"host": "evil.example"},
+    {"host": "evil.example:8000", "origin": "http://evil.example"},
+    {"origin": "http://evil.example"},
+    {"origin": "null"},
+])
+async def test_loopback_peer_with_forwarding_headers_or_foreign_host_or_origin_cannot_edit(tmp_path, routing, headers):
+    engine, sf = await make_db(tmp_path)
+    request = fake_request(**headers)
+    with pytest.raises(HTTPException) as exc:
+        await RequestHandler(sf).exclude(request=request, external_id="p1", body=ExcludedPointIn(sequence=1))
+    assert exc.value.status_code == 403
+    assert await count_exclusions(sf) == 0
+    assert (await StatusHandler(sf).handle_request(request)).can_edit is False
+    await engine.dispose()
+
+
+@pytest.mark.parametrize("host", ["localhost", "localhost:8000", "127.0.0.1:8001", "[::1]:8000", "[::1]"])
+async def test_local_host_names_may_edit(tmp_path, host):
+    engine, sf = await make_db(tmp_path)
+    request = fake_request(host=host, origin=f"http://{host}")
+    assert (await StatusHandler(sf).handle_request(request)).can_edit is True
+    await engine.dispose()
+
+
+async def test_a_request_without_a_host_header_cannot_edit(tmp_path):
+    engine, sf = await make_db(tmp_path)
+    request = SimpleNamespace(client=SimpleNamespace(host="127.0.0.1"), headers={})
+    assert (await StatusHandler(sf).handle_request(request)).can_edit is False
+    await engine.dispose()
+
+
+async def test_a_failing_touch_does_not_fail_the_request(tmp_path, routing, monkeypatch):
+    async def broken(self, external_id):
+        raise RuntimeError("database is locked")
+
+    monkeypatch.setattr(PatrolRepository, "touch", broken)
+    engine, sf = await make_db(tmp_path)
+
+    result = await RequestHandler(sf).exclude(request=LOCAL, external_id="p1", body=ExcludedPointIn(sequence=1))
+
+    assert [p.sequence for p in result.points] == [0, 2]
+    assert [leg.status for leg in result.legs] == ["ok"]
     await engine.dispose()

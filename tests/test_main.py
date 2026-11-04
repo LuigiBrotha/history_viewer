@@ -176,3 +176,125 @@ def test_exclusion_routes_parse_a_json_body_over_real_http(reload_server, tmp_pa
                          json={"sequence": 1}, timeout=5).status_code == 404
     assert requests.post(url, json={"sequence": "x"}, timeout=5).status_code == 422
     assert requests.delete(url, json={"sequence": 999}, timeout=5).status_code == 404
+
+
+def _lan_address():
+    """This machine's non-loopback IPv4 address, or None when it has no network."""
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+        try:
+            sock.connect(("192.0.2.1", 9))  # TEST-NET-1: no packet is sent
+            address = sock.getsockname()[0]
+        except OSError:
+            return None
+    return None if address.startswith("127.") else address
+
+
+@pytest.fixture
+def lan_server(tmp_path):
+    """A server on all interfaces that trusts forwarding headers from anyone, the worst case."""
+    port = _free_port()
+    env = {
+        **os.environ,
+        "DATABASE_URL": f"sqlite+aiosqlite:///{tmp_path}/test.db",
+        "BASE_URL": f"http://127.0.0.1:{port}",
+        "ROOT_PATH": "",
+        "BASE_DIR": "app",
+        "HTTP_DIR": "app/http",
+        "FORWARDED_ALLOW_IPS": "*",
+    }
+    process = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", str(port)],
+        cwd=REPO_ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+    )
+    try:
+        deadline = time.monotonic() + 20
+        while True:
+            try:
+                requests.get(f"http://127.0.0.1:{port}/api/uboats/boten", timeout=1)
+                break
+            except requests.ConnectionError:
+                if time.monotonic() > deadline:
+                    pytest.fail("server never accepted connections")
+                time.sleep(0.2)
+        yield port
+    finally:
+        os.killpg(process.pid, signal.SIGTERM)
+        process.wait(timeout=10)
+
+
+def _excluded_url(port, host="127.0.0.1"):
+    return f"http://{host}:{port}/api/uboats/routes/long/excluded-points"
+
+
+def test_real_socket_loopback_can_exclude_and_restore(lan_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+    url = _excluded_url(lan_server)
+
+    excluded = requests.post(url, json={"sequence": 5}, timeout=120)
+    assert excluded.status_code == 200
+    assert [p["sequence"] for p in excluded.json()["excluded_points"]] == [5]
+    assert len(excluded.json()["points"]) == 59
+
+    restored = requests.delete(url, json={"sequence": 5}, timeout=120)
+    assert restored.status_code == 200
+    assert restored.json()["excluded_points"] == []
+    assert len(restored.json()["points"]) == 60
+
+
+def test_real_socket_foreign_host_header_is_refused(lan_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+
+    response = requests.post(_excluded_url(lan_server), json={"sequence": 5}, headers={"Host": "evil.example"}, timeout=10)
+
+    assert response.status_code == 403
+    status = requests.get(f"http://127.0.0.1:{lan_server}/api/uboats/status", headers={"Host": "evil.example"}, timeout=10)
+    assert status.json()["can_edit"] is False
+
+
+def test_real_socket_foreign_origin_is_refused(lan_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+
+    response = requests.post(
+        _excluded_url(lan_server), json={"sequence": 5}, headers={"Origin": "http://evil.example"}, timeout=10,
+    )
+
+    assert response.status_code == 403
+
+
+def test_real_socket_text_plain_body_is_not_parsed(lan_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+
+    response = requests.post(
+        _excluded_url(lan_server), data='{"sequence": 5}', headers={"Content-Type": "text/plain"}, timeout=10,
+    )
+
+    assert response.status_code == 422
+
+
+def test_real_socket_forwarding_header_from_loopback_is_refused(lan_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+
+    response = requests.post(
+        _excluded_url(lan_server), json={"sequence": 5}, headers={"X-Forwarded-For": "127.0.0.1"}, timeout=10,
+    )
+
+    assert response.status_code == 403
+
+
+def test_real_socket_network_client_is_refused_even_with_spoofed_forwarding(lan_server, tmp_path):
+    address = _lan_address()
+    if address is None:
+        pytest.skip("this machine has no non-loopback IPv4 address to connect through")
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+    url = _excluded_url(lan_server, address)
+
+    plain = requests.post(url, json={"sequence": 5}, timeout=10)
+    spoofed = requests.post(url, json={"sequence": 5}, headers={"X-Forwarded-For": "127.0.0.1"}, timeout=10)
+    invalid = requests.post(url, data="x", headers={"Content-Type": "text/plain"}, timeout=10)
+    status = requests.get(f"http://{address}:{lan_server}/api/uboats/status", headers={"X-Forwarded-For": "127.0.0.1"}, timeout=10)
+
+    assert plain.status_code == 403
+    assert spoofed.status_code == 403
+    assert invalid.status_code == 403
+    assert status.json()["can_edit"] is False
+    assert requests.get(f"http://{address}:{lan_server}/api/uboats/routes", timeout=10).json()[0]["excluded_points"] == []

@@ -25,12 +25,13 @@ below).
 To open the map on a phone or another computer on your network, start the server on all interfaces:
 
 ```
-poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001 --no-proxy-headers
 ```
 
 There is no login. Other devices are read-only: excluding or restoring a route
 point is only accepted from the computer the server runs on (`127.0.0.1` or
-`::1`) and answers 403 to anyone else. `python -m app.main` binds to
+`::1`, addressed as `localhost`, `127.0.0.1` or `[::1]`) and answers 403 to anyone else.
+Keep `--no-proxy-headers`; requests carrying `X-Forwarded-For`, `Forwarded` or `X-Real-IP` are never editable anyway. `python -m app.main` binds to
 `127.0.0.1` only.
 
 ## Pages and live updates
