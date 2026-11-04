@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
 import { renderActiveBoats, renderFollowedRoute } from "../js/map.js";
 
 function setup() {
@@ -133,5 +134,18 @@ test("the overview draws only the tail leg and flags an uncertain one", () => {
   made.length = 0;
   renderActiveBoats(state, [boat(3)], () => {});
   assert.equal(made.filter((m) => m.kind === "polyline").length, 0);
+  assert.match(made.find((m) => m.kind === "circleMarker").tooltip, / — route onzeker$/);
+});
+
+test("activeBoatsOnDate feeds renderActiveBoats so the tail leg and the uncertain note show", () => {
+  const made = recordingLeaflet();
+  const state = { activeBoatsLayer: { clearLayers() {} } };
+  const routes = [{ ...legPatrol, boat_slug: "u1", boat_number: "U-1" }];
+
+  renderActiveBoats(state, activeBoatsOnDate(routes, parseDate("2020-01-02")), () => {});
+  assert.equal(made.filter((m) => m.kind === "polyline").length, 1);
+
+  made.length = 0;
+  renderActiveBoats(state, activeBoatsOnDate(routes, parseDate("2020-01-04")), () => {});
   assert.match(made.find((m) => m.kind === "circleMarker").tooltip, / — route onzeker$/);
 });

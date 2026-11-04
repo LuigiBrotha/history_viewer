@@ -72,6 +72,7 @@ export function activeBoatsOnDate(routes, targetDate) {
         lat: position.lat,
         lng: position.lng,
         positionDate: position.date,
+        sequence: position.sequence,
         patrol,
       });
     }
