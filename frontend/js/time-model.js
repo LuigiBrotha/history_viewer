@@ -10,47 +10,41 @@ export function datedPoints(patrol) {
   return patrol.points.filter((point) => point.date !== null && point.date !== undefined);
 }
 
-export function interpolatePosition(patrol, targetDate) {
+function pointsUpTo(patrol, targetDate) {
+  const targetTime = targetDate.getTime();
+  return datedPoints(patrol).filter((point) => parseDate(point.date).getTime() <= targetTime);
+}
+
+export function knownPosition(patrol, targetDate) {
   const dated = datedPoints(patrol);
   if (dated.length === 0) {
     return null;
   }
-
-  const targetTime = targetDate.getTime();
-  const firstTime = parseDate(dated[0].date).getTime();
-  const lastTime = parseDate(dated[dated.length - 1].date).getTime();
-
-  if (targetTime < firstTime || targetTime > lastTime) {
+  if (targetDate.getTime() > parseDate(dated[dated.length - 1].date).getTime()) {
     return null;
   }
 
-  for (let i = 0; i < dated.length - 1; i++) {
-    const t0 = parseDate(dated[i].date).getTime();
-    const t1 = parseDate(dated[i + 1].date).getTime();
-
-    if (targetTime === t0) {
-      return { lat: dated[i].lat, lng: dated[i].lng };
-    }
-    if (targetTime === t1) {
-      return { lat: dated[i + 1].lat, lng: dated[i + 1].lng };
-    }
-    if (targetTime > t0 && targetTime < t1) {
-      const fraction = (targetTime - t0) / (t1 - t0);
-      return {
-        lat: dated[i].lat + (dated[i + 1].lat - dated[i].lat) * fraction,
-        lng: dated[i].lng + (dated[i + 1].lng - dated[i].lng) * fraction,
-      };
-    }
+  const reached = pointsUpTo(patrol, targetDate);
+  if (reached.length === 0) {
+    return null;
   }
 
-  // dated.length === 1: firstTime === lastTime === targetTime, already checked above.
-  return { lat: dated[0].lat, lng: dated[0].lng };
+  const { lat, lng, date } = reached[reached.length - 1];
+  return { lat, lng, date };
+}
+
+export function lastLeg(patrol, targetDate) {
+  const reached = pointsUpTo(patrol, targetDate);
+  if (reached.length < 2) {
+    return null;
+  }
+  return reached.slice(-2).map((point) => [point.lat, point.lng]);
 }
 
 export function activeBoatsOnDate(routes, targetDate) {
   const active = [];
   for (const patrol of routes) {
-    const position = interpolatePosition(patrol, targetDate);
+    const position = knownPosition(patrol, targetDate);
     if (position !== null) {
       active.push({
         boatSlug: patrol.boat_slug,
@@ -58,11 +52,34 @@ export function activeBoatsOnDate(routes, targetDate) {
         externalId: patrol.external_id,
         lat: position.lat,
         lng: position.lng,
+        positionDate: position.date,
+        tail: lastLeg(patrol, targetDate),
         patrol,
       });
     }
   }
   return active;
+}
+
+export function followView(patrols, targetDate) {
+  const started = patrols
+    .filter((patrol) => pointsUpTo(patrol, targetDate).length > 0)
+    .sort((a, b) => parseDate(datedPoints(a)[0].date) - parseDate(datedPoints(b)[0].date));
+
+  if (started.length === 0) {
+    return { patrol: null, position: null };
+  }
+
+  const patrol = started[started.length - 1];
+  return { patrol, position: knownPosition(patrol, targetDate) };
+}
+
+export function positionLabel(boat) {
+  return `${boat.boatNumber} — positie van ${boat.positionDate}`;
+}
+
+export function notOnPatrolMessage(boatNumber, targetDate) {
+  return `${boatNumber} is op ${targetDate.toISOString().slice(0, 10)} niet op patrouille.`;
 }
 
 export function dateRange(routes) {

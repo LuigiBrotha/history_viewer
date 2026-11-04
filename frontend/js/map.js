@@ -1,3 +1,5 @@
+import { positionLabel } from "./time-model.js";
+
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
 
@@ -9,20 +11,26 @@ export function createMap(containerId) {
   const activeBoatsLayer = L.layerGroup().addTo(map);
   const followedRouteLayer = L.layerGroup().addTo(map);
 
-  return { map, activeBoatsLayer, followedRouteLayer };
+  return { map, activeBoatsLayer, followedRouteLayer, fittedPatrol: null };
 }
 
 export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   mapState.activeBoatsLayer.clearLayers();
 
   for (const boat of activeBoats) {
+    if (boat.tail !== null) {
+      L.polyline(boat.tail, { color: "#0077cc", weight: 2, opacity: 0.6, interactive: false }).addTo(
+        mapState.activeBoatsLayer,
+      );
+    }
+
     const marker = L.circleMarker([boat.lat, boat.lng], {
       radius: 6,
       color: "#0077cc",
       fillColor: "#0077cc",
       fillOpacity: 0.85,
     });
-    marker.bindTooltip(boat.boatNumber);
+    marker.bindTooltip(positionLabel(boat));
     marker.on("click", () => onBoatClick(boat.boatSlug));
     marker.addTo(mapState.activeBoatsLayer);
   }
@@ -30,6 +38,10 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
 
 export function renderFollowedRoute(mapState, patrol, currentPosition) {
   mapState.followedRouteLayer.clearLayers();
+
+  if (patrol === null) {
+    return;
+  }
 
   const latLngs = patrol.points.map((point) => [point.lat, point.lng]);
   const polyline = L.polyline(latLngs, { color: "#cc3300", weight: 3 });
@@ -44,9 +56,13 @@ export function renderFollowedRoute(mapState, patrol, currentPosition) {
     }).addTo(mapState.followedRouteLayer);
   }
 
-  mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+  if (mapState.fittedPatrol !== patrol) {
+    mapState.fittedPatrol = patrol;
+    mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+  }
 }
 
 export function clearFollowedRoute(mapState) {
   mapState.followedRouteLayer.clearLayers();
+  mapState.fittedPatrol = null;
 }

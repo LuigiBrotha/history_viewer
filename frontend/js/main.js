@@ -1,5 +1,5 @@
 import { fetchBoats, fetchRoutes } from "./api.js";
-import { activeBoatsOnDate, dateRange } from "./time-model.js";
+import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
 import { renderBoatList, updateDateLabel } from "./sidebar.js";
@@ -31,12 +31,12 @@ async function main() {
   const playPauseEl = document.getElementById("play-pause");
   const dateDisplayEl = document.getElementById("date-display");
   const listEl = document.getElementById("boat-list");
+  const followStatusEl = document.getElementById("follow-status");
   const resetButton = document.getElementById("reset-follow");
   const toggleSidebarButton = document.getElementById("toggle-sidebar");
   const sidebarEl = document.getElementById("sidebar");
 
   let followedSlug = null;
-  let followedPatrol = null;
   let currentDate = range.min;
 
   function render(date) {
@@ -44,14 +44,16 @@ async function main() {
     const active = activeBoatsOnDate(routes, date);
     updateDateLabel(labelEl, date);
 
+    followStatusEl.textContent = "";
+
     if (followedSlug !== null) {
-      const followedBoatActive = active.find((boat) => boat.boatSlug === followedSlug);
+      const boatRoutes = routesBySlug.get(followedSlug);
+      const view = followView(boatRoutes, date);
       renderActiveBoats(mapState, [], onBoatSelect);
-      renderFollowedRoute(
-        mapState,
-        followedPatrol,
-        followedBoatActive ? { lat: followedBoatActive.lat, lng: followedBoatActive.lng } : null,
-      );
+      renderFollowedRoute(mapState, view.patrol, view.position);
+      if (view.position === null) {
+        followStatusEl.textContent = notOnPatrolMessage(boatRoutes[0].boat_number, date);
+      }
     } else {
       clearFollowedRoute(mapState);
       renderActiveBoats(mapState, active, onBoatSelect);
@@ -62,15 +64,13 @@ async function main() {
 
   function onBoatSelect(slug) {
     followedSlug = slug;
-    const boatRoutes = routesBySlug.get(slug) || [];
-    followedPatrol = boatRoutes.length > 0 ? boatRoutes[0] : null;
+    clearFollowedRoute(mapState);
     resetButton.hidden = false;
     render(currentDate);
   }
 
   resetButton.addEventListener("click", () => {
     followedSlug = null;
-    followedPatrol = null;
     resetButton.hidden = true;
     clearFollowedRoute(mapState);
     render(currentDate);

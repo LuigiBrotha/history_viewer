@@ -4,8 +4,12 @@ import assert from "node:assert/strict";
 import {
   parseDate,
   datedPoints,
-  interpolatePosition,
+  knownPosition,
+  lastLeg,
   activeBoatsOnDate,
+  followView,
+  positionLabel,
+  notOnPatrolMessage,
   dateRange,
 } from "../js/time-model.js";
 
@@ -37,33 +41,41 @@ test("datedPoints filters out points with a null date, preserving order", () => 
   assert.deepEqual(dated.map((p) => p.sequence), [0, 2]);
 });
 
-test("interpolatePosition returns exact coordinates on an exact date match", () => {
+const twoPointPatrol = {
+  points: [
+    { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
+    { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+  ],
+};
+
+test("knownPosition returns the exact coordinate on a date with a route point", () => {
+  assert.deepEqual(knownPosition(twoPointPatrol, parseDate("1940-06-20")), {
+    lat: 56.0,
+    lng: 12.0,
+    date: "1940-06-20",
+  });
+});
+
+test("knownPosition stays on the last known coordinate between two route points", () => {
+  assert.deepEqual(knownPosition(twoPointPatrol, parseDate("1940-06-19")), {
+    lat: 54.0,
+    lng: 10.0,
+    date: "1940-06-18",
+  });
+});
+
+test("knownPosition uses the last route point when a date has several", () => {
   const patrol = {
     points: [
-      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
-      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+      { sequence: 0, lat: 1, lng: 1, date: "2020-01-01" },
+      { sequence: 1, lat: 2, lng: 2, date: "2020-01-01" },
     ],
   };
 
-  const result = interpolatePosition(patrol, parseDate("1940-06-18"));
-
-  assert.deepEqual(result, { lat: 54.0, lng: 10.0 });
+  assert.deepEqual(knownPosition(patrol, parseDate("2020-01-01")), { lat: 2, lng: 2, date: "2020-01-01" });
 });
 
-test("interpolatePosition linearly interpolates halfway between two dated points", () => {
-  const patrol = {
-    points: [
-      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
-      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
-    ],
-  };
-
-  const result = interpolatePosition(patrol, parseDate("1940-06-19"));
-
-  assert.deepEqual(result, { lat: 55.0, lng: 11.0 });
-});
-
-test("interpolatePosition ignores an undated point sitting between two dated points", () => {
+test("knownPosition ignores an undated point sitting between two dated points", () => {
   const patrol = {
     points: [
       { sequence: 0, lat: 0, lng: 0, date: "2020-01-01" },
@@ -72,50 +84,96 @@ test("interpolatePosition ignores an undated point sitting between two dated poi
     ],
   };
 
-  const result = interpolatePosition(patrol, parseDate("2020-01-02"));
-
-  assert.deepEqual(result, { lat: 2, lng: 4 });
+  assert.deepEqual(knownPosition(patrol, parseDate("2020-01-02")), { lat: 0, lng: 0, date: "2020-01-01" });
 });
 
-test("interpolatePosition returns null before the patrol's first dated point", () => {
+test("knownPosition returns null before the patrol's first dated point", () => {
+  assert.equal(knownPosition(twoPointPatrol, parseDate("1940-06-17")), null);
+});
+
+test("knownPosition returns null after the patrol's last dated point", () => {
+  assert.equal(knownPosition(twoPointPatrol, parseDate("1940-06-21")), null);
+});
+
+test("knownPosition returns null for a patrol with zero dated points", () => {
+  const patrol = { points: [{ sequence: 0, lat: 1, lng: 1, date: null }] };
+
+  assert.equal(knownPosition(patrol, parseDate("2020-01-01")), null);
+});
+
+test("lastLeg connects the two route points up to the given date", () => {
   const patrol = {
     points: [
-      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
-      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
+      { sequence: 0, lat: 1, lng: 1, date: "2020-01-01" },
+      { sequence: 1, lat: 2, lng: 2, date: "2020-01-02" },
+      { sequence: 2, lat: 3, lng: 3, date: "2020-01-05" },
     ],
   };
 
-  assert.equal(interpolatePosition(patrol, parseDate("1940-06-17")), null);
+  assert.deepEqual(lastLeg(patrol, parseDate("2020-01-03")), [
+    [1, 1],
+    [2, 2],
+  ]);
 });
 
-test("interpolatePosition returns null after the patrol's last dated point", () => {
-  const patrol = {
-    points: [
-      { sequence: 0, lat: 54.0, lng: 10.0, date: "1940-06-18" },
-      { sequence: 1, lat: 56.0, lng: 12.0, date: "1940-06-20" },
-    ],
-  };
-
-  assert.equal(interpolatePosition(patrol, parseDate("1940-06-21")), null);
+test("lastLeg returns null on the patrol's first route point", () => {
+  assert.equal(lastLeg(twoPointPatrol, parseDate("1940-06-18")), null);
 });
 
-test("interpolatePosition returns null for a patrol with zero dated points", () => {
-  const patrol = {
-    points: [
-      { sequence: 0, lat: 1, lng: 1, date: null },
-      { sequence: 1, lat: 2, lng: 2, date: null },
-    ],
-  };
+const firstPatrol = {
+  boat_number: "U-1",
+  points: [
+    { sequence: 0, lat: 1, lng: 1, date: "1940-01-01" },
+    { sequence: 1, lat: 2, lng: 2, date: "1940-01-10" },
+  ],
+};
+const secondPatrol = {
+  boat_number: "U-1",
+  points: [
+    { sequence: 0, lat: 3, lng: 3, date: "1940-03-01" },
+    { sequence: 1, lat: 4, lng: 4, date: "1940-03-10" },
+  ],
+};
 
-  assert.equal(interpolatePosition(patrol, parseDate("2020-01-01")), null);
+test("followView shows the patrol active on the date, not the boat's first patrol", () => {
+  const view = followView([firstPatrol, secondPatrol], parseDate("1940-03-01"));
+
+  assert.equal(view.patrol, secondPatrol);
+  assert.deepEqual(view.position, { lat: 3, lng: 3, date: "1940-03-01" });
 });
 
-test("interpolatePosition returns the single point for a patrol with exactly one dated point", () => {
-  const patrol = { points: [{ sequence: 0, lat: 5, lng: 5, date: "2020-01-01" }] };
+test("followView does not depend on the order of the boat's patrols", () => {
+  const view = followView([secondPatrol, firstPatrol], parseDate("1940-01-01"));
 
-  const result = interpolatePosition(patrol, parseDate("2020-01-01"));
+  assert.equal(view.patrol, firstPatrol);
+});
 
-  assert.deepEqual(result, { lat: 5, lng: 5 });
+test("followView keeps the last finished patrol without a position between patrols", () => {
+  const view = followView([firstPatrol, secondPatrol], parseDate("1940-02-01"));
+
+  assert.equal(view.patrol, firstPatrol);
+  assert.equal(view.position, null);
+});
+
+test("followView has no patrol and no position before the boat's first patrol", () => {
+  const view = followView([firstPatrol, secondPatrol], parseDate("1939-12-31"));
+
+  assert.equal(view.patrol, null);
+  assert.equal(view.position, null);
+});
+
+test("positionLabel names the boat and the date of its route point", () => {
+  assert.equal(
+    positionLabel({ boatNumber: "U-1", positionDate: "1940-01-01" }),
+    "U-1 — positie van 1940-01-01",
+  );
+});
+
+test("notOnPatrolMessage names the boat and the selected date", () => {
+  assert.equal(
+    notOnPatrolMessage("U-1", parseDate("1940-02-01")),
+    "U-1 is op 1940-02-01 niet op patrouille.",
+  );
 });
 
 test("activeBoatsOnDate includes only patrols active on the given date", () => {
@@ -146,6 +204,9 @@ test("activeBoatsOnDate includes only patrols active on the given date", () => {
   assert.equal(active[0].boatSlug, "u1");
   assert.equal(active[0].boatNumber, "U-1");
   assert.equal(active[0].externalId, "patrol_1");
+  assert.equal(active[0].lat, 0);
+  assert.equal(active[0].positionDate, "2020-01-01");
+  assert.equal(active[0].tail, null);
 });
 
 test("dateRange returns the min and max dated point across all routes, ignoring undated points", () => {

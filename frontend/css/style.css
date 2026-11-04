@@ -48,6 +48,16 @@ html, body {
   margin-bottom: 8px;
 }
 
+#follow-status {
+  font-size: 13px;
+  color: #cc3300;
+  margin-bottom: 8px;
+}
+
+#follow-status:empty {
+  display: none;
+}
+
 #boat-list {
   list-style: none;
   margin: 0;
