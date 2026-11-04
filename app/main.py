@@ -13,6 +13,7 @@ from app.core.database import engine
 from app.services.storage.database import init_models
 from fastapi import FastAPI
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await init_models(engine)

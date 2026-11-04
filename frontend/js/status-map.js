@@ -47,6 +47,12 @@ export function updateRoutes(state, changed) {
     applyColor(state, patrol.external_id, polyline);
   }
 
+  // Newly drawn blue routes must not cover the last crawled one.
+  const last = state.polylines.get(state.lastExternalId);
+  if (last) {
+    last.bringToFront();
+  }
+
   if (!state.fitted && state.polylines.size > 0) {
     state.fitted = true;
     state.map.fitBounds(state.layer.getBounds(), { padding: [40, 40] });
