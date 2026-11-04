@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -99,3 +99,15 @@ class CrawlProgress(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     listing_total: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class WaterRoute(Base):
+    __tablename__ = "water_routes"
+
+    from_lat: Mapped[float] = mapped_column(Float, primary_key=True)
+    from_lng: Mapped[float] = mapped_column(Float, primary_key=True)
+    to_lat: Mapped[float] = mapped_column(Float, primary_key=True)
+    to_lng: Mapped[float] = mapped_column(Float, primary_key=True)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    length_km: Mapped[float | None] = mapped_column(Float, nullable=True)

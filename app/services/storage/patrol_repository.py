@@ -5,8 +5,10 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.export.uboats import PatrolRouteOut, RoutePointOut
+from app.services.routing.legs import build_legs
 from app.services.scraping.uboat_net.types import PatrolDetail, PatrolSummary
 from app.services.storage.models import Boat, Patrol, RoutePoint
+from app.services.storage.water_route_repository import WaterRouteRepository
 
 
 class PatrolRepository:
@@ -89,6 +91,15 @@ class PatrolRepository:
             for point in points_result.scalars().all():
                 points_by_patrol_id.setdefault(point.patrol_id, []).append(point)
 
+        routes_by_pair = await WaterRouteRepository(self._session).get_many([
+            pair
+            for pts in points_by_patrol_id.values()
+            for pair in zip(
+                ((pt.lat, pt.lng) for pt in pts),
+                ((pt.lat, pt.lng) for pt in pts[1:]),
+            )
+        ])
+
         routes = []
         for patrol, boat_slug, boat_number in rows:
             points = [
@@ -102,5 +113,6 @@ class PatrolRepository:
                 departure_date=patrol.departure_date,
                 arrival_date=patrol.arrival_date,
                 points=points,
+                legs=build_legs(points, routes_by_pair),
             ))
         return routes

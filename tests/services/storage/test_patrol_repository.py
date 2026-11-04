@@ -205,3 +205,24 @@ async def test_status_reads_while_another_connection_is_writing(tmp_path):
     await release
 
     assert status.patrol_count == 0
+
+
+async def test_water_routes_survive_a_recrawl_of_the_patrol(tmp_path):
+    from app.services.routing.types import RoutedLeg
+    from app.services.storage.water_route_repository import WaterRouteRepository
+
+    factory = await _session_factory(tmp_path)
+    points = [
+        RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=date(1940, 6, 18)),
+        RoutePointData(sequence=2, lat=51.0, lng=-4.0, date=date(1940, 6, 19)),
+    ]
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(points))
+        a, b = (50.0, -5.0), (51.0, -4.0)
+        await WaterRouteRepository(session).save(a, b, RoutedLeg("ok", [a, b], 100.0))
+        await repo.upsert_patrol(boat_id, _summary(), _detail(points))
+        routes = await repo.list_routes()
+    assert routes[0].legs[0].status == "ok"
+    assert routes[0].legs[0].path == [[50.0, -5.0], [51.0, -4.0]]

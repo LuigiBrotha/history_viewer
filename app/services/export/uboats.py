@@ -46,6 +46,17 @@ class RoutePointOut:
 
 
 @dataclass(frozen=True)
+class LegOut:
+    from_sequence: int
+    to_sequence: int
+    status: str
+    reason: str | None
+    path: list[list[float]] | None
+    length_km: float | None
+    days: int | None
+
+
+@dataclass(frozen=True)
 class PatrolRouteOut:
     boat_slug: str
     boat_number: str
@@ -53,6 +64,7 @@ class PatrolRouteOut:
     departure_date: date | None
     arrival_date: date | None
     points: list[RoutePointOut] = field(default_factory=list)
+    legs: list[LegOut] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,6 @@
 import heapq
 import math
 from dataclasses import dataclass
-from typing import Literal
 
 import numpy as np
 import shapely
@@ -10,8 +9,7 @@ from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
 from app.services.routing.land import Land, load_land
-
-LatLng = tuple[float, float]
+from app.services.routing.types import LatLng, RoutedLeg
 
 EARTH_RADIUS_KM = 6371.0
 KM_PER_DEGREE = 111.0
@@ -33,13 +31,6 @@ ATTEMPTS = (
 
 NEIGHBOURS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1))
 FOUR_CONNECTED = [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
-
-
-@dataclass(frozen=True)
-class RoutedLeg:
-    status: Literal["ok", "on_land", "no_route"]
-    path: list[LatLng] | None
-    length_km: float | None
 
 
 @dataclass(frozen=True)
