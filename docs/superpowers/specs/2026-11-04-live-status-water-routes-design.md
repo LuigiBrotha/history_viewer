@@ -139,6 +139,14 @@ from the first of its month. The timeline shows the last map on or before the se
 The sources are in Robinson without georeferencing: `tools/build_atlas_overlays.py` holds a
 position fit (overlap with Natural Earth land 0.91) and produces Web Mercator images.
 
+## Heatmap
+
+`/heatmap` has the same period slider, live updates, historical layer and mobile-first header as
+`/status`. It counts how many patrols overlapping the period pass through each 0.5° cell along
+their drawn water routes, once per patrol per cell. Colours are Turbo on a square-root scale of
+the selection's 99th percentile, so that bases do not wash out the ocean, transparent where nothing passed. Patrols without a water route
+do not count. Ships hit by U-boats are not included.
+
 ## Out of scope
 
 - Periodically checking uboat.net for changes.

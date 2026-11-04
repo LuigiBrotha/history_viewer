@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U-boat Heatmap</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="status-page">
+  <header id="status-header">
+    <div id="status-summary">
+      <nav id="page-links">
+        <a href="./">Tijdlijn</a>
+        <a href="status">Alle routes</a>
+      </nav>
+      <div id="live-status"></div>
+    </div>
+    <div id="period">
+      <div id="period-summary">
+        <span id="period-label"></span>
+        <button type="button" id="period-reset">Alles</button>
+      </div>
+      <div id="slider-track">
+        <div class="slider-window heat-window" id="slider-window"></div>
+        <div class="slider-handle" id="slider-from" role="slider" tabindex="0"></div>
+        <div class="slider-handle" id="slider-to" role="slider" tabindex="0"></div>
+      </div>
+      <div id="slider-ticks"></div>
+      <div id="legend">
+        <span id="route-count"></span>
+        <span id="heat-legend">weinig <span id="heat-ramp"></span> veel</span>
+        <span id="heat-max"></span>
+      </div>
+    </div>
+  </header>
+  <div id="status-map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="js/heatmap.js"></script>
+</body>
+</html>

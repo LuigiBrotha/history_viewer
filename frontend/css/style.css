@@ -182,8 +182,29 @@ html, body {
   gap: 12px;
 }
 
-#timeline-link {
+#page-links {
+  display: flex;
+  gap: 12px;
   flex-shrink: 0;
+}
+
+/* On /heatmap the selection only marks the period; the colours mean density there. */
+.heat-window {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+#heat-legend {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 120px;
+}
+
+#heat-ramp {
+  flex: 1;
+  height: 8px;
+  border-radius: 2px;
 }
 
 #status-header #live-status {

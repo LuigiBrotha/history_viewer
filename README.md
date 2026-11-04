@@ -37,13 +37,17 @@ which belongs to which. Such positions are stored without a date. When read, the
 are spread evenly between departure and arrival and shown as approximate: hollow
 markers and `(datum benaderd)` in the tooltip. Speed checks never use these dates.
 
-Both maps show a soft historical layer of who controlled what, from world maps on
+- `/heatmap` shows where U-boats were most active: the number of patrols passing
+  through each half-degree cell, on the same draggable period slider. A patrol counts
+  once per cell, and fully if it overlaps the period at all.
+
+All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
 last map on or before the selected date, `/status` the last map on or before the end of
 the selection. The maps are coarse, about 25 km per pixel: they show the broad
 situation per month, not exact borders.
 
-Both pages poll the API every 5 seconds (paused while the tab is hidden), so
+All pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are
 fetched. A status line shows when the last patrol was crawled; if the server
 cannot be reached it shows `Geen verbinding, opnieuw proberen…` and keeps the
