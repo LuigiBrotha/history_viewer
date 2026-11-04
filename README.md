@@ -1,6 +1,6 @@
 # uboats
 
-Scraper and API for U-boat data and patrol routes from [uboat.net](https://uboat.net).
+Scraper, API and Leaflet map for U-boat data and patrol routes from [uboat.net](https://uboat.net).
 
 See `docs/superpowers/specs/` and `docs/superpowers/plans/` for the design and implementation plan.
 
@@ -15,6 +15,17 @@ poetry run uvicorn app.main:app --reload
 The app reads its configuration from `.env` (see `.env.example` for the full
 list of settings and what each one does). None of the defaults need changing
 for local development.
+
+The map is at <http://localhost:8000> and needs an internet connection for
+Leaflet and the map tiles. It stays empty until you have crawled some data (see
+below).
+
+## Tests
+
+```
+poetry run pytest
+cd frontend && node --test tests/
+```
 
 ## Crawling
 
