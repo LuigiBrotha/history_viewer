@@ -17,6 +17,8 @@ EARTH_RADIUS_KM = 6371.0
 KM_PER_DEGREE = 111.0
 SNAP_MAX_KM = 10.0
 SNAP_OFFSHORE_DEGREES = 0.002
+SNAP_BOX_FACTOR = 1.5
+MIN_COS_LATITUDE = 0.01
 ENDPOINT_MAX_KM = 10.0
 DISPLAY_LINE_INTERVALS = 16
 MAX_LATITUDE = 85.0
@@ -73,6 +75,7 @@ def path_length_km(path: list[LatLng]) -> float:
 
 
 def _mercator_y(lat: float) -> float:
+    lat = max(-MAX_LATITUDE, min(MAX_LATITUDE, lat))
     return math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
 
 
@@ -96,19 +99,35 @@ def is_clear(land: Land, a: LatLng, b: LatLng) -> bool:
     return not land.geometry.intersects(display_line(a, b))
 
 
+def _nearest_coast(land: Land, point: LatLng) -> LatLng | None:
+    """Nearest coast point within SNAP_MAX_KM, measured in locally cos(lat)-scaled degrees."""
+    cos_lat = max(math.cos(math.radians(point[0])), MIN_COS_LATITUDE)
+    half_lat = SNAP_MAX_KM / KM_PER_DEGREE * SNAP_BOX_FACTOR
+    half_lng = half_lat / cos_lat
+    west, east = point[1] - half_lng, point[1] + half_lng
+    south, north = point[0] - half_lat, point[0] + half_lat
+    near = shapely.clip_by_rect(land.boundary, west, south, east, north)
+    if near.is_empty:
+        return None
+    scaled = shapely.transform(near, lambda xy: xy * [cos_lat, 1.0])
+    nearest = nearest_points(scaled, Point(point[1] * cos_lat, point[0]))[0]
+    coast = (nearest.y, nearest.x / cos_lat)
+    return coast if haversine_km(point, coast) <= SNAP_MAX_KM else None
+
+
 def snap_offshore(land: Land, point: LatLng) -> LatLng | None:
     """Move a point on land just offshore; None when it is too far inland."""
-    pt = Point(point[1], point[0])
-    if not land.geometry.contains(pt):
+    if not land.geometry.contains(Point(point[1], point[0])):
         return point
-    nearest = nearest_points(land.boundary, pt)[0]
-    if haversine_km(point, (nearest.y, nearest.x)) > SNAP_MAX_KM:
+    coast = _nearest_coast(land, point)
+    if coast is None:
         return None
-    dx, dy = nearest.x - point[1], nearest.y - point[0]
+    cos_lat = max(math.cos(math.radians(point[0])), MIN_COS_LATITUDE)
+    dx, dy = (coast[1] - point[1]) * cos_lat, coast[0] - point[0]
     length = math.hypot(dx, dy) or 1.0
     return (
-        nearest.y + dy / length * SNAP_OFFSHORE_DEGREES,
-        nearest.x + dx / length * SNAP_OFFSHORE_DEGREES,
+        coast[0] + dy / length * SNAP_OFFSHORE_DEGREES,
+        coast[1] + dx / length * SNAP_OFFSHORE_DEGREES / cos_lat,
     )
 
 
@@ -125,13 +144,16 @@ def pull_string(land: Land, points: list[LatLng]) -> list[LatLng]:
     return out
 
 
-def make_window(a: LatLng, b: LatLng, cell: float, margin: float) -> Window:
+def make_window(
+    a: LatLng, b: LatLng, cell: float, margin: float, capped: bool = False
+) -> Window:
     lat0 = max(min(a[0], b[0]) - margin, -MAX_LATITUDE)
     lat1 = min(max(a[0], b[0]) + margin, MAX_LATITUDE)
     lng0 = min(a[1], b[1]) - margin
     lng1 = max(a[1], b[1]) + margin
     height, width = lat1 - lat0, lng1 - lng0
-    cell = max(cell, math.sqrt(height * width / MAX_WINDOW_CELLS))
+    if capped:
+        cell = max(cell, math.sqrt(height * width / MAX_WINDOW_CELLS))
     return Window(lat0, lng0, cell, int(height / cell) + 1, int(width / cell) + 1)
 
 
@@ -154,9 +176,9 @@ def pick_endpoint(
     r0, r1 = max(row - reach, 0), min(row + reach + 1, window.rows)
     c0, c1 = max(col - reach, 0), min(col + reach + 1, window.cols)
     near = [
-        (r0 + i, c0 + j)
+        (r0 + int(i), c0 + int(j))
         for i, j in np.argwhere(water[r0:r1, c0:c1])
-        if haversine_km(point, window.to_latlng((r0 + i, c0 + j))) <= ENDPOINT_MAX_KM
+        if haversine_km(point, window.to_latlng((r0 + int(i), c0 + int(j)))) <= ENDPOINT_MAX_KM
     ]
     if not near:
         return None
@@ -202,8 +224,10 @@ def search(
     return path[::-1]
 
 
-def grid_route(land: Land, a: LatLng, b: LatLng, cell: float, margin: float) -> list[LatLng] | None:
-    window = make_window(a, b, cell, margin)
+def grid_route(
+    land: Land, a: LatLng, b: LatLng, cell: float, margin: float, capped: bool
+) -> list[LatLng] | None:
+    window = make_window(a, b, cell, margin, capped)
     water = rasterize_water(land, window)
     labels, _ = ndimage.label(water, structure=FOUR_CONNECTED)
     sizes = np.bincount(labels.ravel())
@@ -214,7 +238,7 @@ def grid_route(land: Land, a: LatLng, b: LatLng, cell: float, margin: float) -> 
     return [window.to_latlng(node) for node in search(window, water, start, goal)]
 
 
-def _attempt_parameters(extent: float):
+def attempt_parameters(extent: float):
     for divisor, min_cell, max_cell, min_margin, margin_factor in ATTEMPTS:
         cell = max(min_cell, min(max_cell, extent / divisor))
         yield cell, max(min_margin, extent * margin_factor)
@@ -232,8 +256,8 @@ def route_leg(start: LatLng, end: LatLng, land: Land | None = None) -> RoutedLeg
     if is_clear(land, snapped_start, snapped_end):
         return _finish([start, end])
     extent = max(abs(start[0] - end[0]), abs(start[1] - end[1]))
-    for cell, margin in _attempt_parameters(extent):
-        grid = grid_route(land, snapped_start, snapped_end, cell, margin)
+    for number, (cell, margin) in enumerate(attempt_parameters(extent), start=1):
+        grid = grid_route(land, snapped_start, snapped_end, cell, margin, number == len(ATTEMPTS))
         if grid is not None:
             pulled = pull_string(land, [snapped_start, *grid, snapped_end])
             return _finish([start, *pulled[1:-1], end])
