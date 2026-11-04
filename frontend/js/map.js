@@ -1,4 +1,5 @@
 import { boatColor } from "./boat-color.js";
+import { reopenSequence } from "./edit-state.js";
 import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from "./time-model.js";
 
 const UNCERTAIN = new Set(["on_land", "no_route"]);
@@ -52,14 +53,16 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   }
 }
 
-function pointPopup(point, onExclude) {
+export function pointPopup(point, { onExclude, busy }) {
   const box = document.createElement("div");
   const line = document.createElement("div");
-  line.textContent = point.date ?? "geen datum";
+  const date = point.date ?? "geen datum";
+  line.textContent = point.date && point.date_approximate ? `${date} (datum benaderd)` : date;
   box.appendChild(line);
   if (onExclude !== null) {
     const button = document.createElement("button");
-    button.textContent = "Punt uitsluiten";
+    button.textContent = busy ? "Bezig…" : "Punt uitsluiten";
+    button.disabled = busy;
     button.addEventListener("click", () => onExclude(point, button));
     box.appendChild(button);
   }
@@ -69,8 +72,15 @@ function pointPopup(point, onExclude) {
 // fit is true for user actions (boat selected, date changed). A live update passes
 // false: it redraws the route but leaves the user's zoom alone.
 // onExclude is null when editing is not allowed: the popup then only shows the date.
-export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, onExclude = null }) {
+// isBusy(point) says whether a request for the point is running.
+// A popup that was open is opened again on the same sequence if that point is still drawn.
+export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, onExclude = null, isBusy = () => false }) {
+  const reopen = reopenSequence(mapState.openSequence, patrol);
+  mapState.openSequence = reopen;
+  // Clearing the layer closes the popup; that is not the user closing it.
+  mapState.redrawing = true;
   mapState.followedRouteLayer.clearLayers();
+  mapState.redrawing = false;
 
   if (patrol === null) {
     return;
@@ -106,7 +116,18 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       fillOpacity: 1,
     }).addTo(layer);
     if (dot.bindPopup) {
-      dot.bindPopup(() => pointPopup(point, onExclude));
+      dot.bindPopup(() => pointPopup(point, { onExclude, busy: isBusy(point) }));
+      dot.on("popupopen", () => {
+        mapState.openSequence = point.sequence;
+      });
+      dot.on("popupclose", () => {
+        if (!mapState.redrawing) {
+          mapState.openSequence = null;
+        }
+      });
+      if (point.sequence === reopen) {
+        dot.openPopup();
+      }
     }
   }
 
@@ -136,6 +157,9 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
 }
 
 export function clearFollowedRoute(mapState) {
+  mapState.redrawing = true;
   mapState.followedRouteLayer.clearLayers();
+  mapState.redrawing = false;
+  mapState.openSequence = null;
   mapState.fittedExternalId = null;
 }

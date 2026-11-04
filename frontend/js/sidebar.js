@@ -49,7 +49,8 @@ export function renderShipSummary({ totalsEl, unknownEl }, ships, followed) {
 
 // Built from text nodes only: dates and coordinates are never parsed as HTML.
 // onRestore is null when editing is not allowed; the list is still shown.
-export function renderExcludedPoints({ listEl, patrol, onRestore }) {
+// isBusy(externalId, sequence) keeps a point with a running request disabled across rebuilds.
+export function renderExcludedPoints({ listEl, patrol, onRestore, isBusy = () => false }) {
   listEl.replaceChildren();
   const points = patrol?.excluded_points ?? [];
   listEl.hidden = points.length === 0;
@@ -69,7 +70,9 @@ export function renderExcludedPoints({ listEl, patrol, onRestore }) {
     item.appendChild(text);
     if (onRestore !== null) {
       const button = document.createElement("button");
-      button.textContent = "Herstellen";
+      const busy = isBusy(patrol.external_id, point.sequence);
+      button.textContent = busy ? "Bezig…" : "Herstellen";
+      button.disabled = busy;
       button.addEventListener("click", () => onRestore(point, button));
       item.appendChild(button);
     }

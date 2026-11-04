@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 
 import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
 import { boatColor } from "../js/boat-color.js";
-import { renderActiveBoats, renderFollowedRoute } from "../js/map.js";
+import { pointPopup, renderActiveBoats, renderFollowedRoute } from "../js/map.js";
+import { installFakeDom } from "./fake-dom.js";
 
 function setup() {
   const fits = [];
@@ -265,4 +266,74 @@ test("a followed route takes the boat's own colour", () => {
   assert.equal(lines[0].color, boatColor("u99"));
   assert.equal(dots[0].color, boatColor("u99"));
   assert.equal(dots.at(-1).fillColor, boatColor("u99"));
+});
+
+test("pointPopup shows the date, and marks an approximate one", () => {
+  const root = installFakeDom();
+  const exact = pointPopup({ sequence: 1, date: "1940-06-18" }, { onExclude: null, busy: false });
+  const approx = pointPopup({ sequence: 1, date: "1940-06-18", date_approximate: true }, { onExclude: null, busy: false });
+  const none = pointPopup({ sequence: 1, date: null }, { onExclude: null, busy: false });
+  assert.equal(exact.children[0].textContent, "1940-06-18");
+  assert.equal(approx.children[0].textContent, "1940-06-18 (datum benaderd)");
+  assert.equal(none.children[0].textContent, "geen datum");
+  assert.equal(root.find("button").length, 0);
+  assert.equal(exact.find("button").length, 0);
+});
+
+test("pointPopup offers Punt uitsluiten only when editing is allowed", () => {
+  installFakeDom();
+  const calls = [];
+  const box = pointPopup({ sequence: 2, date: null }, { onExclude: (point, button) => calls.push([point.sequence, button]), busy: false });
+  const [button] = box.find("button");
+  assert.equal(button.textContent, "Punt uitsluiten");
+  assert.equal(button.disabled, false);
+  button.click();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], 2);
+  assert.equal(calls[0][1], button);
+});
+
+test("pointPopup for a point in flight shows a disabled Bezig… button", () => {
+  installFakeDom();
+  let clicks = 0;
+  const box = pointPopup({ sequence: 2, date: null }, { onExclude: () => clicks++, busy: true });
+  const [button] = box.find("button");
+  assert.equal(button.textContent, "Bezig…");
+  assert.equal(button.disabled, true);
+  button.click();
+  assert.equal(clicks, 0);
+});
+
+test("renderFollowedRoute reopens the popup of the point that was open if it still exists", () => {
+  const opened = [];
+  const markers = [];
+  globalThis.L = {
+    polyline: () => ({ addTo() { return this; } }),
+    circleMarker: ([lat]) => {
+      const marker = {
+        lat,
+        addTo() { return this; },
+        bindPopup() { return this; },
+        on(type, handler) { (this.handlers ??= {})[type] = handler; return this; },
+        openPopup() { opened.push(this.lat); },
+      };
+      markers.push(marker);
+      return marker;
+    },
+  };
+  const mapState = {
+    map: { fitBounds() {} },
+    followedRouteLayer: { clearLayers() {} },
+    fittedExternalId: null,
+    openSequence: 3,
+  };
+  const p = { external_id: "p1", points: [{ sequence: 1, lat: 1, lng: 1 }, { sequence: 3, lat: 3, lng: 3 }] };
+  renderFollowedRoute(mapState, p, null, { fit: false });
+  assert.deepEqual(opened, [3]);
+
+  opened.length = 0;
+  mapState.openSequence = 2;
+  renderFollowedRoute(mapState, p, null, { fit: false });
+  assert.deepEqual(opened, []);
+  assert.equal(mapState.openSequence, null, "a vanished point is not reopened by a later redraw");
 });

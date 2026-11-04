@@ -2,6 +2,16 @@ import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
+import {
+  beginEdit,
+  clearEditError,
+  createEditState,
+  failEdit,
+  finishEdit,
+  followStatusText,
+  followedRouteChanged,
+  isBusy,
+} from "./edit-state.js";
 import { initTimeline } from "./timeline.js";
 import { boatsHeading, renderBoatList, renderExcludedPoints, renderShipSummary, updateDateLabel } from "./sidebar.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
@@ -46,6 +56,10 @@ function main() {
   let ships = [];
   let shipLayer = null;
   let editable = false;
+  // Edit errors and in-flight requests outlive every redraw.
+  const editState = createEditState();
+  // What the followed route layer shows now, or null when it is empty.
+  let drawnRoute = null;
 
   // fit is true for user actions; live updates redraw without touching the view.
   function render(date, fit) {
@@ -54,29 +68,38 @@ function main() {
     updateDateLabel(labelEl, date);
     atlas.setDate(date.toISOString().slice(0, 10));
 
-    followStatusEl.textContent = "";
+    let notOnPatrol = "";
 
     if (followedSlug !== null) {
       const boatRoutes = routesBySlug.get(followedSlug);
       const view = followView(boatRoutes, date);
       renderActiveBoats(mapState, [], onBoatSelect);
-      renderFollowedRoute(mapState, view.patrol, view.position, {
-        fit,
-        onExclude: editable ? (point, button) => editPoint(excludePoint, "Uitsluiten mislukt", view.patrol, point, button) : null,
-      });
+      // A poll that changed nothing here must not redraw: that would close an open popup.
+      const next = { patrol: view.patrol, position: view.position, editable };
+      if (followedRouteChanged(drawnRoute, next)) {
+        renderFollowedRoute(mapState, view.patrol, view.position, {
+          fit,
+          onExclude: editable ? (point, button) => editPoint(excludePoint, "Uitsluiten mislukt", view.patrol, point, button) : null,
+          isBusy: (point) => view.patrol !== null && isBusy(editState, view.patrol.external_id, point.sequence),
+        });
+        drawnRoute = next;
+      }
       renderExcludedPoints({
         listEl: excludedEl,
         patrol: view.patrol,
         onRestore: editable ? (point, button) => editPoint(restorePoint, "Herstellen mislukt", view.patrol, point, button) : null,
+        isBusy: (externalId, sequence) => isBusy(editState, externalId, sequence),
       });
       if (view.position === null) {
-        followStatusEl.textContent = notOnPatrolMessage(boatRoutes[0].boat_number, date);
+        notOnPatrol = notOnPatrolMessage(boatRoutes[0].boat_number, date);
       }
     } else {
-      clearFollowedRoute(mapState);
+      clearDrawnRoute();
       renderExcludedPoints({ listEl: excludedEl, patrol: null, onRestore: null });
       renderActiveBoats(mapState, active, onBoatSelect);
     }
+
+    followStatusEl.textContent = followStatusText(notOnPatrol, editState.error);
 
     renderShips(date);
 
@@ -102,27 +125,40 @@ function main() {
     onError: (error) => console.error(error),
   });
 
+  function clearDrawnRoute() {
+    clearFollowedRoute(mapState);
+    drawnRoute = null;
+  }
+
   // Date, followed boat and zoom stay as they are: the returned patrol replaces
-  // the old one and the view is redrawn without fitting.
+  // the old one and the view is redrawn without fitting. A failure stays in
+  // editState until the next edit, so polls cannot wipe it.
   async function editPoint(request, failure, patrol, point, button) {
+    if (!beginEdit(editState, patrol.external_id, point.sequence)) {
+      return;
+    }
     const label = button.textContent;
     button.disabled = true;
     button.textContent = "Bezig…";
+    let updated;
     try {
-      const updated = await request(patrol.external_id, point.sequence);
-      mapState.map.closePopup();
-      onData([updated]);
+      updated = await request(patrol.external_id, point.sequence);
     } catch (error) {
       console.error(error);
-      followStatusEl.textContent = error.message || failure;
+      failEdit(editState, patrol.external_id, point.sequence, error.message || failure);
       button.disabled = false;
       button.textContent = label;
+      render(currentDate, false);
+      return;
     }
+    finishEdit(editState, patrol.external_id, point.sequence);
+    onData([updated]);
   }
 
   function onBoatSelect(slug) {
     followedSlug = slug;
-    clearFollowedRoute(mapState);
+    clearEditError(editState);
+    clearDrawnRoute();
     resetButton.hidden = false;
     render(currentDate, true);
   }
@@ -130,7 +166,8 @@ function main() {
   resetButton.addEventListener("click", () => {
     followedSlug = null;
     resetButton.hidden = true;
-    clearFollowedRoute(mapState);
+    clearEditError(editState);
+    clearDrawnRoute();
     render(currentDate, true);
   });
 
