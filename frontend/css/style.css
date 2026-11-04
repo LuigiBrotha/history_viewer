@@ -154,3 +154,18 @@ html, body {
 #status-map {
   height: calc(100vh - 38px);
 }
+
+/* A label for an uncertain leg; it marks the leg, never a boat position. */
+.leg-uncertain {
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #666;
+  background: #eee;
+  border: 1px solid #999;
+  border-radius: 50%;
+  box-sizing: border-box;
+}

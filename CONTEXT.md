@@ -24,6 +24,10 @@ _Avoid_: Vaarroute, koers
 Een traject waarvoor geen geloofwaardige waterroute bestaat.
 _Avoid_: Fout traject
 
+**Verdacht traject**:
+Een traject met een waterroute, maar waarvan de afstand voor het aantal dagen onwaarschijnlijk groot is. Wordt getoond, maar gemarkeerd.
+_Avoid_: Onmogelijk traject, fout traject
+
 **Gevolgde boot**:
 De aangeklikte boot, gevolgd over al zijn patrouilles heen.
 _Avoid_: Gevolgde patrouille

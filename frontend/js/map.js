@@ -1,4 +1,7 @@
-import { positionLabel, shouldFitRoute } from "./time-model.js";
+import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from "./time-model.js";
+
+const UNCERTAIN = new Set(["on_land", "no_route"]);
+const ROUTE_UNCERTAIN = " — route onzeker";
 
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
@@ -18,8 +21,10 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   mapState.activeBoatsLayer.clearLayers();
 
   for (const boat of activeBoats) {
-    if (boat.tail !== null) {
-      L.polyline(boat.tail, { color: "#0077cc", weight: 2, opacity: 0.6, interactive: false }).addTo(
+    const leg = tailLeg(boat.patrol, boat);
+    const style = leg === null ? null : legStyle(leg.status);
+    if (style !== null && leg.path) {
+      L.polyline(leg.path, { ...style, weight: 2, opacity: 0.6, interactive: false }).addTo(
         mapState.activeBoatsLayer,
       );
     }
@@ -30,7 +35,8 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
       fillColor: "#0077cc",
       fillOpacity: 0.85,
     });
-    marker.bindTooltip(positionLabel(boat));
+    const uncertain = leg !== null && UNCERTAIN.has(leg.status);
+    marker.bindTooltip(uncertain ? `${positionLabel(boat)}${ROUTE_UNCERTAIN}` : positionLabel(boat));
     marker.on("click", () => onBoatClick(boat.boatSlug));
     marker.addTo(mapState.activeBoatsLayer);
   }
@@ -45,9 +51,35 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
     return;
   }
 
-  const latLngs = patrol.points.map((point) => [point.lat, point.lng]);
-  const polyline = L.polyline(latLngs, { color: "#cc3300", weight: 3 });
-  polyline.addTo(mapState.followedRouteLayer);
+  const layer = mapState.followedRouteLayer;
+  const fitPoints = patrol.points.map((point) => [point.lat, point.lng]);
+
+  for (const leg of patrol.legs ?? []) {
+    const style = legStyle(leg.status);
+    if (style !== null && leg.path) {
+      const line = L.polyline(leg.path, { ...style, weight: 3 }).addTo(layer);
+      if (leg.status === "suspect") {
+        line.bindTooltip(leg.reason);
+      }
+      fitPoints.push(...leg.path);
+    }
+    if (UNCERTAIN.has(leg.status)) {
+      const midpoint = legMidpoint(leg, patrol);
+      if (midpoint !== null) {
+        const icon = L.divIcon({ className: "leg-uncertain", html: "?", iconSize: [18, 18] });
+        L.marker(midpoint, { icon }).bindTooltip(leg.reason).addTo(layer);
+      }
+    }
+  }
+
+  for (const point of patrol.points) {
+    L.circleMarker([point.lat, point.lng], {
+      radius: 3,
+      color: "#0077cc",
+      fillColor: "#0077cc",
+      fillOpacity: 1,
+    }).addTo(layer);
+  }
 
   if (currentPosition !== null) {
     L.circleMarker([currentPosition.lat, currentPosition.lng], {
@@ -55,13 +87,13 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
       color: "#cc3300",
       fillColor: "#ffcc00",
       fillOpacity: 1,
-    }).addTo(mapState.followedRouteLayer);
+    }).addTo(layer);
   }
 
   if (shouldFitRoute(mapState.fittedExternalId, patrol)) {
     mapState.fittedExternalId = patrol.external_id;
     if (fit) {
-      mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+      mapState.map.fitBounds(fitPoints, { padding: [40, 40] });
     }
   }
 }

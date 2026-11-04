@@ -29,16 +29,35 @@ export function knownPosition(patrol, targetDate) {
     return null;
   }
 
-  const { lat, lng, date } = reached[reached.length - 1];
-  return { lat, lng, date };
+  const { lat, lng, date, sequence } = reached[reached.length - 1];
+  return { lat, lng, date, sequence };
 }
 
-export function lastLeg(patrol, targetDate) {
-  const reached = pointsUpTo(patrol, targetDate);
-  if (reached.length < 2) {
+const LEG_DASH = "6 6";
+const LEG_STYLES = {
+  ok: { color: "#0077cc", dashArray: LEG_DASH },
+  suspect: { color: "#e67e00", dashArray: LEG_DASH },
+};
+
+// Only legs with a believable water route are drawn; the rest have no line.
+export function legStyle(status) {
+  const style = LEG_STYLES[status];
+  return style === undefined ? null : { ...style };
+}
+
+export function legMidpoint(leg, patrol) {
+  const from = patrol.points.find((point) => point.sequence === leg.from_sequence);
+  const to = patrol.points.find((point) => point.sequence === leg.to_sequence);
+  if (from === undefined || to === undefined) {
     return null;
   }
-  return reached.slice(-2).map((point) => [point.lat, point.lng]);
+  return [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2];
+}
+
+// The leg that ends at the boat's current position, or null on the first point.
+export function tailLeg(patrol, position) {
+  const leg = (patrol.legs ?? []).find((candidate) => candidate.to_sequence === position.sequence);
+  return leg === undefined ? null : leg;
 }
 
 export function activeBoatsOnDate(routes, targetDate) {
@@ -53,7 +72,6 @@ export function activeBoatsOnDate(routes, targetDate) {
         lat: position.lat,
         lng: position.lng,
         positionDate: position.date,
-        tail: lastLeg(patrol, targetDate),
         patrol,
       });
     }
