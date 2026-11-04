@@ -314,3 +314,27 @@ test("shouldFitRoute is true for another patrol", () => {
 test("shouldFitRoute is false when there is no patrol", () => {
   assert.equal(shouldFitRoute(null, null), false);
 });
+
+test("followView counts an excluded first point as the start of its patrol", () => {
+  const withExcluded = {
+    boat_number: "U-1",
+    points: [{ sequence: 1, lat: 4, lng: 4, date: "1940-03-10" }],
+    excluded_points: [{ sequence: 0, lat: 3, lng: 3, date: "1940-03-01" }],
+  };
+
+  const view = followView([firstPatrol, withExcluded], parseDate("1940-03-05"));
+
+  assert.equal(view.patrol, withExcluded, "the undo list stays with the patrol");
+  assert.equal(view.position, null);
+});
+
+test("followView orders patrols by their first date, excluded or not", () => {
+  const early = {
+    boat_number: "U-1",
+    points: [{ sequence: 1, lat: 4, lng: 4, date: "1940-03-10" }],
+    excluded_points: [{ sequence: 0, lat: 3, lng: 3, date: "1939-12-01" }],
+  };
+
+  assert.equal(followView([early, firstPatrol], parseDate("1940-03-12")).patrol, firstPatrol);
+  assert.equal(followView([early, firstPatrol], parseDate("1939-12-15")).patrol, early);
+});

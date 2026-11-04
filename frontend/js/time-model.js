@@ -81,10 +81,22 @@ export function activeBoatsOnDate(routes, targetDate) {
   return active;
 }
 
+// Dates of every point of the patrol, excluded ones included: hiding a point must
+// not change when the patrol is considered to have started.
+function startDate(patrol) {
+  const dates = [...patrol.points, ...(patrol.excluded_points ?? [])]
+    .filter((point) => point.date !== null && point.date !== undefined)
+    .map((point) => parseDate(point.date).getTime());
+  return dates.length === 0 ? null : Math.min(...dates);
+}
+
 export function followView(patrols, targetDate) {
   const started = patrols
-    .filter((patrol) => pointsUpTo(patrol, targetDate).length > 0)
-    .sort((a, b) => parseDate(datedPoints(a)[0].date) - parseDate(datedPoints(b)[0].date));
+    .filter((patrol) => {
+      const start = startDate(patrol);
+      return start !== null && start <= targetDate.getTime();
+    })
+    .sort((a, b) => startDate(a) - startDate(b));
 
   if (started.length === 0) {
     return { patrol: null, position: null };
