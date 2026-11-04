@@ -6,7 +6,7 @@ import { mergeRoutes, statusLine, startPolling } from "../js/live.js";
 const NOW = new Date("2026-11-04T12:00:12Z");
 const last = (crawled_at = "2026-11-04T12:00:00Z") => ({
   boat_slug: "u-99",
-  boat_number: 99,
+  boat_number: "U-99",
   external_id: "p1",
   crawled_at,
 });

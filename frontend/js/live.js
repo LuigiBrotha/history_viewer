@@ -34,7 +34,7 @@ export function statusLine(status, now) {
       : `${status.boats_crawled} van ${status.listing_total} boten`;
   let line = progress;
   if (status.last_patrol) {
-    line += ` · laatste: U-${status.last_patrol.boat_number}, ${ageText(status.last_patrol.crawled_at, now)}`;
+    line += ` · laatste: ${status.last_patrol.boat_number}, ${ageText(status.last_patrol.crawled_at, now)}`;
   }
   if (status.boats_failed > 0) {
     line += ` · ${status.boats_failed} mislukt`;
