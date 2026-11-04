@@ -100,3 +100,17 @@ test("a full routes load gets a long timeout while status and incremental fetche
 
   assert.deepEqual(timeouts, [120000, 30000, 30000]);
 });
+
+test("fetchShips calls the ships endpoint, with a since cursor when given", async () => {
+  const { fetchShips } = await import("../js/api.js");
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => [{ name: "Magog" }] };
+  };
+
+  assert.deepEqual(await fetchShips(), [{ name: "Magog" }]);
+  await fetchShips("2026-11-04T12:00:05.000Z");
+
+  assert.deepEqual(calls, ["api/uboats/ships", "api/uboats/ships?since=2026-11-04T12%3A00%3A05.000Z"]);
+});

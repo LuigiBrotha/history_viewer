@@ -1,4 +1,5 @@
 import { boatColor } from "./boat-color.js";
+import { shipTotalsLine, shipsWithoutPosition } from "./ship-model.js";
 
 export function boatsHeading(count) {
   return `Actieve boten (${count})`;
@@ -32,4 +33,16 @@ export function renderBoatList({ listEl, activeBoats, followedSlug, onBoatSelect
 
 export function updateDateLabel(labelEl, date) {
   labelEl.textContent = `Actief op ${date.toISOString().slice(0, 10)}`;
+}
+
+// A followed boat also lists its ships that cannot be placed on the map.
+export function renderShipSummary({ totalsEl, unknownEl }, ships, followed) {
+  totalsEl.textContent = shipTotalsLine(ships);
+  unknownEl.innerHTML = "";
+  if (!followed) return;
+  for (const ship of shipsWithoutPosition(ships)) {
+    const item = document.createElement("li");
+    item.textContent = `${ship.name} — positie onbekend`;
+    unknownEl.appendChild(item);
+  }
 }

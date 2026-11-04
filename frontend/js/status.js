@@ -1,5 +1,7 @@
-import { fetchRoutes, fetchStatus } from "./api.js";
-import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { fetchRoutes, fetchShips, fetchStatus } from "./api.js";
+import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { createShipLayer } from "./ship-layer.js";
+import { mergeShips, shipsInPeriod } from "./ship-model.js";
 import { initAtlas } from "./atlas.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
@@ -19,6 +21,22 @@ function main() {
     liveStatusEl.textContent = MAP_FAILED;
     return;
   }
+
+  const shipLayer = createShipLayer(state.map);
+  let ships = [];
+
+  function renderShips() {
+    shipLayer.setShips(shipsInPeriod(ships, state.from, state.to));
+  }
+
+  const loadShips = createShipLoader({
+    fetchShips,
+    onShips: (changed) => {
+      ships = mergeShips(ships, changed);
+      renderShips();
+    },
+    onError: (error) => console.error(error),
+  });
 
   const countEl = document.getElementById("route-count");
   const trackEl = document.getElementById("slider-track");
@@ -62,6 +80,7 @@ function main() {
     resetEl: document.getElementById("period-reset"),
     onChange: ({ from, to }) => {
       setPeriod(state, from, to);
+      renderShips();
       renderCount();
       renderAtlas();
     },
@@ -86,6 +105,7 @@ function main() {
     onStatus: (status) => {
       lastStatus = status;
       renderStatusLine();
+      loadShips(status.revision);
       setLastPatrol(state, status.last_patrol ? status.last_patrol.external_id : null);
     },
     onError: (error) => {

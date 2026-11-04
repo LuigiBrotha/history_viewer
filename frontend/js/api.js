@@ -19,6 +19,15 @@ export async function fetchRoutes(since = null) {
   return response.json();
 }
 
+export async function fetchShips(since = null) {
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  const response = await fetch(`api/uboats/ships${query}`, { signal: AbortSignal.timeout(since ? REQUEST_TIMEOUT_MS : FULL_LOAD_TIMEOUT_MS) });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ships: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchStatus() {
   const response = await fetch("api/uboats/status", { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
   if (!response.ok) {

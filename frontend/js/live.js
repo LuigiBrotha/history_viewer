@@ -65,6 +65,29 @@ function sinceCursor(revision) {
   return new Date(new Date(revision).getTime() - CURSOR_MARGIN_MS).toISOString();
 }
 
+// Ships are fetched apart from the routes: a new revision brings the ships that changed since
+// the previous one. A failed fetch keeps the old revision, so the next call tries again.
+export function createShipLoader({ fetchShips, onShips, onError }) {
+  let loaded = false;
+  let revision = null;
+  let busy = false;
+
+  return async function load(newRevision) {
+    if (busy || (loaded && newRevision === revision)) return;
+    busy = true;
+    try {
+      const changed = await fetchShips(loaded ? sinceCursor(revision) : null);
+      loaded = true;
+      revision = newRevision;
+      onShips(changed);
+    } catch (error) {
+      onError(error);
+    } finally {
+      busy = false;
+    }
+  };
+}
+
 export function startPolling({
   intervalMs,
   fetchStatus,

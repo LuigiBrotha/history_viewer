@@ -1,10 +1,12 @@
-import { fetchBoats, fetchRoutes, fetchStatus } from "./api.js";
+import { fetchBoats, fetchRoutes, fetchShips, fetchStatus } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
-import { boatsHeading, renderBoatList, updateDateLabel } from "./sidebar.js";
-import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { boatsHeading, renderBoatList, renderShipSummary, updateDateLabel } from "./sidebar.js";
+import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { createShipLayer } from "./ship-layer.js";
+import { mergeShips, shipsUpToDate } from "./ship-model.js";
 
 const COLLAPSED_BY_DEFAULT_QUERY = "(max-width: 699px)";
 const POLL_INTERVAL_MS = 5000;
@@ -24,6 +26,8 @@ function main() {
   const toggleBoatsButton = document.getElementById("toggle-boats");
   const boatsHeadingEl = document.getElementById("boats-heading");
   const sidebarEl = document.getElementById("sidebar");
+  const shipTotalsEl = document.getElementById("ship-totals");
+  const shipUnknownEl = document.getElementById("ship-unknown");
 
   if (typeof L === "undefined") {
     liveStatusEl.textContent = MAP_FAILED;
@@ -38,6 +42,8 @@ function main() {
   let followedSlug = null;
   let currentDate = null;
   let atlas = { setDate() {} };
+  let ships = [];
+  let shipLayer = null;
 
   // fit is true for user actions; live updates redraw without touching the view.
   function render(date, fit) {
@@ -61,9 +67,29 @@ function main() {
       renderActiveBoats(mapState, active, onBoatSelect);
     }
 
+    renderShips(date);
+
     boatsHeadingEl.textContent = boatsHeading(active.length);
     renderBoatList({ listEl, activeBoats: active, followedSlug, onBoatSelect, boatsBySlug });
   }
+
+  function renderShips(date) {
+    if (shipLayer === null) return;
+    const visible = shipsUpToDate(ships, date, followedSlug);
+    shipLayer.setShips(visible);
+    renderShipSummary({ totalsEl: shipTotalsEl, unknownEl: shipUnknownEl }, visible, followedSlug !== null);
+  }
+
+  const loadShips = createShipLoader({
+    fetchShips,
+    onShips: (changed) => {
+      ships = mergeShips(ships, changed);
+      if (currentDate !== null) {
+        renderShips(currentDate);
+      }
+    },
+    onError: (error) => console.error(error),
+  });
 
   function onBoatSelect(slug) {
     followedSlug = slug;
@@ -128,6 +154,7 @@ function main() {
     } else if (timeline === null) {
       if (mapState === null) {
         mapState = createMap("map");
+        shipLayer = createShipLayer(mapState.map);
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));
@@ -160,6 +187,7 @@ function main() {
     onStatus: (status) => {
       lastStatus = status;
       renderStatusLine();
+      loadShips(status.revision);
     },
     onError: (error) => {
       console.error(error);

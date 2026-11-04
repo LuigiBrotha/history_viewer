@@ -31,3 +31,7 @@ _Avoid_: Onmogelijk traject, fout traject
 **Gevolgde boot**:
 De aangeklikte boot, gevolgd over al zijn patrouilles heen.
 _Avoid_: Gevolgde patrouille
+
+**Scheepstreffer**:
+Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum. Hetzelfde schip kan meerdere treffers hebben. De positie komt van de pagina van het schip en ontbreekt soms: dan telt de treffer mee in de totalen maar staat er geen punt op de kaart.
+_Avoid_: Succes, slachtoffer

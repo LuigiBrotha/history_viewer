@@ -227,3 +227,64 @@ test("statusLine appends the number of uncomputed legs at the very end", () => {
   assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 0), "3 boten");
   assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW), "3 boten");
 });
+
+test("ship loader fetches once per revision", async () => {
+  const { createShipLoader } = await import("../js/live.js");
+  const calls = [];
+  const received = [];
+  const load = createShipLoader({
+    fetchShips: async (since) => {
+      calls.push(since);
+      return [{ id: calls.length }];
+    },
+    onShips: (changed) => received.push(changed),
+    onError: (error) => assert.fail(error),
+  });
+
+  await load("2026-11-04T12:00:10Z");
+  await load("2026-11-04T12:00:10Z");
+  assert.deepEqual(calls, [null]);
+
+  await load("2026-11-04T12:05:00Z");
+  assert.deepEqual(received, [[{ id: 1 }], [{ id: 2 }]]);
+});
+
+test("ship loader asks for changes since the previous revision minus the margin", async () => {
+  const { createShipLoader } = await import("../js/live.js");
+  const calls = [];
+  const load = createShipLoader({
+    fetchShips: async (since) => {
+      calls.push(since);
+      return [];
+    },
+    onShips: () => {},
+    onError: (error) => assert.fail(error),
+  });
+
+  await load("2026-11-04T12:00:10Z");
+  await load("2026-11-04T12:05:00Z");
+
+  assert.deepEqual(calls, [null, "2026-11-04T12:00:05.000Z"]);
+});
+
+test("ship loader reports a failure and retries the same revision next time", async () => {
+  const { createShipLoader } = await import("../js/live.js");
+  let fail = true;
+  const errors = [];
+  const received = [];
+  const load = createShipLoader({
+    fetchShips: async () => {
+      if (fail) throw new Error("down");
+      return [{ id: 1 }];
+    },
+    onShips: (changed) => received.push(changed),
+    onError: (error) => errors.push(error.message),
+  });
+
+  await load("r1");
+  fail = false;
+  await load("r1");
+
+  assert.deepEqual(errors, ["down"]);
+  assert.deepEqual(received, [[{ id: 1 }]]);
+});
