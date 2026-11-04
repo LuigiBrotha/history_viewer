@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, update
 
+from app import compute_water_routes
 from app.compute_water_routes import backfill, compute_routes_for_points
 from app.crawl import crawl_boats
 from app.services.routing.types import RoutedLeg
@@ -175,3 +176,75 @@ async def test_repository_failure_does_not_propagate(tmp_path, monkeypatch, caps
     n = await compute_routes_for_points([P(), P()], session_factory, _fake_route_leg())
     assert n == 0
     assert "db down" in capsys.readouterr().out
+
+
+async def _seed_two_boats(session_factory, details):
+    await crawl_boats(
+        [BoatRef(slug="u1", number="U-1"), BoatRef(slug="u2", number="U-2")], session_factory,
+        fetch_boat=_boat, fetch_patrol_list=lambda s: [_summary(s)],
+        fetch_patrol_detail=lambda url: _detail(*details[url]),
+    )
+
+
+async def _updated_at(session_factory):
+    async with session_factory() as session:
+        rows = (await session.execute(select(Patrol.external_id, Patrol.updated_at))).all()
+    return dict(rows)
+
+
+async def _age_patrols(session_factory, old):
+    async with session_factory() as session:
+        await session.execute(update(Patrol).values(crawled_at=old, updated_at=old))
+        await session.commit()
+
+
+async def test_backfill_touches_a_patrol_whose_legs_were_computed_for_an_earlier_patrol(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    shared = [(1.0, 2.0), (3.0, 4.0)]
+    await _seed_two_boats(session_factory, {
+        "https://uboat.net/u1.html": shared, "https://uboat.net/u2.html": shared,
+    })
+    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    await _age_patrols(session_factory, old)
+
+    await backfill(session_factory, _fake_route_leg())
+    assert all(stamp > old for stamp in (await _updated_at(session_factory)).values())
+
+    await _age_patrols(session_factory, old)
+    await backfill(session_factory, _fake_route_leg())
+    assert set((await _updated_at(session_factory)).values()) == {old}
+
+
+async def test_backfill_survives_a_failing_point_read_or_touch_and_reports_counts(tmp_path, monkeypatch, capsys):
+    session_factory = await _session_factory(tmp_path)
+    await _seed_two_boats(session_factory, {
+        "https://uboat.net/u1.html": [(1.0, 2.0), (3.0, 4.0)],
+        "https://uboat.net/u2.html": [(5.0, 6.0), (7.0, 8.0), (9.0, 10.0)],
+    })
+    old = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    await _age_patrols(session_factory, old)
+    real_read = compute_water_routes._read_points
+
+    async def read_points(factory, patrol_id):
+        if patrol_id == 1:
+            raise RuntimeError("read down")
+        return await real_read(factory, patrol_id)
+
+    async def touch(self, external_id):
+        raise RuntimeError("touch down")
+
+    def route_leg(start, end):
+        if start == (7.0, 8.0):
+            raise RuntimeError("bad leg")
+        return RoutedLeg("ok", [start, end], 1.0)
+
+    monkeypatch.setattr(compute_water_routes, "_read_points", read_points)
+    monkeypatch.setattr(PatrolRepository, "touch", touch)
+
+    await backfill(session_factory, route_leg)
+
+    out = capsys.readouterr().out
+    assert "read down" in out and "touch down" in out and "bad leg" in out
+    assert "1 legen mislukt" in out
+    assert "1 legen nog niet berekend" in out
+    assert await _stored(session_factory, [((5.0, 6.0), (7.0, 8.0))])

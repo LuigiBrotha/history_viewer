@@ -226,3 +226,40 @@ async def test_water_routes_survive_a_recrawl_of_the_patrol(tmp_path):
         routes = await repo.list_routes()
     assert routes[0].legs[0].status == "ok"
     assert routes[0].legs[0].path == [[50.0, -5.0], [51.0, -4.0]]
+
+
+async def test_list_routes_since_returns_legs_for_the_changed_patrols(tmp_path):
+    from app.services.routing.types import RoutedLeg
+    from app.services.storage.water_route_repository import WaterRouteRepository
+
+    factory = await _session_factory(tmp_path)
+    a, b = (50.0, -5.0), (51.0, -4.0)
+    points = [
+        RoutePointData(sequence=1, lat=a[0], lng=a[1], date=date(1940, 6, 18)),
+        RoutePointData(sequence=2, lat=b[0], lng=b[1], date=date(1940, 6, 19)),
+    ]
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary("old"), _detail(points))
+        await repo.upsert_patrol(boat_id, _summary("new", patrol_number=2), _detail(points))
+        await WaterRouteRepository(session).save(a, b, RoutedLeg("ok", [a, b], 100.0))
+        await session.execute(update(Patrol).where(Patrol.external_id == "old").values(
+            updated_at=datetime(2026, 11, 4, 9, 0, tzinfo=timezone.utc)))
+        await session.execute(update(Patrol).where(Patrol.external_id == "new").values(
+            updated_at=datetime(2026, 11, 4, 11, 0, tzinfo=timezone.utc)))
+        await session.commit()
+        routes = await repo.list_routes(since=datetime(2026, 11, 4, 10, 0, tzinfo=timezone.utc))
+    assert [route.external_id for route in routes] == ["new"]
+    assert [(leg.status, leg.path) for leg in routes[0].legs] == [("ok", [[50.0, -5.0], [51.0, -4.0]])]
+
+
+async def test_a_single_point_patrol_has_no_legs(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        points = [RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=date(1940, 6, 18))]
+        await repo.upsert_patrol(boat_id, _summary(), _detail(points))
+        routes = await repo.list_routes()
+    assert routes[0].legs == []

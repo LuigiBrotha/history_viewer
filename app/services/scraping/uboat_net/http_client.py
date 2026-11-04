@@ -27,8 +27,11 @@ class PoliteHttpClient:
 
     def get_text(self, url: str) -> str:
         self._wait_for_slot()
-        response = self._session.get(url, timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS))
-        self._last_request_at = time.monotonic()
+        try:
+            response = self._session.get(url, timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS))
+        finally:
+            # A fast failure must still honour the delay before the next request.
+            self._last_request_at = time.monotonic()
         response.raise_for_status()
         return response.text
 

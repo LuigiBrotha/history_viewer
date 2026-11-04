@@ -76,3 +76,21 @@ def test_get_text_passes_a_connect_and_read_timeout(mock_get):
     client.get_text("https://uboat.net/x")
 
     assert mock_get.call_args.kwargs["timeout"] == (10, 60)
+
+
+@patch("app.services.scraping.uboat_net.http_client.time.sleep")
+@patch("app.services.scraping.uboat_net.http_client.time.monotonic")
+@patch("app.services.scraping.uboat_net.http_client.requests.Session.get")
+def test_a_failed_request_still_counts_for_the_delay(mock_get, mock_monotonic, mock_sleep):
+    mock_get.side_effect = [RuntimeError("connection reset"), Mock(text="hello", raise_for_status=Mock())]
+    mock_monotonic.side_effect = [100.0, 101.0, 101.0]
+    client = PoliteHttpClient(delay_seconds=10, user_agent="test-agent")
+
+    try:
+        client.get_text("https://uboat.net/x")
+        assert False, "expected RuntimeError"
+    except RuntimeError:
+        pass
+    client.get_text("https://uboat.net/y")
+
+    mock_sleep.assert_called_once_with(9.0)
