@@ -66,3 +66,13 @@ def test_get_text_raises_on_http_error(mock_get, mock_monotonic):
         assert False, "expected RuntimeError"
     except RuntimeError:
         pass
+
+
+@patch("app.services.scraping.uboat_net.http_client.requests.Session.get")
+def test_get_text_passes_a_connect_and_read_timeout(mock_get):
+    mock_get.return_value = Mock(text="hello", raise_for_status=Mock())
+    client = PoliteHttpClient(delay_seconds=0, user_agent="test-agent")
+
+    client.get_text("https://uboat.net/x")
+
+    assert mock_get.call_args.kwargs["timeout"] == (10, 60)

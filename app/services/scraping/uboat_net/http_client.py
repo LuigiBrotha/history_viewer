@@ -6,6 +6,11 @@ BASE_URL = "https://uboat.net"
 
 _DEFAULT_USER_AGENT = "uboats-scraper/0.1"
 
+# Without a timeout a dead connection hangs the crawl; IPv6 to uboat.net can stall
+# in SYN-SENT for about two minutes before falling back to IPv4.
+CONNECT_TIMEOUT_SECONDS = 10
+READ_TIMEOUT_SECONDS = 60
+
 
 def build_user_agent(contact: str | None) -> str:
     if contact:
@@ -22,7 +27,7 @@ class PoliteHttpClient:
 
     def get_text(self, url: str) -> str:
         self._wait_for_slot()
-        response = self._session.get(url)
+        response = self._session.get(url, timeout=(CONNECT_TIMEOUT_SECONDS, READ_TIMEOUT_SECONDS))
         self._last_request_at = time.monotonic()
         response.raise_for_status()
         return response.text
