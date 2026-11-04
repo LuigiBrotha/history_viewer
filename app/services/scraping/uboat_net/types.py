@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -46,3 +47,16 @@ class PatrolSummary:
 class PatrolDetail:
     description: str | None
     route_points: list[RoutePointData] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ShipHitRef:
+    ship_external_id: str
+    boat_slug: str
+    name: str
+    date: date
+    tons: int
+    nationality: str | None
+    convoy: str | None
+    outcome: Literal["sunk", "damaged", "captured"]
+    detail_url: str
