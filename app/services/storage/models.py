@@ -63,6 +63,8 @@ class Patrol(Base):
     days_at_sea: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tonnage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
+    crawled_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     boat: Mapped["Boat"] = relationship(back_populates="patrols")
     route_points: Mapped[list["RoutePoint"]] = relationship(back_populates="patrol", cascade="all, delete-orphan")
@@ -90,3 +92,10 @@ class BoatCrawlState(Base):
     last_attempt_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     last_success_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class CrawlProgress(Base):
+    __tablename__ = "crawl_progress"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    listing_total: Mapped[int] = mapped_column(Integer, nullable=False)

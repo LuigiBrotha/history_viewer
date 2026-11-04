@@ -77,3 +77,28 @@ async def test_boat_crawl_state_round_trip(tmp_path):
     assert row.last_attempt_at.tzinfo is not None
 
     await engine.dispose()
+
+
+async def test_init_models_adds_missing_patrol_columns_to_an_existing_database(tmp_path):
+    from sqlalchemy import text
+
+    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
+    async with engine.begin() as conn:
+        await conn.execute(text("CREATE TABLE boats (id INTEGER PRIMARY KEY, slug VARCHAR NOT NULL, number VARCHAR NOT NULL)"))
+        await conn.execute(text(
+            "CREATE TABLE patrols (id INTEGER PRIMARY KEY, boat_id INTEGER NOT NULL, "
+            "external_id VARCHAR NOT NULL UNIQUE, patrol_number INTEGER NOT NULL)"
+        ))
+        await conn.execute(text("INSERT INTO patrols (boat_id, external_id, patrol_number) VALUES (1, 'old', 1)"))
+
+    await init_models(engine)
+    await init_models(engine)  # idempotent
+
+    async with engine.connect() as conn:
+        columns = {row[1] for row in (await conn.execute(text("PRAGMA table_info(patrols)"))).all()}
+        row = (await conn.execute(text("SELECT external_id, crawled_at, updated_at FROM patrols"))).one()
+
+    assert {"crawled_at", "updated_at"} <= columns
+    assert tuple(row) == ("old", None, None)
+
+    await engine.dispose()

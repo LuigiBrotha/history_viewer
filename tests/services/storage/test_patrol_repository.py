@@ -105,3 +105,25 @@ async def test_list_routes_orders_by_boat_slug_then_patrol_number(tmp_path):
         routes = await repo.list_routes()
 
     assert [r.external_id for r in routes] == ["patrol_1", "patrol_2"]
+
+
+async def test_upsert_patrol_sets_crawled_at_and_updated_at(tmp_path):
+    from sqlalchemy import select
+
+    from app.services.storage.models import Patrol
+
+    session_factory = await _session_factory(tmp_path)
+    detail = PatrolDetail(description=None, route_points=[])
+
+    async with session_factory() as session:
+        boat_id = await _seed_boat(session)
+        await PatrolRepository(session).upsert_patrol(boat_id, _summary(), detail)
+        first = (await session.execute(select(Patrol))).scalar_one()
+        first_crawled, first_updated = first.crawled_at, first.updated_at
+        assert first_crawled is not None and first_crawled.tzinfo is not None
+        assert first_updated == first_crawled
+
+        await PatrolRepository(session).upsert_patrol(boat_id, _summary(), detail)
+        await session.refresh(first)
+        assert first.crawled_at > first_crawled
+        assert first.updated_at == first.crawled_at

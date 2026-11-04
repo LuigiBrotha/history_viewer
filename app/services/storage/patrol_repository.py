@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,7 @@ class PatrolRepository:
         self._session = session
 
     async def upsert_patrol(self, boat_id: int, summary: PatrolSummary, detail: PatrolDetail) -> None:
+        now = datetime.now(timezone.utc)
         stmt = insert(Patrol).values(
             boat_id=boat_id,
             external_id=summary.external_id,
@@ -24,6 +27,8 @@ class PatrolRepository:
             days_at_sea=summary.days_at_sea,
             tonnage=summary.tonnage,
             description=detail.description,
+            crawled_at=now,
+            updated_at=now,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=["external_id"],
@@ -38,6 +43,8 @@ class PatrolRepository:
                 "days_at_sea": stmt.excluded.days_at_sea,
                 "tonnage": stmt.excluded.tonnage,
                 "description": stmt.excluded.description,
+                "crawled_at": now,
+                "updated_at": now,
             },
         )
         await self._session.execute(stmt)

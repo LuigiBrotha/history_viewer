@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 
 
 @dataclass(frozen=True)
@@ -53,3 +53,21 @@ class PatrolRouteOut:
     departure_date: date | None
     arrival_date: date | None
     points: list[RoutePointOut] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class LastPatrolOut:
+    boat_slug: str
+    boat_number: str
+    external_id: str
+    crawled_at: datetime
+
+
+@dataclass(frozen=True)
+class CrawlStatusOut:
+    listing_total: int | None
+    boats_crawled: int
+    boats_failed: int
+    patrol_count: int
+    revision: datetime | None
+    last_patrol: LastPatrolOut | None
