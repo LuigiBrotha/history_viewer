@@ -83,10 +83,64 @@
    "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1942_jun.png"
   },
   {
+   "date": "1942-11-01",
+   "file": "atlas/1942-11.png",
+   "label": "november 1942",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1942_nov.png"
+  },
+  {
    "date": "1942-12-01",
    "file": "atlas/1942-12.png",
    "label": "december 1942",
    "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1942_dec.png"
+  },
+  {
+   "date": "1943-07-01",
+   "file": "atlas/1943-07.png",
+   "label": "juli 1943",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1943_jul.png"
+  },
+  {
+   "date": "1943-12-01",
+   "file": "atlas/1943-12.png",
+   "label": "december 1943",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1943_dec.png"
+  },
+  {
+   "date": "1944-06-01",
+   "file": "atlas/1944-06.png",
+   "label": "juni 1944",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1944_jun.png"
+  },
+  {
+   "date": "1944-08-01",
+   "file": "atlas/1944-08.png",
+   "label": "augustus 1944",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1944_aug.png"
+  },
+  {
+   "date": "1944-12-01",
+   "file": "atlas/1944-12.png",
+   "label": "december 1944",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1944_dec.png"
+  },
+  {
+   "date": "1945-05-01",
+   "file": "atlas/1945-05.png",
+   "label": "mei 1945",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1945_may.png"
+  },
+  {
+   "date": "1945-08-01",
+   "file": "atlas/1945-08.png",
+   "label": "augustus 1945",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1945_aug.png"
+  },
+  {
+   "date": "1945-09-01",
+   "file": "atlas/1945-09.png",
+   "label": "september 1945",
+   "source": "https://commons.wikimedia.org/wiki/File:Ww2_allied_axis_1945_sep.png"
   }
  ]
 }
