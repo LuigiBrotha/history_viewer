@@ -1,3 +1,4 @@
+import { boatColor } from "./boat-color.js";
 import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from "./time-model.js";
 
 const UNCERTAIN = new Set(["on_land", "no_route"]);
@@ -20,22 +21,28 @@ export function createMap(containerId) {
 // A hollow marker: the position is known, but its date is an approximation.
 const APPROXIMATE_FILL = 0.2;
 
+// A suspect leg keeps its warning colour; every other leg takes the boat's colour.
+function boatLegStyle(style, status, color) {
+  return status === "suspect" ? style : { ...style, color };
+}
+
 export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   mapState.activeBoatsLayer.clearLayers();
 
   for (const boat of activeBoats) {
+    const color = boatColor(boat.boatSlug);
     const leg = tailLeg(boat.patrol, boat);
     const style = leg === null ? null : legStyle(leg.status);
     if (style !== null && leg.path) {
-      L.polyline(leg.path, { ...style, weight: 2, opacity: 0.6, interactive: false }).addTo(
+      L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 2, opacity: 0.6, interactive: false }).addTo(
         mapState.activeBoatsLayer,
       );
     }
 
     const marker = L.circleMarker([boat.lat, boat.lng], {
       radius: 6,
-      color: "#0077cc",
-      fillColor: "#0077cc",
+      color,
+      fillColor: color,
       fillOpacity: boat.dateApproximate ? APPROXIMATE_FILL : 0.85,
     });
     const uncertain = leg !== null && UNCERTAIN.has(leg.status);
@@ -56,11 +63,12 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
 
   const layer = mapState.followedRouteLayer;
   const fitPoints = patrol.points.map((point) => [point.lat, point.lng]);
+  const color = boatColor(patrol.boat_slug ?? "");
 
   for (const leg of patrol.legs ?? []) {
     const style = legStyle(leg.status);
     if (style !== null && leg.path) {
-      const line = L.polyline(leg.path, { ...style, weight: 3 }).addTo(layer);
+      const line = L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 3 }).addTo(layer);
       if (leg.status === "suspect") {
         line.bindTooltip(leg.reason);
       }
@@ -78,8 +86,8 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
   for (const point of patrol.points) {
     L.circleMarker([point.lat, point.lng], {
       radius: 3,
-      color: "#0077cc",
-      fillColor: "#0077cc",
+      color,
+      fillColor: color,
       fillOpacity: 1,
     }).addTo(layer);
   }
@@ -87,8 +95,8 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
   if (currentPosition !== null) {
     L.circleMarker([currentPosition.lat, currentPosition.lng], {
       radius: 8,
-      color: "#cc3300",
-      fillColor: "#ffcc00",
+      color: "#000000",
+      fillColor: color,
       fillOpacity: currentPosition.dateApproximate ? APPROXIMATE_FILL : 1,
     })
       .bindTooltip(

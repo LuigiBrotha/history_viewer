@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
+import { boatColor } from "../js/boat-color.js";
 import { renderActiveBoats, renderFollowedRoute } from "../js/map.js";
 
 function setup() {
@@ -202,4 +203,66 @@ test("a followed boat at an approximated date says so in its tooltip", () => {
   );
 
   assert.deepEqual(tooltips, ["U-1 — positie van 1940-01-01 (datum benaderd)"]);
+});
+
+test("a boat's marker and tail take the boat's own colour; a suspect tail stays orange", () => {
+  const markers = [];
+  const lines = [];
+  globalThis.L = {
+    polyline: (_, options) => {
+      lines.push(options);
+      return { addTo() { return this; } };
+    },
+    circleMarker: (_, options) => {
+      markers.push(options);
+      return { bindTooltip() {}, on() {}, addTo() { return this; } };
+    },
+  };
+  const state = { activeBoatsLayer: { clearLayers() {} } };
+  const route = (status) => ({
+    boat_slug: "u99",
+    boat_number: "U-99",
+    external_id: "p",
+    points: [
+      { sequence: 0, lat: 1, lng: 1, date: "1940-01-01" },
+      { sequence: 1, lat: 2, lng: 2, date: "1940-01-02" },
+    ],
+    legs: [{ from_sequence: 0, to_sequence: 1, status, path: [[1, 1], [2, 2]] }],
+  });
+
+  renderActiveBoats(state, activeBoatsOnDate([route("ok")], parseDate("1940-01-02")), () => {});
+  renderActiveBoats(state, activeBoatsOnDate([route("suspect")], parseDate("1940-01-02")), () => {});
+
+  assert.equal(markers[0].fillColor, boatColor("u99"));
+  assert.equal(lines[0].color, boatColor("u99"));
+  assert.equal(lines[1].color, "#e67e00");
+});
+
+test("a followed route takes the boat's own colour", () => {
+  const lines = [];
+  const dots = [];
+  globalThis.L = {
+    polyline: (_, options) => {
+      lines.push(options);
+      return { addTo() { return this; }, bindTooltip() {} };
+    },
+    circleMarker: (_, options) => {
+      dots.push(options);
+      return { addTo() { return this; }, bindTooltip() { return this; } };
+    },
+  };
+  const state = { map: { fitBounds() {} }, followedRouteLayer: { clearLayers() {} }, fittedExternalId: "p" };
+  const followed = {
+    external_id: "p",
+    boat_slug: "u99",
+    boat_number: "U-99",
+    points: [{ sequence: 0, lat: 1, lng: 1 }, { sequence: 1, lat: 2, lng: 2 }],
+    legs: [{ from_sequence: 0, to_sequence: 1, status: "ok", path: [[1, 1], [2, 2]] }],
+  };
+
+  renderFollowedRoute(state, followed, { lat: 1, lng: 1, date: "1940-01-01" }, { fit: false });
+
+  assert.equal(lines[0].color, boatColor("u99"));
+  assert.equal(dots[0].color, boatColor("u99"));
+  assert.equal(dots.at(-1).fillColor, boatColor("u99"));
 });

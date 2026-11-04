@@ -1,3 +1,5 @@
+import { boatColor } from "./boat-color.js";
+
 export function boatsHeading(count) {
   return `Actieve boten (${count})`;
 }
@@ -9,7 +11,10 @@ export function renderBoatList({ listEl, activeBoats, followedSlug, onBoatSelect
     const item = document.createElement("li");
     const meta = boatsBySlug ? boatsBySlug.get(boat.boatSlug) : undefined;
     const typeLabel = meta && meta.type ? ` — ${meta.type}` : "";
-    item.textContent = `${boat.boatNumber}${typeLabel} (${boat.externalId})`;
+    const swatch = document.createElement("span");
+    swatch.className = "boat-swatch";
+    swatch.style.background = boatColor(boat.boatSlug);
+    item.append(swatch, `${boat.boatNumber}${typeLabel} (${boat.externalId})`);
     if (boat.boatSlug === followedSlug) {
       item.classList.add("following");
     }
