@@ -32,6 +32,11 @@ below).
   route for its boat, patrol id and dates. The link `Tijdlijn` goes back to the
   timeline. The page is designed mobile first.
 
+uboat.net often lists more positions for a patrol than dates, without saying
+which belongs to which. Such positions are stored without a date. When read, they
+are spread evenly between departure and arrival and shown as approximate: hollow
+markers and `(datum benaderd)` in the tooltip. Speed checks never use these dates.
+
 Both pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are
 fetched. A status line shows when the last patrol was crawled; if the server

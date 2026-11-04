@@ -29,8 +29,8 @@ export function knownPosition(patrol, targetDate) {
     return null;
   }
 
-  const { lat, lng, date, sequence } = reached[reached.length - 1];
-  return { lat, lng, date, sequence };
+  const { lat, lng, date, sequence, date_approximate: dateApproximate = false } = reached[reached.length - 1];
+  return { lat, lng, date, sequence, dateApproximate };
 }
 
 const LEG_DASH = "6 6";
@@ -72,6 +72,7 @@ export function activeBoatsOnDate(routes, targetDate) {
         lat: position.lat,
         lng: position.lng,
         positionDate: position.date,
+        dateApproximate: position.dateApproximate,
         sequence: position.sequence,
         patrol,
       });
@@ -94,7 +95,8 @@ export function followView(patrols, targetDate) {
 }
 
 export function positionLabel(boat) {
-  return `${boat.boatNumber} — positie van ${boat.positionDate}`;
+  const label = `${boat.boatNumber} — positie van ${boat.positionDate}`;
+  return boat.dateApproximate ? `${label} (datum benaderd)` : label;
 }
 
 export function notOnPatrolMessage(boatNumber, targetDate) {

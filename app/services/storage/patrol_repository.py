@@ -5,6 +5,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.export.uboats import PatrolRouteOut, RoutePointOut
+from app.services.routing.approximate_dates import with_approximate_dates
 from app.services.routing.legs import build_legs
 from app.services.scraping.uboat_net.types import PatrolDetail, PatrolSummary
 from app.services.storage.models import Boat, Patrol, RoutePoint
@@ -122,7 +123,8 @@ class PatrolRepository:
                 external_id=patrol.external_id,
                 departure_date=patrol.departure_date,
                 arrival_date=patrol.arrival_date,
-                points=points,
+                # Legs use the source dates: speed must never be judged on an approximation.
+                points=with_approximate_dates(points, patrol.departure_date, patrol.arrival_date),
                 legs=build_legs(points, routes_by_pair),
             ))
         return routes

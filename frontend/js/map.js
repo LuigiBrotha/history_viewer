@@ -17,6 +17,9 @@ export function createMap(containerId) {
   return { map, activeBoatsLayer, followedRouteLayer, fittedExternalId: null };
 }
 
+// A hollow marker: the position is known, but its date is an approximation.
+const APPROXIMATE_FILL = 0.2;
+
 export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   mapState.activeBoatsLayer.clearLayers();
 
@@ -33,7 +36,7 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
       radius: 6,
       color: "#0077cc",
       fillColor: "#0077cc",
-      fillOpacity: 0.85,
+      fillOpacity: boat.dateApproximate ? APPROXIMATE_FILL : 0.85,
     });
     const uncertain = leg !== null && UNCERTAIN.has(leg.status);
     marker.bindTooltip(uncertain ? `${positionLabel(boat)}${ROUTE_UNCERTAIN}` : positionLabel(boat));
@@ -86,8 +89,16 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
       radius: 8,
       color: "#cc3300",
       fillColor: "#ffcc00",
-      fillOpacity: 1,
-    }).addTo(layer);
+      fillOpacity: currentPosition.dateApproximate ? APPROXIMATE_FILL : 1,
+    })
+      .bindTooltip(
+        positionLabel({
+          boatNumber: patrol.boat_number,
+          positionDate: currentPosition.date,
+          dateApproximate: currentPosition.dateApproximate,
+        }),
+      )
+      .addTo(layer);
   }
 
   if (shouldFitRoute(mapState.fittedExternalId, patrol)) {

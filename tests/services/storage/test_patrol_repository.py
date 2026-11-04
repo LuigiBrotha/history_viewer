@@ -263,3 +263,52 @@ async def test_a_single_point_patrol_has_no_legs(tmp_path):
         await repo.upsert_patrol(boat_id, _summary(), _detail(points))
         routes = await repo.list_routes()
     assert routes[0].legs == []
+
+
+async def test_list_routes_approximates_dates_without_storing_them(tmp_path):
+    from app.services.routing.types import RoutedLeg
+    from app.services.storage.water_route_repository import WaterRouteRepository
+
+    session_factory = await _session_factory(tmp_path)
+    points = [RoutePointData(0, 50.0, -20.0, None), RoutePointData(1, 60.0, 20.0, None)]
+    async with session_factory() as session:
+        boat_id = await _seed_boat(session)
+        await PatrolRepository(session).upsert_patrol(
+            boat_id,
+            _summary(departure_date=date(1940, 1, 1), arrival_date=date(1940, 1, 3)),
+            _detail(points),
+        )
+        # 2000 km over 2 approximated days would look suspect if days were derived from them.
+        await WaterRouteRepository(session).save(
+            (50.0, -20.0), (60.0, 20.0), RoutedLeg("ok", [(50.0, -20.0), (60.0, 20.0)], 2000.0)
+        )
+
+    async with session_factory() as session:
+        route = (await PatrolRepository(session).list_routes())[0]
+
+    assert [p.date for p in route.points] == [date(1940, 1, 1), date(1940, 1, 3)]
+    assert all(p.date_approximate for p in route.points)
+    assert route.legs[0].status == "ok"
+    assert route.legs[0].days is None
+
+    connection = sqlite3.connect(f"{tmp_path}/test.db")
+    assert connection.execute("select date from route_points").fetchall() == [(None,), (None,)]
+    connection.close()
+
+
+async def test_list_routes_keeps_known_dates_exact(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    points = [RoutePointData(0, 50.0, -20.0, date(1940, 1, 2))]
+    async with session_factory() as session:
+        boat_id = await _seed_boat(session)
+        await PatrolRepository(session).upsert_patrol(
+            boat_id,
+            _summary(departure_date=date(1940, 1, 1), arrival_date=date(1940, 1, 3)),
+            _detail(points),
+        )
+
+    async with session_factory() as session:
+        route = (await PatrolRepository(session).list_routes())[0]
+
+    assert route.points[0].date == date(1940, 1, 2)
+    assert route.points[0].date_approximate is False

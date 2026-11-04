@@ -149,3 +149,57 @@ test("activeBoatsOnDate feeds renderActiveBoats so the tail leg and the uncertai
   renderActiveBoats(state, activeBoatsOnDate(routes, parseDate("2020-01-04")), () => {});
   assert.match(made.find((m) => m.kind === "circleMarker").tooltip, / — route onzeker$/);
 });
+
+test("a boat at an approximated date gets a hollow marker", () => {
+  const options = [];
+  globalThis.L = {
+    polyline: () => ({ addTo() { return this; } }),
+    circleMarker: (_, markerOptions) => {
+      options.push(markerOptions);
+      return { bindTooltip() {}, on() {}, addTo() { return this; } };
+    },
+  };
+  const state = { activeBoatsLayer: { clearLayers() {} } };
+  const approximated = (approximate) => ({
+    boat_slug: "u1",
+    boat_number: "U-1",
+    external_id: "p",
+    points: [{ sequence: 0, lat: 1, lng: 1, date: "1940-01-01", date_approximate: approximate }],
+    legs: [],
+  });
+
+  renderActiveBoats(state, activeBoatsOnDate([approximated(true)], parseDate("1940-01-01")), () => {});
+  renderActiveBoats(state, activeBoatsOnDate([approximated(false)], parseDate("1940-01-01")), () => {});
+
+  assert.ok(options[0].fillOpacity < options[1].fillOpacity);
+});
+
+test("a followed boat at an approximated date says so in its tooltip", () => {
+  const tooltips = [];
+  globalThis.L = {
+    polyline: () => ({ addTo() { return this; } }),
+    circleMarker: () => ({
+      bindTooltip(text) {
+        tooltips.push(text);
+        return this;
+      },
+      addTo() {
+        return this;
+      },
+    }),
+  };
+  const state = {
+    map: { fitBounds() {} },
+    followedRouteLayer: { clearLayers() {} },
+    fittedExternalId: "p1",
+  };
+
+  renderFollowedRoute(
+    state,
+    { ...patrol("p1"), boat_number: "U-1" },
+    { lat: 1, lng: 1, date: "1940-01-01", dateApproximate: true },
+    { fit: false },
+  );
+
+  assert.deepEqual(tooltips, ["U-1 — positie van 1940-01-01 (datum benaderd)"]);
+});

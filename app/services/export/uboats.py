@@ -43,6 +43,7 @@ class RoutePointOut:
     lat: float
     lng: float
     date: date | None
+    date_approximate: bool = False
 
 
 @dataclass(frozen=True)

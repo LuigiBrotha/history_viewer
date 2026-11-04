@@ -57,6 +57,7 @@ test("knownPosition returns the exact coordinate on a date with a route point", 
     lng: 12.0,
     date: "1940-06-20",
     sequence: 1,
+    dateApproximate: false,
   });
 });
 
@@ -66,6 +67,7 @@ test("knownPosition stays on the last known coordinate between two route points"
     lng: 10.0,
     date: "1940-06-18",
     sequence: 0,
+    dateApproximate: false,
   });
 });
 
@@ -82,6 +84,7 @@ test("knownPosition uses the last route point when a date has several", () => {
     lng: 2,
     date: "2020-01-01",
     sequence: 1,
+    dateApproximate: false,
   });
 });
 
@@ -99,6 +102,7 @@ test("knownPosition ignores an undated point sitting between two dated points", 
     lng: 0,
     date: "2020-01-01",
     sequence: 0,
+    dateApproximate: false,
   });
 });
 
@@ -177,7 +181,7 @@ test("followView shows the patrol active on the date, not the boat's first patro
   const view = followView([firstPatrol, secondPatrol], parseDate("1940-03-01"));
 
   assert.equal(view.patrol, secondPatrol);
-  assert.deepEqual(view.position, { lat: 3, lng: 3, date: "1940-03-01", sequence: 0 });
+  assert.deepEqual(view.position, { lat: 3, lng: 3, date: "1940-03-01", sequence: 0, dateApproximate: false });
 });
 
 test("followView does not depend on the order of the boat's patrols", () => {
@@ -198,6 +202,29 @@ test("followView has no patrol and no position before the boat's first patrol", 
 
   assert.equal(view.patrol, null);
   assert.equal(view.position, null);
+});
+
+test("positionLabel says when the date is an approximation", () => {
+  assert.equal(
+    positionLabel({ boatNumber: "U-1", positionDate: "1940-01-01", dateApproximate: true }),
+    "U-1 — positie van 1940-01-01 (datum benaderd)",
+  );
+});
+
+test("knownPosition and activeBoatsOnDate pass on an approximated date", () => {
+  const patrol = {
+    boat_slug: "u1",
+    boat_number: "U-1",
+    external_id: "p",
+    points: [
+      { sequence: 0, lat: 1, lng: 1, date: "1940-01-01", date_approximate: true },
+      { sequence: 1, lat: 2, lng: 2, date: "1940-01-05", date_approximate: false },
+    ],
+    legs: [],
+  };
+  assert.equal(knownPosition(patrol, parseDate("1940-01-02")).dateApproximate, true);
+  assert.equal(knownPosition(patrol, parseDate("1940-01-05")).dateApproximate, false);
+  assert.equal(activeBoatsOnDate([patrol], parseDate("1940-01-02"))[0].dateApproximate, true);
 });
 
 test("positionLabel names the boat and the date of its route point", () => {
