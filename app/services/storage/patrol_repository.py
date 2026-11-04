@@ -160,7 +160,16 @@ class PatrolRepository:
         )
         await self._session.commit()
 
+    async def get_route(self, external_id: str) -> PatrolRouteOut:
+        routes = await self._routes(external_id=external_id)
+        if not routes:
+            raise PatrolNotFound(external_id)
+        return routes[0]
+
     async def list_routes(self, since: datetime | None = None) -> list[PatrolRouteOut]:
+        return await self._routes(since=since)
+
+    async def _routes(self, since: datetime | None = None, external_id: str | None = None) -> list[PatrolRouteOut]:
         stmt = (
             select(Patrol, Boat.slug, Boat.number)
             .join(Boat, Patrol.boat_id == Boat.id)
@@ -168,6 +177,8 @@ class PatrolRepository:
         )
         if since is not None:
             stmt = stmt.where(Patrol.updated_at >= since)
+        if external_id is not None:
+            stmt = stmt.where(Patrol.external_id == external_id)
         result = await self._session.execute(stmt)
         rows = result.all()
 

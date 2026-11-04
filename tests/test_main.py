@@ -165,3 +165,14 @@ def test_routes_are_gzip_encoded_when_asked_for(reload_server, tmp_path):
     assert response.status_code == 200
     assert response.headers["content-encoding"] == "gzip"
     assert len(response.json()[0]["points"]) == 60
+
+
+def test_exclusion_routes_parse_a_json_body_over_real_http(reload_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+    url = f"{reload_server}/api/uboats/routes/long/excluded-points"
+
+    assert requests.get(f"{reload_server}/api/uboats/status", timeout=5).json()["can_edit"] is True
+    assert requests.post(f"{reload_server}/api/uboats/routes/nope/excluded-points",
+                         json={"sequence": 1}, timeout=5).status_code == 404
+    assert requests.post(url, json={"sequence": "x"}, timeout=5).status_code == 422
+    assert requests.delete(url, json={"sequence": 999}, timeout=5).status_code == 404

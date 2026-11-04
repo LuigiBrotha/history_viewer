@@ -85,6 +85,7 @@ class CrawlStatusOut:
     patrol_count: int
     revision: datetime | None
     last_patrol: LastPatrolOut | None
+    can_edit: bool = False
 
 
 @dataclass(frozen=True)

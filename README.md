@@ -20,6 +20,19 @@ The map is at <http://localhost:8000> and needs an internet connection for
 Leaflet and the map tiles. It stays empty until you have crawled some data (see
 below).
 
+### Viewing from another device
+
+To open the map on a phone or another computer on your network, start the server on all interfaces:
+
+```
+poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001
+```
+
+There is no login. Other devices are read-only: excluding or restoring a route
+point is only accepted from the computer the server runs on (`127.0.0.1` or
+`::1`) and answers 403 to anyone else. `python -m app.main` binds to
+`127.0.0.1` only.
+
 ## Pages and live updates
 
 - `/` is the timeline map: a date slider shows which boats were on patrol and
