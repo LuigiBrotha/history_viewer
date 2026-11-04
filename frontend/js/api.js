@@ -35,3 +35,40 @@ export async function fetchStatus() {
   }
   return response.json();
 }
+
+export function canEdit(status) {
+  return status?.can_edit === true;
+}
+
+const LAST_POINT = "Dit is het laatste punt van deze patrouille.";
+
+async function editPoint(method, externalId, sequence, failure) {
+  // The first edit may load land data, so it gets as long as a full load.
+  const response = await fetch(`api/uboats/routes/${encodeURIComponent(externalId)}/excluded-points`, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sequence }),
+    signal: AbortSignal.timeout(FULL_LOAD_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    if (response.status === 409) {
+      throw new Error(LAST_POINT);
+    }
+    let detail = null;
+    try {
+      detail = (await response.json()).detail;
+    } catch {
+      // No JSON body: fall back to the generic message.
+    }
+    throw new Error(typeof detail === "string" && detail ? detail : failure);
+  }
+  return response.json();
+}
+
+export function excludePoint(externalId, sequence) {
+  return editPoint("POST", externalId, sequence, "Uitsluiten mislukt");
+}
+
+export function restorePoint(externalId, sequence) {
+  return editPoint("DELETE", externalId, sequence, "Herstellen mislukt");
+}

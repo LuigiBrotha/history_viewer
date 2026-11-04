@@ -46,3 +46,34 @@ export function renderShipSummary({ totalsEl, unknownEl }, ships, followed) {
     unknownEl.appendChild(item);
   }
 }
+
+// Built from text nodes only: dates and coordinates are never parsed as HTML.
+// onRestore is null when editing is not allowed; the list is still shown.
+export function renderExcludedPoints({ listEl, patrol, onRestore }) {
+  listEl.replaceChildren();
+  const points = patrol?.excluded_points ?? [];
+  listEl.hidden = points.length === 0;
+  if (points.length === 0) {
+    return;
+  }
+
+  const heading = document.createElement("h3");
+  heading.textContent = "Uitgesloten punten";
+  listEl.appendChild(heading);
+
+  const list = document.createElement("ul");
+  for (const point of points) {
+    const item = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = `${point.date ?? "geen datum"} (${point.lat.toFixed(3)}, ${point.lng.toFixed(3)})`;
+    item.appendChild(text);
+    if (onRestore !== null) {
+      const button = document.createElement("button");
+      button.textContent = "Herstellen";
+      button.addEventListener("click", () => onRestore(point, button));
+      item.appendChild(button);
+    }
+    list.appendChild(item);
+  }
+  listEl.appendChild(list);
+}

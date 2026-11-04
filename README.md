@@ -68,6 +68,14 @@ cannot be reached it shows `Geen verbinding, opnieuw proberen…` and keeps the
 data already on screen. On `/` the selected date, zoom and followed boat are
 kept across updates.
 
+## Excluding route points
+
+On `/`, follow a boat and click a route point: `Punt uitsluiten` leaves it out of
+the patrol and the water routes are recomputed (the first time this can take a few
+seconds). Excluded points are listed under the boat's status as `Uitgesloten punten`,
+each with `Herstellen`. The exclusion is kept across recrawls. This works only in a
+browser on the laptop itself; other devices see the list but no buttons.
+
 ## Tests
 
 ```

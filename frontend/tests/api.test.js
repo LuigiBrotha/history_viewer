@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { fetchBoats, fetchRoutes, fetchStatus } from "../js/api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -113,4 +113,58 @@ test("fetchShips calls the ships endpoint, with a since cursor when given", asyn
   await fetchShips("2026-11-04T12:00:05.000Z");
 
   assert.deepEqual(calls, ["api/uboats/ships", "api/uboats/ships?since=2026-11-04T12%3A00%3A05.000Z"]);
+});
+
+test("excludePoint posts the sequence as JSON and returns the patrol", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options]);
+    return { ok: true, json: async () => ({ external_id: "a/b" }) };
+  };
+
+  const result = await excludePoint("a/b", 3);
+
+  assert.equal(calls[0][0], "api/uboats/routes/a%2Fb/excluded-points");
+  assert.equal(calls[0][1].method, "POST");
+  assert.equal(calls[0][1].headers["Content-Type"], "application/json");
+  assert.equal(calls[0][1].body, JSON.stringify({ sequence: 3 }));
+  assert.ok(calls[0][1].signal);
+  assert.deepEqual(result, { external_id: "a/b" });
+});
+
+test("restorePoint sends DELETE with the sequence as JSON", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options]);
+    return { ok: true, json: async () => ({ external_id: "p1" }) };
+  };
+
+  const result = await restorePoint("p1", 2);
+
+  assert.equal(calls[0][0], "api/uboats/routes/p1/excluded-points");
+  assert.equal(calls[0][1].method, "DELETE");
+  assert.equal(calls[0][1].body, JSON.stringify({ sequence: 2 }));
+  assert.deepEqual(result, { external_id: "p1" });
+});
+
+test("excludePoint rejects with a Dutch message on a 409", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ detail: "last point" }) });
+
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Dit is het laatste punt van deze patrouille." });
+});
+
+test("excludePoint and restorePoint use the API detail, else a fallback", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 403, json: async () => ({ detail: "Alleen lokaal" }) });
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Alleen lokaal" });
+
+  globalThis.fetch = async () => ({ ok: false, status: 500, json: async () => { throw new Error("no json"); } });
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Uitsluiten mislukt" });
+  await assert.rejects(() => restorePoint("p1", 1), { message: "Herstellen mislukt" });
+});
+
+test("canEdit is false unless the status says so", () => {
+  assert.equal(canEdit(null), false);
+  assert.equal(canEdit({}), false);
+  assert.equal(canEdit({ can_edit: false }), false);
+  assert.equal(canEdit({ can_edit: true }), true);
 });

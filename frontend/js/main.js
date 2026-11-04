@@ -1,9 +1,9 @@
-import { fetchBoats, fetchRoutes, fetchShips, fetchStatus } from "./api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus, restorePoint } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
-import { boatsHeading, renderBoatList, renderShipSummary, updateDateLabel } from "./sidebar.js";
+import { boatsHeading, renderBoatList, renderExcludedPoints, renderShipSummary, updateDateLabel } from "./sidebar.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsUpToDate } from "./ship-model.js";
@@ -22,6 +22,7 @@ function main() {
   const listEl = document.getElementById("boat-list");
   const followStatusEl = document.getElementById("follow-status");
   const liveStatusEl = document.getElementById("live-status");
+  const excludedEl = document.getElementById("excluded-points");
   const resetButton = document.getElementById("reset-follow");
   const toggleBoatsButton = document.getElementById("toggle-boats");
   const boatsHeadingEl = document.getElementById("boats-heading");
@@ -44,6 +45,7 @@ function main() {
   let atlas = { setDate() {} };
   let ships = [];
   let shipLayer = null;
+  let editable = false;
 
   // fit is true for user actions; live updates redraw without touching the view.
   function render(date, fit) {
@@ -58,12 +60,21 @@ function main() {
       const boatRoutes = routesBySlug.get(followedSlug);
       const view = followView(boatRoutes, date);
       renderActiveBoats(mapState, [], onBoatSelect);
-      renderFollowedRoute(mapState, view.patrol, view.position, { fit });
+      renderFollowedRoute(mapState, view.patrol, view.position, {
+        fit,
+        onExclude: editable ? (point, button) => editPoint(excludePoint, "Uitsluiten mislukt", view.patrol, point, button) : null,
+      });
+      renderExcludedPoints({
+        listEl: excludedEl,
+        patrol: view.patrol,
+        onRestore: editable ? (point, button) => editPoint(restorePoint, "Herstellen mislukt", view.patrol, point, button) : null,
+      });
       if (view.position === null) {
         followStatusEl.textContent = notOnPatrolMessage(boatRoutes[0].boat_number, date);
       }
     } else {
       clearFollowedRoute(mapState);
+      renderExcludedPoints({ listEl: excludedEl, patrol: null, onRestore: null });
       renderActiveBoats(mapState, active, onBoatSelect);
     }
 
@@ -90,6 +101,24 @@ function main() {
     },
     onError: (error) => console.error(error),
   });
+
+  // Date, followed boat and zoom stay as they are: the returned patrol replaces
+  // the old one and the view is redrawn without fitting.
+  async function editPoint(request, failure, patrol, point, button) {
+    const label = button.textContent;
+    button.disabled = true;
+    button.textContent = "Bezig…";
+    try {
+      const updated = await request(patrol.external_id, point.sequence);
+      mapState.map.closePopup();
+      onData([updated]);
+    } catch (error) {
+      console.error(error);
+      followStatusEl.textContent = error.message || failure;
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
 
   function onBoatSelect(slug) {
     followedSlug = slug;
@@ -186,6 +215,11 @@ function main() {
     onData,
     onStatus: (status) => {
       lastStatus = status;
+      const wasEditable = editable;
+      editable = canEdit(status);
+      if (editable !== wasEditable && currentDate !== null) {
+        render(currentDate, false);
+      }
       renderStatusLine();
       loadShips(status.revision);
     },

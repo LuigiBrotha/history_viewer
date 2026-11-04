@@ -52,9 +52,24 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
   }
 }
 
+function pointPopup(point, onExclude) {
+  const box = document.createElement("div");
+  const line = document.createElement("div");
+  line.textContent = point.date ?? "geen datum";
+  box.appendChild(line);
+  if (onExclude !== null) {
+    const button = document.createElement("button");
+    button.textContent = "Punt uitsluiten";
+    button.addEventListener("click", () => onExclude(point, button));
+    box.appendChild(button);
+  }
+  return box;
+}
+
 // fit is true for user actions (boat selected, date changed). A live update passes
 // false: it redraws the route but leaves the user's zoom alone.
-export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) {
+// onExclude is null when editing is not allowed: the popup then only shows the date.
+export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, onExclude = null }) {
   mapState.followedRouteLayer.clearLayers();
 
   if (patrol === null) {
@@ -84,12 +99,15 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit }) 
   }
 
   for (const point of patrol.points) {
-    L.circleMarker([point.lat, point.lng], {
+    const dot = L.circleMarker([point.lat, point.lng], {
       radius: 3,
       color,
       fillColor: color,
       fillOpacity: 1,
     }).addTo(layer);
+    if (dot.bindPopup) {
+      dot.bindPopup(() => pointPopup(point, onExclude));
+    }
   }
 
   if (currentPosition !== null) {

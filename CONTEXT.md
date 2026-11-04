@@ -28,6 +28,10 @@ _Avoid_: Fout traject
 Een traject met een waterroute, maar waarvan de afstand voor het aantal dagen onwaarschijnlijk groot is. Wordt getoond, maar gemarkeerd.
 _Avoid_: Onmogelijk traject, fout traject
 
+**Uitgesloten punt**:
+Een routepunt dat de gebruiker als onbetrouwbaar heeft aangemerkt en dat daarom niet meer meetelt in de patrouille. Kan weer worden hersteld.
+_Avoid_: Verwijderd punt
+
 **Gevolgde boot**:
 De aangeklikte boot, gevolgd over al zijn patrouilles heen.
 _Avoid_: Gevolgde patrouille
