@@ -1,3 +1,4 @@
+import asyncio
 import os
 import signal
 import socket
@@ -8,6 +9,13 @@ from pathlib import Path
 
 import pytest
 import requests
+from sqlalchemy import update
+
+from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary
+from app.services.storage.boat_repository import BoatRepository
+from app.services.storage.database import create_engine, create_session_factory
+from app.services.storage.models import Patrol
+from app.services.storage.patrol_repository import PatrolRepository
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -80,3 +88,38 @@ def test_reload_server_serves_the_status_map_without_a_redirect(reload_server):
 
     assert response.status_code == 200
     assert '<div id="status-map">' in response.text
+
+
+async def _seed_two_patrols(db_path):
+    from datetime import datetime, timezone
+
+    engine = create_engine(f"sqlite+aiosqlite:///{db_path}")
+    session_factory = create_session_factory(engine)
+    async with session_factory() as session:
+        boat_repo = BoatRepository(session)
+        await boat_repo.upsert_boat(BoatData(
+            slug="u99", number="U-99", type=None, builder=None,
+            laid_down=None, launched=None, commissioned=None, fate=None,
+        ))
+        boat_id = await boat_repo.get_id_by_slug("u99")
+        for number, external_id, hour in [(1, "old", 9), (2, "new", 11)]:
+            summary = PatrolSummary(
+                external_id=external_id, patrol_number=number, commander=None,
+                departure_port=None, departure_date=None, arrival_port=None, arrival_date=None,
+                days_at_sea=None, tonnage=None, detail_url=f"https://uboat.net/boats/patrols/{external_id}.html",
+            )
+            await PatrolRepository(session).upsert_patrol(boat_id, summary, PatrolDetail(None, []))
+            stamp = datetime(2026, 11, 4, hour, 0, tzinfo=timezone.utc)
+            await session.execute(update(Patrol).where(Patrol.external_id == external_id).values(updated_at=stamp))
+        await session.commit()
+    await engine.dispose()
+
+
+def test_status_revision_fed_back_as_since_returns_that_patrol(reload_server, tmp_path):
+    asyncio.run(_seed_two_patrols(tmp_path / "test.db"))
+
+    status = requests.get(f"{reload_server}/api/uboats/status", timeout=5).json()
+    response = requests.get(f"{reload_server}/api/uboats/routes", params={"since": status["revision"]}, timeout=5)
+
+    assert response.status_code == 200
+    assert [route["external_id"] for route in response.json()] == ["new"]
