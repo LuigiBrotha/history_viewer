@@ -28,12 +28,21 @@ export function rampValue(date, history) {
   return span === 0 ? 0 : (Date.parse(date) - min) / span;
 }
 
-export function routeColor(patrol, lastExternalId, history) {
+// The dates the ramp stretches over: the selected period, or all of history.
+export function colorRange(history, from, to) {
+  if (history === null) {
+    return null;
+  }
+  return { min: from ?? history.min, max: to ?? history.max };
+}
+
+// A patrol that departed before colorRange's start clamps to the ramp's lowest colour.
+export function routeColor(patrol, lastExternalId, range) {
   if (patrol.external_id === lastExternalId) {
     return LAST_COLOR;
   }
   const start = patrolStart(patrol);
-  return start === null || history === null ? UNDATED_COLOR : turboColor(rampValue(start, history));
+  return start === null || range === null ? UNDATED_COLOR : turboColor(rampValue(start, range));
 }
 
 // A patrol belongs to a period when the two overlap. Without dates it cannot be placed in one.
@@ -101,7 +110,8 @@ export function createStatusMap(containerId) {
 }
 
 function applyColor(state, externalId, polyline) {
-  const color = routeColor(state.patrols.get(externalId), state.lastExternalId, state.history);
+  const range = colorRange(state.history, state.from, state.to);
+  const color = routeColor(state.patrols.get(externalId), state.lastExternalId, range);
   const style = { color, weight: LINE_WEIGHT };
   if (!state.markers.has(externalId)) {
     style.dashArray = statusLegStyle("ok", color).dashArray;
@@ -162,7 +172,9 @@ export function updateRoutes(state, changed) {
   }
   if (previous?.min !== state.history?.min || previous?.max !== state.history?.max) {
     for (const [id, polyline] of state.polylines) {
-      applyColor(state, id, polyline);
+      if (inPeriod(state.patrols.get(id), state.from, state.to)) {
+        applyColor(state, id, polyline);
+      }
     }
   }
   bringLastToFront(state);
@@ -192,6 +204,9 @@ export function setPeriod(state, from, to) {
   state.to = to;
   for (const [id, polyline] of state.polylines) {
     const shown = inPeriod(state.patrols.get(id), from, to);
+    if (shown) {
+      applyColor(state, id, polyline);
+    }
     if (shown && !state.layer.hasLayer(polyline)) {
       state.layer.addLayer(polyline);
     } else if (!shown && state.layer.hasLayer(polyline)) {

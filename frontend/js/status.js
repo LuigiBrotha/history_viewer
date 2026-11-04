@@ -21,7 +21,8 @@ function main() {
 
   const countEl = document.getElementById("route-count");
   const trackEl = document.getElementById("slider-track");
-  trackEl.style.background = rampGradient();
+  const windowEl = document.getElementById("slider-window");
+  windowEl.style.background = rampGradient();
 
   let routes = [];
   let lastStatus = null;
@@ -39,9 +40,7 @@ function main() {
 
   const slider = initPeriodSlider({
     trackEl,
-    windowEl: document.getElementById("slider-window"),
-    dimLeftEl: document.getElementById("slider-dim-left"),
-    dimRightEl: document.getElementById("slider-dim-right"),
+    windowEl,
     fromHandleEl: document.getElementById("slider-from"),
     toHandleEl: document.getElementById("slider-to"),
     ticksEl: document.getElementById("slider-ticks"),

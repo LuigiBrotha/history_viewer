@@ -6,6 +6,7 @@ import {
   routeColor,
   statusLegStyle,
   rampValue,
+  colorRange,
   patrolStart,
   patrolEnd,
   historyRange,
@@ -244,6 +245,89 @@ const dated = (id, departure, arrival) => ({
   arrival_date: arrival,
   points: twoPoints,
   legs: okLegs,
+});
+
+test("colorRange is the whole history without a period", () => {
+  assert.deepEqual(colorRange(history, null, null), history);
+});
+
+test("colorRange follows the selected period, open ends falling back on history", () => {
+  assert.deepEqual(colorRange(history, "1941-01-01", "1942-01-01"), { min: "1941-01-01", max: "1942-01-01" });
+  assert.deepEqual(colorRange(history, "1941-01-01", null), { min: "1941-01-01", max: "1945-01-01" });
+  assert.deepEqual(colorRange(history, null, "1942-01-01"), { min: "1940-01-01", max: "1942-01-01" });
+});
+
+test("colorRange is null without any history", () => {
+  assert.equal(colorRange(null, null, null), null);
+});
+
+test("a selected period spans the whole ramp", async () => {
+  fakeLeaflet();
+  const { updateRoutes, setPeriod } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [
+    dated("first", "1940-01-01", "1940-02-01"),
+    dated("mid", "1941-07-02", "1941-08-01"),
+    dated("end", "1942-01-01", "1942-02-01"),
+    dated("late", "1945-01-01", "1945-02-01"),
+  ]);
+
+  setPeriod(state, "1940-01-01", "1942-01-01");
+
+  assert.equal(state.polylines.get("first").style.color, turboColor(0));
+  assert.equal(state.polylines.get("end").style.color, turboColor(1));
+  assert.equal(
+    state.polylines.get("mid").style.color,
+    turboColor(rampValue("1941-07-02", { min: "1940-01-01", max: "1942-01-01" })),
+  );
+});
+
+test("a patrol that departed before the period gets the lowest ramp colour", async () => {
+  fakeLeaflet();
+  const { updateRoutes, setPeriod } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [dated("a", "1940-12-20", "1941-01-20"), dated("b", "1945-01-01", "1945-02-01")]);
+
+  setPeriod(state, "1941-01-01", "1942-01-01");
+
+  assert.equal(state.polylines.get("a").style.color, turboColor(0));
+});
+
+test("clearing the period restores the colours over the whole history", async () => {
+  fakeLeaflet();
+  const { updateRoutes, setPeriod } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01"), dated("b", "1942-01-01", "1942-02-01")]);
+  const before = state.polylines.get("b").style.color;
+
+  setPeriod(state, "1941-12-01", "1942-01-01");
+  setPeriod(state, null, null);
+
+  assert.equal(state.polylines.get("b").style.color, before);
+  assert.equal(before, turboColor(1));
+});
+
+test("a patrol arriving during a period is coloured by that period", async () => {
+  fakeLeaflet();
+  const { updateRoutes, setPeriod } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01"), dated("z", "1945-01-01", "1945-02-01")]);
+  setPeriod(state, "1941-01-01", "1942-01-01");
+
+  updateRoutes(state, [dated("new", "1942-01-01", "1942-02-01")]);
+
+  assert.equal(state.polylines.get("new").style.color, turboColor(1));
+});
+
+test("the last crawled patrol stays black inside a period", async () => {
+  fakeLeaflet();
+  const { updateRoutes, setPeriod } = await import("../js/status-map.js");
+  const state = newState("a");
+  updateRoutes(state, [dated("a", "1941-06-01", "1941-07-01"), dated("b", "1945-01-01", "1945-02-01")]);
+
+  setPeriod(state, "1941-01-01", "1942-01-01");
+
+  assert.equal(state.polylines.get("a").style.color, "#000000");
 });
 
 test("lines are drawn very thin", async () => {

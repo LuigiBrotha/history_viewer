@@ -72,7 +72,7 @@ export function yearTicks(bounds) {
 // Binds the pure logic above to the slider's elements. `onChange` gets a
 // { from, to } period of ISO dates, null where the selection is open-ended,
 // at most once per animation frame during a drag.
-export function initPeriodSlider({ trackEl, windowEl, dimLeftEl, dimRightEl, fromHandleEl, toHandleEl, ticksEl, labelEl, resetEl, onChange }) {
+export function initPeriodSlider({ trackEl, windowEl, fromHandleEl, toHandleEl, ticksEl, labelEl, resetEl, onChange }) {
   let bounds = null;
   let selection = null;
   let drag = null;
@@ -83,8 +83,6 @@ export function initPeriodSlider({ trackEl, windowEl, dimLeftEl, dimRightEl, fro
     const right = fractionForDay(selection.to, bounds) * 100;
     windowEl.style.left = `${left}%`;
     windowEl.style.width = `${right - left}%`;
-    dimLeftEl.style.width = `${left}%`;
-    dimRightEl.style.width = `${100 - right}%`;
     fromHandleEl.style.left = `${left}%`;
     toHandleEl.style.left = `${right}%`;
     for (const [el, value, name] of [

@@ -201,6 +201,7 @@ html, body {
   height: 28px;
   margin: 8px 12px;
   border-radius: 3px;
+  background: #555;
   touch-action: none;
   cursor: pointer;
 }
@@ -214,24 +215,6 @@ html, body {
   border-bottom: 2px solid white;
   cursor: grab;
   touch-action: none;
-}
-
-.slider-dim {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: rgba(34, 34, 34, 0.75);
-  pointer-events: none;
-}
-
-#slider-dim-left {
-  left: 0;
-  border-radius: 3px 0 0 3px;
-}
-
-#slider-dim-right {
-  right: 0;
-  border-radius: 0 3px 3px 0;
 }
 
 .slider-handle {
