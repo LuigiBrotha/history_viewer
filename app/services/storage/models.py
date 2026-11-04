@@ -133,3 +133,15 @@ class ShipHit(Base):
     lng: Mapped[float | None] = mapped_column(Float, nullable=True)
     position_checked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class ExcludedRoutePoint(Base):
+    """A route point a user hid. Keyed on content, not sequence, so it survives a re-crawl."""
+
+    __tablename__ = "excluded_route_points"
+
+    external_id: Mapped[str] = mapped_column(String, primary_key=True)
+    lat: Mapped[float] = mapped_column(Float, primary_key=True)
+    lng: Mapped[float] = mapped_column(Float, primary_key=True)
+    # ISO date, or an empty string for a missing date (a primary key column cannot be NULL).
+    date: Mapped[str] = mapped_column(String, primary_key=True)

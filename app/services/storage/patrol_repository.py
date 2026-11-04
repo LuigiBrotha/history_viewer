@@ -8,8 +8,24 @@ from app.services.export.uboats import PatrolRouteOut, RoutePointOut
 from app.services.routing.approximate_dates import with_approximate_dates
 from app.services.routing.legs import build_legs
 from app.services.scraping.uboat_net.types import PatrolDetail, PatrolSummary
-from app.services.storage.models import Boat, Patrol, RoutePoint
+from app.services.storage.models import Boat, ExcludedRoutePoint, Patrol, RoutePoint
 from app.services.storage.water_route_repository import WaterRouteRepository
+
+
+class PatrolNotFound(Exception):
+    pass
+
+
+class PointNotFound(Exception):
+    pass
+
+
+class LastPointError(Exception):
+    """Excluding the point would leave the patrol without a visible point."""
+
+
+def _exclusion_key(lat: float, lng: float, day) -> tuple[float, float, str]:
+    return (lat, lng, day.isoformat() if day else "")
 
 
 class PatrolRepository:
@@ -77,6 +93,73 @@ class PatrolRepository:
         )
         await self._session.commit()
 
+    async def exclude_point(self, external_id: str, sequence: int) -> tuple[float, float]:
+        """Hide a route point; the source row stays. Returns its (lat, lng)."""
+        points = await self._source_points(external_id)
+        target = self._find(points, sequence)
+        key = _exclusion_key(target.lat, target.lng, target.date)
+        excluded = await self._excluded_keys(external_id)
+        visible = [
+            pt for pt in points
+            if (k := _exclusion_key(pt.lat, pt.lng, pt.date)) != key and k not in excluded
+        ]
+        if not visible:
+            raise LastPointError(external_id)
+        # Taken right before the write, like touch().
+        now = datetime.now(timezone.utc)
+        await self._session.execute(
+            insert(ExcludedRoutePoint)
+            .values(external_id=external_id, lat=key[0], lng=key[1], date=key[2])
+            .on_conflict_do_nothing()
+        )
+        await self._bump(external_id, now)
+        return target.lat, target.lng
+
+    async def restore_point(self, external_id: str, sequence: int) -> None:
+        """Show an excluded point again; sequence is the source row's. No-op if not excluded."""
+        points = await self._source_points(external_id)
+        target = self._find(points, sequence)
+        key = _exclusion_key(target.lat, target.lng, target.date)
+        now = datetime.now(timezone.utc)
+        await self._session.execute(
+            delete(ExcludedRoutePoint).where(
+                ExcludedRoutePoint.external_id == external_id,
+                ExcludedRoutePoint.lat == key[0],
+                ExcludedRoutePoint.lng == key[1],
+                ExcludedRoutePoint.date == key[2],
+            )
+        )
+        await self._bump(external_id, now)
+
+    async def _source_points(self, external_id: str) -> list[RoutePoint]:
+        patrol_id = await self._session.scalar(select(Patrol.id).where(Patrol.external_id == external_id))
+        if patrol_id is None:
+            raise PatrolNotFound(external_id)
+        result = await self._session.execute(
+            select(RoutePoint).where(RoutePoint.patrol_id == patrol_id).order_by(RoutePoint.sequence)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    def _find(points: list[RoutePoint], sequence: int) -> RoutePoint:
+        for pt in points:
+            if pt.sequence == sequence:
+                return pt
+        raise PointNotFound(sequence)
+
+    async def _excluded_keys(self, external_id: str) -> set[tuple[float, float, str]]:
+        result = await self._session.execute(
+            select(ExcludedRoutePoint.lat, ExcludedRoutePoint.lng, ExcludedRoutePoint.date)
+            .where(ExcludedRoutePoint.external_id == external_id)
+        )
+        return {(lat, lng, day) for lat, lng, day in result.all()}
+
+    async def _bump(self, external_id: str, now: datetime) -> None:
+        await self._session.execute(
+            update(Patrol).where(Patrol.external_id == external_id).values(updated_at=now)
+        )
+        await self._session.commit()
+
     async def list_routes(self, since: datetime | None = None) -> list[PatrolRouteOut]:
         stmt = (
             select(Patrol, Boat.slug, Boat.number)
@@ -93,7 +176,14 @@ class PatrolRepository:
         # ~5000 sequential awaits at full ~1153-boat scale).
         patrol_ids = [patrol.id for patrol, _, _ in rows]
         points_by_patrol_id: dict[int, list[RoutePoint]] = {}
+        excluded_keys: dict[str, set[tuple[float, float, str]]] = {}
         if patrol_ids:
+            # Exclusions in one query as well, and not an IN list: it can run to thousands of ids.
+            external_ids = {patrol.external_id for patrol, _, _ in rows}
+            excluded_result = await self._session.execute(select(ExcludedRoutePoint))
+            for ex in excluded_result.scalars().all():
+                if ex.external_id in external_ids:
+                    excluded_keys.setdefault(ex.external_id, set()).add((ex.lat, ex.lng, ex.date))
             points_result = await self._session.execute(
                 select(RoutePoint)
                 .where(RoutePoint.patrol_id.in_(patrol_ids))
@@ -102,9 +192,19 @@ class PatrolRepository:
             for point in points_result.scalars().all():
                 points_by_patrol_id.setdefault(point.patrol_id, []).append(point)
 
+        split: dict[int, tuple[list[RoutePointOut], list[RoutePointOut]]] = {}
+        for patrol, _, _ in rows:
+            hidden = excluded_keys.get(patrol.external_id, set())
+            visible, excluded = [], []
+            for pt in points_by_patrol_id.get(patrol.id, []):
+                out = RoutePointOut(sequence=pt.sequence, lat=pt.lat, lng=pt.lng, date=pt.date)
+                is_hidden = _exclusion_key(pt.lat, pt.lng, pt.date) in hidden
+                (excluded if is_hidden else visible).append(out)
+            split[patrol.id] = (visible, excluded)
+
         routes_by_pair = await WaterRouteRepository(self._session).get_many([
             pair
-            for pts in points_by_patrol_id.values()
+            for pts, _ in split.values()
             for pair in zip(
                 ((pt.lat, pt.lng) for pt in pts),
                 ((pt.lat, pt.lng) for pt in pts[1:]),
@@ -113,10 +213,7 @@ class PatrolRepository:
 
         routes = []
         for patrol, boat_slug, boat_number in rows:
-            points = [
-                RoutePointOut(sequence=pt.sequence, lat=pt.lat, lng=pt.lng, date=pt.date)
-                for pt in points_by_patrol_id.get(patrol.id, [])
-            ]
+            points, excluded_points = split[patrol.id]
             routes.append(PatrolRouteOut(
                 boat_slug=boat_slug,
                 boat_number=boat_number,
@@ -126,5 +223,6 @@ class PatrolRepository:
                 # Legs use the source dates: speed must never be judged on an approximation.
                 points=with_approximate_dates(points, patrol.departure_date, patrol.arrival_date),
                 legs=build_legs(points, routes_by_pair),
+                excluded_points=excluded_points,
             ))
         return routes

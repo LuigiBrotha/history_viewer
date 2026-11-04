@@ -2,13 +2,14 @@ import asyncio
 import sqlite3
 from datetime import date, datetime, timezone
 
-from sqlalchemy import update
+import pytest
+from sqlalchemy import select, update
 
 from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.crawl_status_repository import CrawlStatusRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
-from app.services.storage.models import Patrol
+from app.services.storage.models import Patrol, RoutePoint
 from app.services.storage.patrol_repository import PatrolRepository
 
 
@@ -312,3 +313,142 @@ async def test_list_routes_keeps_known_dates_exact(tmp_path):
 
     assert route.points[0].date == date(1940, 1, 2)
     assert route.points[0].date_approximate is False
+
+
+def _three_points(middle_date=date(1940, 6, 19)):
+    return [
+        RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=date(1940, 6, 18)),
+        RoutePointData(sequence=2, lat=51.0, lng=-4.0, date=middle_date),
+        RoutePointData(sequence=3, lat=52.0, lng=-3.0, date=date(1940, 6, 20)),
+    ]
+
+
+async def test_excluded_point_leaves_points_and_joins_excluded_points(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        assert await repo.exclude_point("patrol_4754", 2) == (51.0, -4.0)
+        routes = await repo.list_routes()
+        await repo.restore_point("patrol_4754", 2)
+        restored = await repo.list_routes()
+    assert [p.sequence for p in routes[0].points] == [1, 3]
+    assert [(p.sequence, p.lat, p.lng, p.date) for p in routes[0].excluded_points] == [
+        (2, 51.0, -4.0, date(1940, 6, 19))]
+    assert [p.sequence for p in restored[0].points] == [1, 2, 3]
+    assert restored[0].excluded_points == []
+
+
+async def test_legs_connect_the_neighbours_of_an_excluded_point(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        await repo.exclude_point("patrol_4754", 2)
+        routes = await repo.list_routes()
+    assert [(leg.from_sequence, leg.to_sequence) for leg in routes[0].legs] == [(1, 3)]
+
+
+async def test_exclusion_survives_a_recrawl_with_new_sequences(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        await repo.exclude_point("patrol_4754", 2)
+        shifted = [
+            RoutePointData(sequence=10, lat=49.0, lng=-6.0, date=date(1940, 6, 17)),
+            RoutePointData(sequence=11, lat=50.0, lng=-5.0, date=date(1940, 6, 18)),
+            RoutePointData(sequence=12, lat=51.0, lng=-4.0, date=date(1940, 6, 19)),
+            RoutePointData(sequence=13, lat=52.0, lng=-3.0, date=date(1940, 6, 20)),
+        ]
+        await repo.upsert_patrol(boat_id, _summary(), _detail(shifted))
+        routes = await repo.list_routes()
+    assert [p.sequence for p in routes[0].points] == [10, 11, 13]
+    assert [p.sequence for p in routes[0].excluded_points] == [12]
+
+
+async def test_undated_point_can_be_excluded_and_restored(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points(middle_date=None)))
+        await repo.exclude_point("patrol_4754", 2)
+        excluded = await repo.list_routes()
+        await repo.restore_point("patrol_4754", 2)
+        restored = await repo.list_routes()
+    assert [p.sequence for p in excluded[0].excluded_points] == [2]
+    assert excluded[0].excluded_points[0].date is None
+    assert [p.sequence for p in restored[0].points] == [1, 2, 3]
+
+
+async def test_excluding_the_only_remaining_point_is_refused(tmp_path):
+    from app.services.storage.patrol_repository import LastPointError
+
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary("one"), _detail(
+            [RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=None)]))
+        await repo.upsert_patrol(boat_id, _summary("two", patrol_number=2), _detail(_three_points()))
+        with pytest.raises(LastPointError):
+            await repo.exclude_point("one", 1)
+        await repo.exclude_point("two", 1)
+        await repo.exclude_point("two", 2)
+        with pytest.raises(LastPointError):
+            await repo.exclude_point("two", 3)
+
+
+async def test_unknown_patrol_or_sequence_is_not_found(tmp_path):
+    from app.services.storage.patrol_repository import PatrolNotFound, PointNotFound
+
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        with pytest.raises(PatrolNotFound):
+            await repo.exclude_point("nope", 1)
+        with pytest.raises(PatrolNotFound):
+            await repo.restore_point("nope", 1)
+        with pytest.raises(PointNotFound):
+            await repo.exclude_point("patrol_4754", 99)
+        with pytest.raises(PointNotFound):
+            await repo.restore_point("patrol_4754", 99)
+        await repo.restore_point("patrol_4754", 2)  # not excluded: no-op
+
+
+async def test_exclude_and_restore_bump_updated_at(tmp_path):
+    factory = await _session_factory(tmp_path)
+    old = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        await session.execute(update(Patrol).values(updated_at=old))
+        await session.commit()
+        crawled = (await session.scalar(select(Patrol.crawled_at)))
+        await repo.exclude_point("patrol_4754", 2)
+        after_exclude = await session.scalar(select(Patrol.updated_at))
+        await session.execute(update(Patrol).values(updated_at=old))
+        await session.commit()
+        await repo.restore_point("patrol_4754", 2)
+        after_restore = await session.scalar(select(Patrol.updated_at))
+        assert await session.scalar(select(Patrol.crawled_at)) == crawled
+    assert after_exclude > old
+    assert after_restore > old
+
+
+async def test_source_route_point_row_is_untouched(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
+        await repo.exclude_point("patrol_4754", 2)
+        rows = (await session.scalars(select(RoutePoint).order_by(RoutePoint.sequence))).all()
+    assert [r.sequence for r in rows] == [1, 2, 3]

@@ -66,6 +66,7 @@ class PatrolRouteOut:
     arrival_date: date | None
     points: list[RoutePointOut] = field(default_factory=list)
     legs: list[LegOut] = field(default_factory=list)
+    excluded_points: list[RoutePointOut] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
