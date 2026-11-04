@@ -15,6 +15,24 @@ from app.services.storage.database import init_models
 from fastapi import FastAPI
 
 
+class RevalidateMiddleware:
+    """Makes browsers check every response, so an update never mixes old and new modules."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        async def send_with_header(message):
+            if message["type"] == "http.response.start":
+                message.setdefault("headers", []).append((b"cache-control", b"no-cache"))
+            await send(message)
+
+        if scope["type"] == "http":
+            await self.app(scope, receive, send_with_header)
+        else:
+            await self.app(scope, receive, send)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await init_models(engine)
@@ -37,6 +55,7 @@ with async_container_force_sync_scope(container) as scope:
     request_handler_registry = scope.get(RequestHandlerRegistry)
     handlers = list(request_handler_registry)
 
+app.add_middleware(RevalidateMiddleware)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 wireup.integration.fastapi.setup(container, app, class_based_handlers=handlers)
