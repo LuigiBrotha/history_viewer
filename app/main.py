@@ -1,8 +1,10 @@
-import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 import wireup.integration.fastapi
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from wireup.ioc.container.async_container import async_container_force_sync_scope
 
 from app.services.request_handler_registry import RequestHandlerRegistry
@@ -12,20 +14,25 @@ from app.core.database import engine
 from app.services.storage.database import init_models
 from fastapi import FastAPI
 
-asyncio.run(init_models(engine))
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    await init_models(engine)
+    # A mount at "/" matches every path, so it must follow the API routes. Wireup registers
+    # class-based handlers during its own lifespan, which runs before this one.
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    yield
+    await engine.dispose()
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description=settings.DESCRIPTION,
     debug=settings.DEBUG,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["GET"],
-    allow_headers=["*"],
 )
 
 with async_container_force_sync_scope(container) as scope:

@@ -12,7 +12,7 @@ test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => 
 
   const result = await fetchBoats();
 
-  assert.deepEqual(calls, ["http://localhost:8000/api/uboats/boten"]);
+  assert.deepEqual(calls, ["api/uboats/boten"]);
   assert.deepEqual(result, [{ slug: "u1" }]);
 });
 
@@ -25,7 +25,7 @@ test("fetchRoutes calls the routes endpoint and returns parsed JSON", async () =
 
   const result = await fetchRoutes();
 
-  assert.deepEqual(calls, ["http://localhost:8000/api/uboats/routes"]);
+  assert.deepEqual(calls, ["api/uboats/routes"]);
   assert.deepEqual(result, [{ boat_slug: "u1" }]);
 });
 

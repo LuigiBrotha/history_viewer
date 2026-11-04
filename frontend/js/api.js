@@ -1,7 +1,5 @@
-const API_BASE = "http://localhost:8000";
-
 export async function fetchBoats() {
-  const response = await fetch(`${API_BASE}/api/uboats/boten`);
+  const response = await fetch("api/uboats/boten");
   if (!response.ok) {
     throw new Error(`Failed to fetch boats: ${response.status}`);
   }
@@ -9,7 +7,7 @@ export async function fetchBoats() {
 }
 
 export async function fetchRoutes() {
-  const response = await fetch(`${API_BASE}/api/uboats/routes`);
+  const response = await fetch("api/uboats/routes");
   if (!response.ok) {
     throw new Error(`Failed to fetch routes: ${response.status}`);
   }
