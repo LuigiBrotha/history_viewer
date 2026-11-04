@@ -11,6 +11,8 @@ Pair = tuple[LatLng, LatLng]
 
 # Four parameters per pair; SQLite allows 999 variables in older builds.
 CHUNK_SIZE = 200
+# Above this many unique pairs, thousands of OR-ed conditions cost more than reading the table once.
+FULL_READ_THRESHOLD = 2000
 
 
 class WaterRouteRepository:
@@ -35,6 +37,17 @@ class WaterRouteRepository:
     async def get_many(self, pairs: list[Pair]) -> dict[Pair, RoutedLeg]:
         unique = list(dict.fromkeys(pairs))
         found: dict[Pair, RoutedLeg] = {}
+        if len(unique) > FULL_READ_THRESHOLD:
+            wanted = set(unique)
+            result = await self._session.execute(select(
+                WaterRoute.from_lat, WaterRoute.from_lng, WaterRoute.to_lat, WaterRoute.to_lng,
+                WaterRoute.status, WaterRoute.path, WaterRoute.length_km,
+            ))
+            for from_lat, from_lng, to_lat, to_lng, status, path, length_km in result:
+                pair = ((from_lat, from_lng), (to_lat, to_lng))
+                if pair in wanted:
+                    found[pair] = self._to_leg(status, path, length_km)
+            return found
         for i in range(0, len(unique), CHUNK_SIZE):
             chunk = unique[i:i + CHUNK_SIZE]
             condition = or_(*(
@@ -46,11 +59,15 @@ class WaterRouteRepository:
             ))
             result = await self._session.execute(select(WaterRoute).where(condition))
             for row in result.scalars():
-                path = [tuple(p) for p in json.loads(row.path)] if row.path is not None else None
-                found[((row.from_lat, row.from_lng), (row.to_lat, row.to_lng))] = RoutedLeg(
-                    row.status, path, row.length_km
+                found[((row.from_lat, row.from_lng), (row.to_lat, row.to_lng))] = self._to_leg(
+                    row.status, row.path, row.length_km
                 )
         return found
+
+    @staticmethod
+    def _to_leg(status: str, path: str | None, length_km: float | None) -> RoutedLeg:
+        points = [tuple(p) for p in json.loads(path)] if path is not None else None
+        return RoutedLeg(status, points, length_km)
 
     async def missing(self, pairs: list[Pair], force: bool = False) -> list[Pair]:
         unique = list(dict.fromkeys(pairs))

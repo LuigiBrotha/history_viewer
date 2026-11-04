@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 import wireup.integration.fastapi
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from wireup.ioc.container.async_container import async_container_force_sync_scope
 
@@ -35,6 +36,8 @@ app = FastAPI(
 with async_container_force_sync_scope(container) as scope:
     request_handler_registry = scope.get(RequestHandlerRegistry)
     handlers = list(request_handler_registry)
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 wireup.integration.fastapi.setup(container, app, class_based_handlers=handlers)
 

@@ -81,3 +81,22 @@ test("fetchStatus and fetchRoutes pass an abort signal so a dead connection time
     assert.ok(init.signal instanceof AbortSignal);
   }
 });
+
+test("a full routes load gets a long timeout while status and incremental fetches stay at 30 s", async () => {
+  const realTimeout = AbortSignal.timeout;
+  const timeouts = [];
+  AbortSignal.timeout = (ms) => {
+    timeouts.push(ms);
+    return realTimeout.call(AbortSignal, ms);
+  };
+  globalThis.fetch = async () => ({ ok: true, json: async () => [] });
+  try {
+    await fetchRoutes();
+    await fetchRoutes("2026-11-04T10:00:00+00:00");
+    await fetchStatus();
+  } finally {
+    AbortSignal.timeout = realTimeout;
+  }
+
+  assert.deepEqual(timeouts, [120000, 30000, 30000]);
+});

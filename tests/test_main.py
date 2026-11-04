@@ -123,3 +123,38 @@ def test_status_revision_fed_back_as_since_returns_that_patrol(reload_server, tm
 
     assert response.status_code == 200
     assert [route["external_id"] for route in response.json()] == ["new"]
+
+
+async def _seed_long_patrol(db_path):
+    from app.services.scraping.uboat_net.types import RoutePointData
+
+    engine = create_engine(f"sqlite+aiosqlite:///{db_path}")
+    session_factory = create_session_factory(engine)
+    async with session_factory() as session:
+        boat_repo = BoatRepository(session)
+        await boat_repo.upsert_boat(BoatData(
+            slug="u99", number="U-99", type=None, builder=None,
+            laid_down=None, launched=None, commissioned=None, fate=None,
+        ))
+        boat_id = await boat_repo.get_id_by_slug("u99")
+        summary = PatrolSummary(
+            external_id="long", patrol_number=1, commander=None,
+            departure_port=None, departure_date=None, arrival_port=None, arrival_date=None,
+            days_at_sea=None, tonnage=None, detail_url="https://uboat.net/boats/patrols/long.html",
+        )
+        points = [RoutePointData(i, 50.0 + i * 0.1, -5.0 + i * 0.1, None) for i in range(60)]
+        await PatrolRepository(session).upsert_patrol(boat_id, summary, PatrolDetail(None, points))
+        await session.commit()
+    await engine.dispose()
+
+
+def test_routes_are_gzip_encoded_when_asked_for(reload_server, tmp_path):
+    asyncio.run(_seed_long_patrol(tmp_path / "test.db"))
+
+    response = requests.get(
+        f"{reload_server}/api/uboats/routes", headers={"Accept-Encoding": "gzip"}, timeout=5,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-encoding"] == "gzip"
+    assert len(response.json()[0]["points"]) == 60

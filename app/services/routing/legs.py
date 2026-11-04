@@ -7,6 +7,15 @@ ON_LAND_REASON = "Route onzeker: punt ligt op land"
 NO_ROUTE_REASON = "Route onzeker: geen waterroute gevonden"
 
 
+def _rounded_path(path: list[tuple[float, float]]) -> list[list[float]]:
+    # Six decimals is about 0.1 m; the ends stay exactly the stored coordinates.
+    last = len(path) - 1
+    return [
+        [lat, lng] if i in (0, last) else [round(lat, 6), round(lng, 6)]
+        for i, (lat, lng) in enumerate(path)
+    ]
+
+
 def _suspect_reason(length_km: float, days: int) -> str:
     unit = "dag" if days == 1 else "dagen"
     return f"Verdacht: {round(length_km)} km in {days} {unit}"
@@ -23,7 +32,7 @@ def build_legs(
         status, reason, path, length_km = "not_computed", None, None, None
         if stored is not None:
             status = stored.status
-            path = [[lat, lng] for lat, lng in stored.path] if stored.path else None
+            path = _rounded_path(stored.path) if stored.path else None
             length_km = stored.length_km
             if status == "on_land":
                 reason = ON_LAND_REASON
@@ -33,10 +42,10 @@ def build_legs(
                 status == "ok"
                 and days is not None
                 and length_km is not None
-                and length_km > MAX_KM_PER_DAY * max(1, days)
+                and length_km > MAX_KM_PER_DAY * max(1, abs(days))
             ):
                 status = "suspect"
-                reason = _suspect_reason(length_km, days)
+                reason = _suspect_reason(length_km, abs(days))
         legs.append(LegOut(
             from_sequence=start.sequence,
             to_sequence=end.sequence,
