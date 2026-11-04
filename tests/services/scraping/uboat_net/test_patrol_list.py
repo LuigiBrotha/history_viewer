@@ -88,3 +88,14 @@ def test_parse_patrol_list_non_numeric_tonnage_cell_does_not_raise():
 
     assert len(summaries) == 1
     assert summaries[0].tonnage is None
+
+
+def test_parse_patrol_list_u18_split_entry_with_glyph_number_is_not_a_second_patrol():
+    # U-18 lists patrol_87 twice; the second row has a '⌊' glyph as its number.
+    html = (_FIXTURE.parent / "patrols_u18.html").read_text(encoding="utf-8")
+
+    summaries = parse_patrol_list(html, "https://uboat.net/boats/patrols/u18.html")
+
+    external_ids = [s.external_id for s in summaries]
+    assert len(external_ids) == len(set(external_ids)) == 14
+    assert [s.patrol_number for s in summaries] == list(range(1, 15))

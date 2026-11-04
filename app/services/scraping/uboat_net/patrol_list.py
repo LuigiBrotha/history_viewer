@@ -26,6 +26,7 @@ def parse_patrol_list(html: str, page_url: str) -> list[PatrolSummary]:
         return []
 
     summaries = []
+    seen_external_ids = set()
     for row in table.css('tr[bgcolor="#f0f0f0"]'):
         cells = row.css("td")
         if len(cells) < 10:
@@ -37,6 +38,13 @@ def parse_patrol_list(html: str, page_url: str) -> list[PatrolSummary]:
         href = link.attributes.get("href") or ""
         detail_url = urljoin(page_url, href)
         external_id = href.rsplit("/", 1)[-1].removesuffix(".html")
+
+        # A patrol split over several entries links the same page from each row
+        # (the later ones carry a glyph instead of a number). The patrol is stored
+        # once, by its first entry.
+        if external_id in seen_external_ids:
+            continue
+        seen_external_ids.add(external_id)
 
         days_text = cells[6].text(strip=True)
         days_match = _DAYS_RE.match(days_text)
