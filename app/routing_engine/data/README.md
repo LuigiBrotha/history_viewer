@@ -1,6 +1,7 @@
 # Land data
 
 Natural Earth 10m vector data, tag `v5.1.2`. Natural Earth is public domain.
+These files live in `app/routing_engine/data/`, next to the routing code that loads them.
 
 | File | Source | SHA-256 of the original GeoJSON |
 |---|---|---|

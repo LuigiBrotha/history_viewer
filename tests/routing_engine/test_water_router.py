@@ -2,10 +2,10 @@ import math
 
 import pytest
 
-from app.services.routing.land import Land, load_land
+from app.routing_engine.land import Land, load_land
 from shapely.geometry import Point
 
-from app.services.routing.water_router import (
+from app.routing_engine.water_router import (
     ATTEMPTS,
     RoutedLeg,
     attempt_parameters,

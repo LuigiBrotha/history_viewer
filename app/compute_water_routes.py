@@ -89,7 +89,7 @@ def _parse_args(argv=None):
 
 async def main(argv=None) -> None:
     args = _parse_args(argv)
-    from app.services.routing import water_router
+    from app.routing_engine import water_router
 
     engine = create_engine(settings.DATABASE_URL)
     await init_models(engine)

@@ -88,7 +88,7 @@ def load_route_leg():
     """Return the real route_leg, or None (crawl without routes) if its dependencies are missing."""
     try:
         # Imported lazily: pulls in numpy/shapely; land data loads on the first routed leg.
-        water_router = importlib.import_module("app.services.routing.water_router")
+        water_router = importlib.import_module("app.routing_engine.water_router")
     except ImportError as exc:
         print(f"Routing unavailable ({exc}); crawling without water routes.")
         return None

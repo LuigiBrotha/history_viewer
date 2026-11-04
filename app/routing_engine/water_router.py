@@ -8,7 +8,7 @@ from scipy import ndimage
 from shapely.geometry import LineString, Point
 from shapely.ops import nearest_points
 
-from app.services.routing.land import Land, load_land
+from app.routing_engine.land import Land, load_land
 from app.services.routing.types import LatLng, RoutedLeg
 
 EARTH_RADIUS_KM = 6371.0

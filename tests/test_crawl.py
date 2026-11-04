@@ -202,7 +202,7 @@ async def test_main_records_the_full_listing_size_before_limit_is_applied(tmp_pa
 
 def test_missing_routing_dependencies_disable_routing(monkeypatch, capsys):
     import sys
-    monkeypatch.setitem(sys.modules, "app.services.routing.water_router", None)
+    monkeypatch.setitem(sys.modules, "app.routing_engine.water_router", None)
 
     assert crawl.load_route_leg() is None
     assert "routing" in capsys.readouterr().out.lower()
