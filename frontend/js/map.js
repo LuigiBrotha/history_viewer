@@ -1,4 +1,4 @@
-import { positionLabel } from "./time-model.js";
+import { positionLabel, shouldFitRoute } from "./time-model.js";
 
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
@@ -11,7 +11,7 @@ export function createMap(containerId) {
   const activeBoatsLayer = L.layerGroup().addTo(map);
   const followedRouteLayer = L.layerGroup().addTo(map);
 
-  return { map, activeBoatsLayer, followedRouteLayer, fittedPatrol: null };
+  return { map, activeBoatsLayer, followedRouteLayer, fittedExternalId: null };
 }
 
 export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
@@ -56,13 +56,13 @@ export function renderFollowedRoute(mapState, patrol, currentPosition) {
     }).addTo(mapState.followedRouteLayer);
   }
 
-  if (mapState.fittedPatrol !== patrol) {
-    mapState.fittedPatrol = patrol;
+  if (shouldFitRoute(mapState.fittedExternalId, patrol)) {
+    mapState.fittedExternalId = patrol.external_id;
     mapState.map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
   }
 }
 
 export function clearFollowedRoute(mapState) {
   mapState.followedRouteLayer.clearLayers();
-  mapState.fittedPatrol = null;
+  mapState.fittedExternalId = null;
 }

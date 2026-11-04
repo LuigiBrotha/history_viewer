@@ -1,43 +1,33 @@
-import { fetchBoats, fetchRoutes } from "./api.js";
+import { fetchBoats, fetchRoutes, fetchStatus } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
 import { renderBoatList, updateDateLabel } from "./sidebar.js";
+import { mergeRoutes, statusLine, startPolling } from "./live.js";
 
-async function main() {
-  const [boats, routes] = await Promise.all([fetchBoats(), fetchRoutes()]);
+const POLL_INTERVAL_MS = 5000;
+const NO_DATED_POINTS = "Geen gedateerde routepunten beschikbaar.";
+const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
 
-  const boatsBySlug = new Map(boats.map((boat) => [boat.slug, boat]));
-
-  const routesBySlug = new Map();
-  for (const patrol of routes) {
-    if (!routesBySlug.has(patrol.boat_slug)) {
-      routesBySlug.set(patrol.boat_slug, []);
-    }
-    routesBySlug.get(patrol.boat_slug).push(patrol);
-  }
-
-  const range = dateRange(routes);
-  const labelEl = document.getElementById("boat-date-label");
-
-  if (range === null) {
-    labelEl.textContent = "Geen gedateerde routepunten beschikbaar.";
-    return;
-  }
-
-  const mapState = createMap("map");
-
+function main() {
   const sliderEl = document.getElementById("date-slider");
   const playPauseEl = document.getElementById("play-pause");
   const dateDisplayEl = document.getElementById("date-display");
+  const labelEl = document.getElementById("boat-date-label");
   const listEl = document.getElementById("boat-list");
   const followStatusEl = document.getElementById("follow-status");
+  const liveStatusEl = document.getElementById("live-status");
   const resetButton = document.getElementById("reset-follow");
   const toggleSidebarButton = document.getElementById("toggle-sidebar");
   const sidebarEl = document.getElementById("sidebar");
 
+  let routes = [];
+  let routesBySlug = new Map();
+  let boatsBySlug = new Map();
+  let mapState = null;
+  let timeline = null;
   let followedSlug = null;
-  let currentDate = range.min;
+  let currentDate = null;
 
   function render(date) {
     currentDate = date;
@@ -80,17 +70,66 @@ async function main() {
     sidebarEl.classList.toggle("collapsed");
   });
 
-  initTimeline({
-    sliderEl,
-    playPauseEl,
-    dateDisplayEl,
-    minDate: range.min,
-    maxDate: range.max,
-    onDateChange: render,
+  async function refreshBoats() {
+    try {
+      const boats = await fetchBoats();
+      boatsBySlug = new Map(boats.map((boat) => [boat.slug, boat]));
+      if (currentDate !== null) {
+        render(currentDate);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function onData(changed) {
+    routes = mergeRoutes(routes, changed);
+    routesBySlug = new Map();
+    for (const patrol of routes) {
+      if (!routesBySlug.has(patrol.boat_slug)) {
+        routesBySlug.set(patrol.boat_slug, []);
+      }
+      routesBySlug.get(patrol.boat_slug).push(patrol);
+    }
+
+    const range = dateRange(routes);
+    if (range === null) {
+      labelEl.textContent = NO_DATED_POINTS;
+    } else if (mapState === null) {
+      mapState = createMap("map");
+      currentDate = range.min;
+      timeline = initTimeline({
+        sliderEl,
+        playPauseEl,
+        dateDisplayEl,
+        minDate: range.min,
+        maxDate: range.max,
+        onDateChange: render,
+      });
+    } else {
+      timeline.setRange(range.min, range.max);
+      render(currentDate);
+    }
+
+    // New boats bring new type labels.
+    refreshBoats();
+  }
+
+  startPolling({
+    intervalMs: POLL_INTERVAL_MS,
+    fetchStatus,
+    fetchRoutes,
+    isHidden: () => document.hidden,
+    onData,
+    onStatus: (status) => {
+      liveStatusEl.textContent = statusLine(status, new Date());
+    },
+    onError: (error) => {
+      console.error(error);
+      liveStatusEl.textContent = NO_CONNECTION;
+    },
+    setTimer: (fn, ms) => setTimeout(fn, ms),
   });
 }
 
-main().catch((error) => {
-  console.error(error);
-  document.body.innerHTML = `<p style="padding: 20px; color: red;">Fout bij laden: ${error.message}</p>`;
-});
+main();

@@ -11,6 +11,7 @@ import {
   positionLabel,
   notOnPatrolMessage,
   dateRange,
+  shouldFitRoute,
 } from "../js/time-model.js";
 
 test("parseDate parses a YYYY-MM-DD string as UTC midnight", () => {
@@ -235,4 +236,17 @@ test("dateRange returns null when no route has any dated point", () => {
   const routes = [{ points: [{ sequence: 0, lat: 0, lng: 0, date: null }] }];
 
   assert.equal(dateRange(routes), null);
+});
+
+test("shouldFitRoute is false for a new object of the same patrol", () => {
+  assert.equal(shouldFitRoute("patrol_1", { external_id: "patrol_1" }), false);
+});
+
+test("shouldFitRoute is true for another patrol", () => {
+  assert.equal(shouldFitRoute("patrol_1", { external_id: "patrol_2" }), true);
+  assert.equal(shouldFitRoute(null, { external_id: "patrol_2" }), true);
+});
+
+test("shouldFitRoute is false when there is no patrol", () => {
+  assert.equal(shouldFitRoute(null, null), false);
 });

@@ -101,3 +101,7 @@ export function dateRange(routes) {
   }
   return { min: new Date(min), max: new Date(max) };
 }
+
+export function shouldFitRoute(fittedExternalId, patrol) {
+  return patrol !== null && patrol.external_id !== fittedExternalId;
+}

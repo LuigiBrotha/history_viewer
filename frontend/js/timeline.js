@@ -1,8 +1,12 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TICK_MS = 500;
 
+export function sliderValueForDate(minDate, date) {
+  return Math.round((date.getTime() - minDate.getTime()) / DAY_MS);
+}
+
 export function initTimeline({ sliderEl, playPauseEl, dateDisplayEl, minDate, maxDate, onDateChange }) {
-  const totalDays = Math.round((maxDate.getTime() - minDate.getTime()) / DAY_MS);
+  let totalDays = sliderValueForDate(minDate, maxDate);
   sliderEl.min = "0";
   sliderEl.max = String(totalDays);
   sliderEl.value = "0";
@@ -62,7 +66,23 @@ export function initTimeline({ sliderEl, playPauseEl, dateDisplayEl, minDate, ma
     }
   });
 
+  function setRange(newMin, newMax) {
+    const current = dateForValue(sliderEl.value);
+    minDate = newMin;
+    maxDate = newMax;
+    totalDays = sliderValueForDate(minDate, maxDate);
+    sliderEl.max = String(totalDays);
+    const value = sliderValueForDate(minDate, current);
+    if (value < 0 || value > totalDays) {
+      sliderEl.value = String(Math.min(Math.max(value, 0), totalDays));
+      emitDate();
+      return;
+    }
+    sliderEl.value = String(value);
+    dateDisplayEl.textContent = formatDate(current);
+  }
+
   emitDate();
 
-  return { stop };
+  return { stop, setRange };
 }
