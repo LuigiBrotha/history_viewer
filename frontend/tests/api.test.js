@@ -153,11 +153,38 @@ test("excludePoint rejects with a Dutch message on a 409", async () => {
   await assert.rejects(() => excludePoint("p1", 1), { message: "Dit is het laatste punt van deze patrouille." });
 });
 
-test("excludePoint and restorePoint use the API detail, else a fallback", async () => {
-  globalThis.fetch = async () => ({ ok: false, status: 403, json: async () => ({ detail: "Alleen lokaal" }) });
-  await assert.rejects(() => excludePoint("p1", 1), { message: "Alleen lokaal" });
+function silenceErrors(t) {
+  const logged = [];
+  t.mock.method(console, "error", (...args) => logged.push(args));
+  return logged;
+}
+
+test("a failed edit shows only a Dutch message and logs the server detail", async (t) => {
+  const logged = silenceErrors(t);
+  globalThis.fetch = async () => ({ ok: false, status: 403, json: async () => ({ detail: "Editing is only allowed from this computer" }) });
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Uitsluiten mislukt" });
+  assert.match(JSON.stringify(logged), /only allowed from this computer/);
 
   globalThis.fetch = async () => ({ ok: false, status: 500, json: async () => { throw new Error("no json"); } });
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Uitsluiten mislukt" });
+  await assert.rejects(() => restorePoint("p1", 1), { message: "Herstellen mislukt" });
+});
+
+test("a timed out edit says it may still be processed, whatever the browser calls the error", async (t) => {
+  const logged = silenceErrors(t);
+  globalThis.fetch = async () => {
+    throw new DOMException("signal timed out", "TimeoutError");
+  };
+  await assert.rejects(() => excludePoint("p1", 1), { message: "Dit duurt lang en wordt mogelijk nog verwerkt." });
+  await assert.rejects(() => restorePoint("p1", 1), { message: "Dit duurt lang en wordt mogelijk nog verwerkt." });
+  assert.equal(logged.length, 2);
+});
+
+test("a network failure while editing shows the Dutch failure string", async (t) => {
+  silenceErrors(t);
+  globalThis.fetch = async () => {
+    throw new TypeError("Failed to fetch");
+  };
   await assert.rejects(() => excludePoint("p1", 1), { message: "Uitsluiten mislukt" });
   await assert.rejects(() => restorePoint("p1", 1), { message: "Herstellen mislukt" });
 });

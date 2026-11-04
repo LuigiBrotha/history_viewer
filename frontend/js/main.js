@@ -1,4 +1,4 @@
-import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus, restorePoint } from "./api.js";
+import { EditError, canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus, restorePoint } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
 import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
@@ -145,9 +145,12 @@ function main() {
       updated = await request(patrol.external_id, point.sequence);
     } catch (error) {
       console.error(error);
-      failEdit(editState, patrol.external_id, point.sequence, error.message || failure);
+      // Only our own Dutch messages reach the user; the rest is in the console.
+      failEdit(editState, patrol.external_id, point.sequence, error instanceof EditError ? error.message : failure);
       button.disabled = false;
       button.textContent = label;
+      // A popup rebuilt while the request ran still says Bezig…: force a redraw.
+      drawnRoute = null;
       render(currentDate, false);
       return;
     }

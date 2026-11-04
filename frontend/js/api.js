@@ -41,28 +41,44 @@ export function canEdit(status) {
 }
 
 const LAST_POINT = "Dit is het laatste punt van deze patrouille.";
+const EDIT_TIMEOUT = "Dit duurt lang en wordt mogelijk nog verwerkt.";
+
+// The only errors whose message may reach the user: everything else is logged.
+export class EditError extends Error {}
 
 async function editPoint(method, externalId, sequence, failure) {
-  // The first edit may load land data, so it gets as long as a full load.
-  const response = await fetch(`api/uboats/routes/${encodeURIComponent(externalId)}/excluded-points`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sequence }),
-    signal: AbortSignal.timeout(FULL_LOAD_TIMEOUT_MS),
-  });
+  let response;
+  try {
+    // The first edit may load land data, so it gets as long as a full load.
+    response = await fetch(`api/uboats/routes/${encodeURIComponent(externalId)}/excluded-points`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sequence }),
+      signal: AbortSignal.timeout(FULL_LOAD_TIMEOUT_MS),
+    });
+  } catch (error) {
+    console.error(error);
+    throw new EditError(error?.name === "TimeoutError" ? EDIT_TIMEOUT : failure);
+  }
   if (!response.ok) {
     if (response.status === 409) {
-      throw new Error(LAST_POINT);
+      throw new EditError(LAST_POINT);
     }
     let detail = null;
     try {
       detail = (await response.json()).detail;
     } catch {
-      // No JSON body: fall back to the generic message.
+      // No JSON body: nothing more to log.
     }
-    throw new Error(typeof detail === "string" && detail ? detail : failure);
+    console.error(`${method} excluded-points failed with ${response.status}`, detail);
+    throw new EditError(failure);
   }
-  return response.json();
+  try {
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    throw new EditError(failure);
+  }
 }
 
 export function excludePoint(externalId, sequence) {
