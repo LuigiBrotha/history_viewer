@@ -3,9 +3,10 @@ import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./
 import { initAtlas } from "./atlas.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
-import { renderBoatList, updateDateLabel } from "./sidebar.js";
+import { boatsHeading, renderBoatList, updateDateLabel } from "./sidebar.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 
+const COLLAPSED_BY_DEFAULT_QUERY = "(max-width: 699px)";
 const POLL_INTERVAL_MS = 5000;
 const NO_DATED_POINTS = "Geen gedateerde routepunten beschikbaar.";
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -20,7 +21,8 @@ function main() {
   const followStatusEl = document.getElementById("follow-status");
   const liveStatusEl = document.getElementById("live-status");
   const resetButton = document.getElementById("reset-follow");
-  const toggleSidebarButton = document.getElementById("toggle-sidebar");
+  const toggleBoatsButton = document.getElementById("toggle-boats");
+  const boatsHeadingEl = document.getElementById("boats-heading");
   const sidebarEl = document.getElementById("sidebar");
 
   if (typeof L === "undefined") {
@@ -59,6 +61,7 @@ function main() {
       renderActiveBoats(mapState, active, onBoatSelect);
     }
 
+    boatsHeadingEl.textContent = boatsHeading(active.length);
     renderBoatList({ listEl, activeBoats: active, followedSlug, onBoatSelect, boatsBySlug });
   }
 
@@ -76,8 +79,16 @@ function main() {
     render(currentDate, true);
   });
 
-  toggleSidebarButton.addEventListener("click", () => {
-    sidebarEl.classList.toggle("collapsed");
+  function setBoatsCollapsed(collapsed) {
+    sidebarEl.classList.toggle("collapsed", collapsed);
+    toggleBoatsButton.setAttribute("aria-expanded", String(!collapsed));
+  }
+
+  // On a phone the list would cover the map, so it starts collapsed there.
+  setBoatsCollapsed(window.matchMedia(COLLAPSED_BY_DEFAULT_QUERY).matches);
+
+  toggleBoatsButton.addEventListener("click", () => {
+    setBoatsCollapsed(!sidebarEl.classList.contains("collapsed"));
   });
 
   async function refreshBoats() {

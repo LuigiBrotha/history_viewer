@@ -11,16 +11,21 @@
   <div id="app">
     <div id="map"></div>
 
-    <button id="toggle-sidebar" title="Zijbalk in/uitklappen">☰</button>
-
     <aside id="sidebar">
-      <h2>Actieve boten</h2>
-      <div id="live-status"></div>
-      <a id="all-routes-link" href="status">Alle routes</a>
-      <div id="boat-date-label"></div>
-      <div id="follow-status"></div>
-      <ul id="boat-list"></ul>
-      <button id="reset-follow" hidden>Terug naar volledige weergave</button>
+      <h2>
+        <button id="toggle-boats" type="button" aria-expanded="true" aria-controls="sidebar-body">
+          <span id="boats-heading">Actieve boten</span>
+          <span id="toggle-boats-icon" aria-hidden="true"></span>
+        </button>
+      </h2>
+      <div id="sidebar-body">
+        <div id="live-status"></div>
+        <a id="all-routes-link" href="status">Alle routes</a>
+        <div id="boat-date-label"></div>
+        <div id="follow-status"></div>
+        <ul id="boat-list"></ul>
+        <button id="reset-follow" hidden>Terug naar volledige weergave</button>
+      </div>
     </aside>
 
     <div id="timeline">

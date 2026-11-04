@@ -21,7 +21,7 @@ html, body {
   position: absolute;
   top: 12px;
   right: 12px;
-  width: 280px;
+  width: min(280px, calc(100vw - 24px));
   max-height: calc(100vh - 90px);
   overflow-y: auto;
   background: white;
@@ -30,11 +30,14 @@ html, body {
   box-sizing: border-box;
   z-index: 1000;
   border-radius: 6px;
-  transition: transform 0.2s ease;
 }
 
 #sidebar.collapsed {
-  transform: translateX(310px);
+  width: auto;
+}
+
+#sidebar.collapsed #sidebar-body {
+  display: none;
 }
 
 #sidebar h2 {
@@ -85,11 +88,31 @@ html, body {
   width: 100%;
 }
 
-#toggle-sidebar {
-  position: absolute;
-  top: 12px;
-  right: 300px;
-  z-index: 1001;
+#toggle-boats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+#toggle-boats-icon::after {
+  content: "▾";
+}
+
+#sidebar.collapsed #toggle-boats-icon::after {
+  content: "▸";
+}
+
+#sidebar.collapsed h2 {
+  margin: 0;
 }
 
 #timeline {

@@ -1,3 +1,7 @@
+export function boatsHeading(count) {
+  return `Actieve boten (${count})`;
+}
+
 export function renderBoatList({ listEl, activeBoats, followedSlug, onBoatSelect, boatsBySlug }) {
   listEl.innerHTML = "";
 
