@@ -1,6 +1,5 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 import uvicorn
 import wireup.integration.fastapi
@@ -8,14 +7,11 @@ from fastapi.staticfiles import StaticFiles
 from wireup.ioc.container.async_container import async_container_force_sync_scope
 
 from app.services.request_handler_registry import RequestHandlerRegistry
-from app.core.config import settings
+from app.core.config import FRONTEND_DIR, settings
 from app.core.container import container
 from app.core.database import engine
 from app.services.storage.database import init_models
 from fastapi import FastAPI
-
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:

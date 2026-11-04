@@ -20,6 +20,21 @@ The map is at <http://localhost:8000> and needs an internet connection for
 Leaflet and the map tiles. It stays empty until you have crawled some data (see
 below).
 
+## Pages and live updates
+
+- `/` is the timeline map: a date slider shows which boats were on patrol and
+  lets you follow one boat.
+- `/status` shows every crawled patrol route at once, in blue. The patrol that
+  was crawled last is drawn in red on top; hover a route for its boat and
+  patrol id. The link `Tijdlijn` goes back to the timeline.
+
+Both pages poll the API every 5 seconds (paused while the tab is hidden), so
+routes from a running crawl appear without reloading. Only changed patrols are
+fetched. A status line shows when the last patrol was crawled; if the server
+cannot be reached it shows `Geen verbinding, opnieuw proberen…` and keeps the
+data already on screen. On `/` the selected date, zoom and followed boat are
+kept across updates.
+
 ## Tests
 
 ```

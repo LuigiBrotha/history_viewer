@@ -73,3 +73,10 @@ def test_reload_server_serves_frontend_assets(reload_server):
 
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]
+
+
+def test_reload_server_serves_the_status_map_without_a_redirect(reload_server):
+    response = requests.get(f"{reload_server}/status", timeout=5, allow_redirects=False)
+
+    assert response.status_code == 200
+    assert '<div id="status-map">' in response.text
