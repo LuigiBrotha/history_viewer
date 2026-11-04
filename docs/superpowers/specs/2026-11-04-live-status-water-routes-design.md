@@ -17,7 +17,7 @@ Three phases, built and reviewed in this order. After each one the map works and
 | Polling | Every 5 seconds, skipped while the tab is hidden. Routes are fetched only when `revision` changes, then merged by `external_id`. Refetching everything at each change would be too heavy at full scale. |
 | Status line | On both pages: `47 van 1153 boten · laatste: U-99, 12 sec geleden`, plus `· 2 mislukt` when relevant. Without a total: `47 boten`. When a poll fails: `Geen verbinding, opnieuw proberen…`, keeping all data on screen. |
 | Main map | Merges new data and keeps the selected date, the followed boat and the user's zoom. The slider range grows when new dates arrive. |
-| `/status` page | Separate page at exactly `/status`, served by a route so that relative URLs still resolve to the root. Shows every patrol, in blue (`#0077cc`), with the patrol with the newest `crawled_at` in red (`#cc3300`) and on top. Fits all routes once on load and never moves on its own after that. Renders with Leaflet's canvas renderer. Tooltip: boat number and patrol. Each page links to the other. |
+| `/status` page | Separate page at exactly `/status`, served by a route so that relative URLs still resolve to the root. Mobile first. Shows every patrol in a very thin line (weight 0.75), coloured on Google's Turbo ramp by departure date, linear from the oldest (lowest value) to the newest patrol (highest value); the scale follows the data. The patrol with the newest `crawled_at` is black and on top. `Van` and `Tot` show only patrols overlapping that period, including the black one; patrols without any date only show without a period. Fits all routes once on load and never moves on its own after that. Renders with Leaflet's canvas renderer. Tooltip: boat number, patrol and dates. Each page links to the other. |
 
 During this phase, lines on `/status` are straight and can cross land. Phase 2 replaces them.
 
@@ -90,8 +90,8 @@ rather than proving them impossible. The `?` marks the leg and never implies a p
 
 **Display.** The followed route and the overview tail draw legs by the table above. The followed
 boat's route points show as small dots. A tail with an uncertain leg has no line and no label; the
-marker tooltip adds `route onzeker`. On `/status` all drawn legs are dashed, in the page's blue or
-red; suspect legs are not orange there, and uncertain legs have no label.
+marker tooltip adds `route onzeker`. On `/status` all drawn legs are dashed, in the patrol's colour;
+suspect legs are not orange there, and uncertain legs have no label.
 
 ## Phase 3: excluding a point
 

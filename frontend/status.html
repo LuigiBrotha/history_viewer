@@ -7,11 +7,25 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
-  <div id="status-header">
-    <a id="timeline-link" href="./">Tijdlijn</a>
-    <div id="live-status"></div>
-  </div>
+<body class="status-page">
+  <header id="status-header">
+    <div id="status-summary">
+      <a id="timeline-link" href="./">Tijdlijn</a>
+      <div id="live-status"></div>
+    </div>
+    <form id="period" onsubmit="return false">
+      <label>Van <input type="date" id="period-from" /></label>
+      <label>Tot <input type="date" id="period-to" /></label>
+      <button type="button" id="period-reset">Alles</button>
+    </form>
+    <div id="legend">
+      <span id="route-count"></span>
+      <span id="legend-start"></span>
+      <span id="legend-ramp"></span>
+      <span id="legend-end"></span>
+      <span id="legend-last"><span id="legend-last-swatch"></span>laatst opgehaald</span>
+    </div>
+  </header>
   <div id="status-map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

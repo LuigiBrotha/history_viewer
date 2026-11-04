@@ -133,10 +133,17 @@ html, body {
   margin-bottom: 8px;
 }
 
+.status-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
 #status-header {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 16px;
   background: #222;
   color: white;
@@ -146,13 +153,124 @@ html, body {
   color: white;
 }
 
+#status-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+#timeline-link {
+  flex-shrink: 0;
+}
+
 #status-header #live-status {
   margin: 0;
   color: #ccc;
 }
 
 #status-map {
-  height: calc(100vh - 38px);
+  flex: 1;
+  min-height: 0;
+}
+
+#period {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: end;
+}
+
+#period label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 12px;
+  color: #ccc;
+}
+
+/* 16px keeps iOS from zooming in on focus; 44px is a comfortable touch target. */
+#period input,
+#period button {
+  box-sizing: border-box;
+  min-height: 44px;
+  font-size: 16px;
+}
+
+#period input {
+  width: 100%;
+  min-width: 0;
+}
+
+#period button {
+  padding: 0 12px;
+}
+
+#legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 12px;
+  color: #ccc;
+}
+
+#route-count {
+  flex-basis: 100%;
+}
+
+#legend-ramp {
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+#legend-last {
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 4px;
+}
+
+#legend-last-swatch {
+  width: 14px;
+  height: 3px;
+  background: #000;
+  outline: 1px solid #888;
+}
+
+@media (min-width: 900px) {
+  #status-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+  }
+
+  #status-summary {
+    flex: 1;
+    min-width: 0;
+  }
+
+  #period {
+    grid-template-columns: 160px 160px auto;
+  }
+
+  #period input,
+  #period button {
+    min-height: 32px;
+    font-size: 14px;
+  }
+
+  #legend {
+    flex-wrap: nowrap;
+    width: 400px;
+    flex-shrink: 0;
+  }
+
+  #route-count {
+    flex-basis: auto;
+    white-space: nowrap;
+  }
 }
 
 /* A label for an uncertain leg; it marks the leg, never a boat position. */

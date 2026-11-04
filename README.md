@@ -24,9 +24,12 @@ below).
 
 - `/` is the timeline map: a date slider shows which boats were on patrol and
   lets you follow one boat.
-- `/status` shows every crawled patrol route at once as dashed water routes,
-  in blue. The patrol that was crawled last is drawn in red on top; hover a
-  route for its boat and patrol id. The link `Tijdlijn` goes back to the timeline.
+- `/status` shows every crawled patrol route at once as very thin dashed water
+  routes, coloured by departure date on Google's Turbo ramp from the oldest to
+  the newest patrol. The patrol that was crawled last is black and on top. Set
+  `Van` and `Tot` to see only patrols overlapping that period. Hover or tap a
+  route for its boat, patrol id and dates. The link `Tijdlijn` goes back to the
+  timeline. The page is designed mobile first.
 
 Both pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are
