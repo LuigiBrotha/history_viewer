@@ -71,6 +71,13 @@ async def crawl_boats(
                     await compute_routes_for_points(detail.route_points, session_factory, route_leg)
                 async with session_factory() as session:
                     await PatrolRepository(session).upsert_patrol(boat_id, summary, detail)
+                if route_leg is not None:
+                    # Exclusions survive the re-crawl: the legs between the visible points may be new.
+                    async with session_factory() as session:
+                        visible = (await PatrolRepository(session).get_route(summary.external_id)).points
+                    if await compute_routes_for_points(visible, session_factory, route_leg):
+                        async with session_factory() as session:
+                            await PatrolRepository(session).touch(summary.external_id)
 
             async with session_factory() as session:
                 await BoatCrawlStateRepository(session).record_success(ref.slug)

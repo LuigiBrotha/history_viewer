@@ -19,8 +19,27 @@ async def _read_points(session_factory, patrol_id):
         )).scalars().all()
 
 
-async def compute_routes_for_points(points, session_factory, route_leg, force=False, done=None, failed=None) -> int:
+def consecutive_pairs(*point_lists):
+    """Consecutive coordinate pairs of each list, without repeats, in order of first appearance."""
+    pairs: dict = {}
+    for points in point_lists:
+        coords = [(p.lat, p.lng) for p in points]
+        pairs.update(dict.fromkeys(zip(coords, coords[1:])))
+    return list(pairs)
+
+
+async def _read_visible_points(session_factory, external_id):
+    async with session_factory() as session:
+        return (await PatrolRepository(session).get_route(external_id)).points
+
+
+async def compute_routes_for_points(
+    points, session_factory, route_leg, force=False, done=None, failed=None, visible_points=None
+) -> int:
     """Compute and store the legs between consecutive points that are not stored yet.
+
+    `visible_points` are the points left after exclusions; their legs (A-C when B is
+    excluded) are computed as well, next to those of the source `points`.
 
     A failing leg is printed and skipped; it never propagates to the caller.
     `done` is an optional set of pairs already handled in this run, so that with
@@ -28,8 +47,7 @@ async def compute_routes_for_points(points, session_factory, route_leg, force=Fa
     `failed` is an optional list that collects the pairs that failed.
     Returns the number of legs computed.
     """
-    coords = [(p.lat, p.lng) for p in points]
-    pairs = list(zip(coords, coords[1:]))
+    pairs = consecutive_pairs(points, points if visible_points is None else visible_points)
     if done is not None:
         pairs = [pair for pair in pairs if pair not in done]
     try:
@@ -77,10 +95,14 @@ async def backfill(session_factory, route_leg, force=False) -> None:
         except Exception as exc:
             print(f"[{i}/{total}] {slug} {external_id}: PATROL SKIPPED, could not read points: {exc}")
             continue
-        coords = [(p.lat, p.lng) for p in points]
-        pairs = list(zip(coords, coords[1:]))
+        try:
+            visible = await _read_visible_points(session_factory, external_id)
+        except Exception as exc:
+            print(f"  VISIBLE POINTS UNREADABLE for {external_id}, using the source rows only: {exc}")
+            visible = points
+        pairs = consecutive_pairs(points, visible)
         n = await compute_routes_for_points(
-            points, session_factory, route_leg, force=force, done=done, failed=failed
+            points, session_factory, route_leg, force=force, done=done, failed=failed, visible_points=visible
         )
         print(f"[{i}/{total}] {slug} {external_id}: {n} legen berekend")
         legs_computed += n

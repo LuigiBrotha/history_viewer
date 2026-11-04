@@ -248,3 +248,58 @@ async def test_backfill_survives_a_failing_point_read_or_touch_and_reports_count
     assert "1 legen mislukt" in out
     assert "1 legen nog niet berekend" in out
     assert await _stored(session_factory, [((5.0, 6.0), (7.0, 8.0))])
+
+
+async def _exclude(session_factory, external_id, sequence):
+    async with session_factory() as session:
+        await PatrolRepository(session).exclude_point(external_id, sequence)
+
+
+async def test_backfill_computes_the_leg_across_an_excluded_point(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
+    await _seed(session_factory, a, b, c)
+    await _exclude(session_factory, "patrol_u1", 1)
+
+    await backfill(session_factory, _fake_route_leg())
+
+    assert set(await _stored(session_factory, [(a, b), (b, c), (a, c)])) == {(a, b), (b, c), (a, c)}
+
+
+async def test_backfill_counts_an_uncomputed_leg_across_an_excluded_point(tmp_path, capsys):
+    session_factory = await _session_factory(tmp_path)
+    a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
+    await _seed(session_factory, a, b, c)
+    await _exclude(session_factory, "patrol_u1", 1)
+
+    def route_leg(start, end):
+        if (start, end) == (a, c):
+            raise RuntimeError("bad shortcut")
+        return RoutedLeg("ok", [start, end], 1.0)
+
+    await backfill(session_factory, route_leg)
+
+    out = capsys.readouterr().out
+    assert "1 legen mislukt" in out
+    assert "1 legen nog niet berekend" in out
+
+    # A later run, with routing working again, fills the gap.
+    await backfill(session_factory, _fake_route_leg())
+    assert (a, c) in await _stored(session_factory, [(a, c)])
+    assert "0 legen nog niet berekend" in capsys.readouterr().out
+
+
+async def test_crawl_computes_the_leg_across_an_excluded_point_after_the_upsert(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
+    await _seed(session_factory, a, b, c)
+    await _exclude(session_factory, "patrol_u1", 1)
+
+    await crawl_boats(
+        [BoatRef(slug="u1", number="U-1")], session_factory,
+        fetch_boat=_boat, fetch_patrol_list=lambda s: [_summary(s)],
+        fetch_patrol_detail=lambda url: _detail(a, b, c),
+        route_leg=_fake_route_leg(), force=True,
+    )
+
+    assert (a, c) in await _stored(session_factory, [(a, c)])

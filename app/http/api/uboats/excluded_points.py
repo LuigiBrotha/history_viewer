@@ -67,10 +67,10 @@ class RequestHandler:
             raise HTTPException(status_code=409, detail="A route needs at least one point") from exc
 
     async def _route_after_edit(self, external_id: str) -> PatrolRouteOut:
-        async with self.session_factory() as session:
-            route = await PatrolRepository(session).get_route(external_id)
         route_leg = await load_route_leg()
         if route_leg is not None:
+            async with self.session_factory() as session:
+                route = await PatrolRepository(session).get_route(external_id)
             # Never raises for routing failures: a failed leg stays not_computed.
             added = await compute_routes_for_points(route.points, self.session_factory, route_leg)
             if added:
@@ -80,6 +80,6 @@ class RequestHandler:
                 except Exception as exc:
                     # The exclusion is committed; other pages pick the leg up on their next full load.
                     print(f"  TOUCH FAILED for {external_id}: {exc}")
-                async with self.session_factory() as session:
-                    route = await PatrolRepository(session).get_route(external_id)
-        return route
+        # Read last: loading land data and routing take seconds, in which the route may have changed.
+        async with self.session_factory() as session:
+            return await PatrolRepository(session).get_route(external_id)

@@ -320,3 +320,20 @@ async def test_a_failing_touch_does_not_fail_the_request(tmp_path, routing, monk
     assert [p.sequence for p in result.points] == [0, 2]
     assert [leg.status for leg in result.legs] == ["ok"]
     await engine.dispose()
+
+
+async def test_the_returned_route_is_read_after_the_slow_routing_work(tmp_path, monkeypatch):
+    engine, sf = await make_db(tmp_path, n_points=4)
+
+    async def slow_loader():
+        # Another edit lands while the routing engine loads; the response must include it.
+        async with sf() as session:
+            await PatrolRepository(session).exclude_point("p1", 3)
+        return None
+    monkeypatch.setattr(excluded_points, "load_route_leg", slow_loader)
+
+    result = await RequestHandler(sf).exclude(request=LOCAL, external_id="p1", body=ExcludedPointIn(sequence=1))
+
+    assert [p.sequence for p in result.points] == [0, 2]
+    assert [p.sequence for p in result.excluded_points] == [1, 3]
+    await engine.dispose()
