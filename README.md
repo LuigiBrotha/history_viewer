@@ -80,3 +80,8 @@ It skips legs that are already stored (`--force` recomputes them), bumps
 up, and prints progress plus a summary per status. Loading the land data takes
 about 5 seconds. `crawl --force` re-crawls boats but does not recompute stored
 water routes; use the backfill with `--force` for that.
+
+After upgrading to a version with water routes, run the backfill once: until then
+both maps show no route lines and the status line says how many legs are not
+computed yet. Rerun it after any crawl that was started by an older version, since
+that crawl stores patrols without routes.

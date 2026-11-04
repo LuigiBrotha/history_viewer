@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { mergeRoutes, statusLine, startPolling } from "../js/live.js";
+import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "../js/live.js";
 
 const NOW = new Date("2026-11-04T12:00:12Z");
 const last = (crawled_at = "2026-11-04T12:00:00Z") => ({
@@ -86,7 +86,7 @@ function harness({ statuses, routesResult = [], hidden = false, failStatus = fal
 const st = (revision) => ({ revision });
 
 test("poll does not fetch routes when the revision is unchanged", async () => {
-  const { opts, log } = harness({ statuses: [st("r1"), st("r1")] });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z"), st("2026-11-04T10:00:10.000Z")] });
   startPolling(opts);
   await new Promise((r) => setImmediate(r));
   await log.timers[0].fn();
@@ -96,11 +96,11 @@ test("poll does not fetch routes when the revision is unchanged", async () => {
 });
 
 test("poll fetches routes since the previous revision when it changes", async () => {
-  const { opts, log } = harness({ statuses: [st("r1"), st("r2")], routesResult: [{ external_id: "x" }] });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z"), st("2026-11-04T10:00:20.000Z")], routesResult: [{ external_id: "x" }] });
   startPolling(opts);
   await new Promise((r) => setImmediate(r));
   await log.timers[0].fn();
-  assert.deepEqual(log.routeCalls, [null, "r1"]);
+  assert.deepEqual(log.routeCalls, [null, "2026-11-04T10:00:05.000Z"]);
   assert.equal(log.data.length, 2);
   assert.equal(log.timers[0].ms, 5000);
 });
@@ -115,7 +115,7 @@ test("poll with a null previous revision fetches all routes", async () => {
 });
 
 test("poll skips the request while the tab is hidden", async () => {
-  const { opts, log } = harness({ statuses: [st("r1")], hidden: true });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z")], hidden: true });
   startPolling(opts);
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(log.routeCalls, []);
@@ -124,7 +124,7 @@ test("poll skips the request while the tab is hidden", async () => {
 });
 
 test("poll reports an error, keeps polling and does not call onData", async () => {
-  const { opts, log } = harness({ statuses: [st("r1")], failRoutes: true });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z")], failRoutes: true });
   startPolling(opts);
   await new Promise((r) => setImmediate(r));
   assert.equal(log.errors.length, 1);
@@ -143,7 +143,7 @@ test("poll reports a status failure and keeps polling", async () => {
 });
 
 test("stop prevents further polls", async () => {
-  const { opts, log } = harness({ statuses: [st("r1")] });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z")] });
   const { stop } = startPolling(opts);
   await new Promise((r) => setImmediate(r));
   stop();
@@ -153,7 +153,7 @@ test("stop prevents further polls", async () => {
 });
 
 test("an onData failure is logged, not reported as a connection error, and the revision still advances", async () => {
-  const { opts, log } = harness({ statuses: [st("r1"), st("r1")] });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z"), st("2026-11-04T10:00:10.000Z")] });
   opts.onData = () => {
     throw new Error("render broke");
   };
@@ -174,7 +174,7 @@ test("an onData failure is logged, not reported as a connection error, and the r
 });
 
 test("an onStatus failure is logged and does not count as a connection error", async () => {
-  const { opts, log } = harness({ statuses: [st("r1")] });
+  const { opts, log } = harness({ statuses: [st("2026-11-04T10:00:10.000Z")] });
   opts.onStatus = () => {
     throw new Error("status render broke");
   };
@@ -191,4 +191,39 @@ test("an onStatus failure is logged and does not count as a connection error", a
   assert.equal(logged.length, 1);
   assert.deepEqual(log.routeCalls, [null]);
   assert.equal(log.data.length, 1);
+});
+
+test("poll asks for changes since the previous revision minus 5 seconds, in ISO format", async () => {
+  const { opts, log } = harness({
+    statuses: [st("2026-11-04T10:00:10.250+00:00"), st("2026-11-04T10:00:20.000Z")],
+  });
+  startPolling(opts);
+  await new Promise((r) => setImmediate(r));
+  await log.timers[0].fn();
+  assert.deepEqual(log.routeCalls, [null, "2026-11-04T10:00:05.250Z"]);
+});
+
+test("uncomputedLegs counts the not_computed legs over all patrols", () => {
+  const routes = [
+    { legs: [{ status: "ok" }, { status: "not_computed" }] },
+    { legs: [{ status: "not_computed" }, { status: "no_route" }, { status: "not_computed" }] },
+    { legs: [] },
+    {},
+  ];
+  assert.equal(uncomputedLegs(routes), 3);
+  assert.equal(uncomputedLegs([]), 0);
+});
+
+test("statusLine appends the number of uncomputed legs at the very end", () => {
+  const status = { boats_crawled: 3, listing_total: 10, boats_failed: 2, last_patrol: last() };
+  assert.equal(
+    statusLine(status, NOW, 4),
+    "3 van 10 boten · laatste: U-99, 12 sec geleden · 2 mislukt · 4 trajecten nog niet berekend",
+  );
+  assert.equal(
+    statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 1),
+    "3 boten · 1 traject nog niet berekend",
+  );
+  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 0), "3 boten");
+  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW), "3 boten");
 });

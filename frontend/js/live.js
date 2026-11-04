@@ -17,6 +17,16 @@ export function mergeRoutes(routes, changed) {
   return merged;
 }
 
+export function uncomputedLegs(routes) {
+  let count = 0;
+  for (const route of routes) {
+    for (const leg of route.legs ?? []) {
+      if (leg.status === "not_computed") count += 1;
+    }
+  }
+  return count;
+}
+
 function ageText(crawledAt, now) {
   const seconds = Math.max(0, Math.floor((now - new Date(crawledAt)) / 1000));
   if (seconds < 60) return `${seconds} sec geleden`;
@@ -28,7 +38,7 @@ function ageText(crawledAt, now) {
   return days === 1 ? "1 dag geleden" : `${days} dagen geleden`;
 }
 
-export function statusLine(status, now) {
+export function statusLine(status, now, uncomputed = 0) {
   const progress =
     status.listing_total == null
       ? `${status.boats_crawled} boten`
@@ -40,7 +50,19 @@ export function statusLine(status, now) {
   if (status.boats_failed > 0) {
     line += ` · ${status.boats_failed} mislukt`;
   }
+  if (uncomputed > 0) {
+    line += uncomputed === 1 ? " · 1 traject nog niet berekend" : ` · ${uncomputed} trajecten nog niet berekend`;
+  }
   return line;
+}
+
+// Two writers can commit out of order, so a patrol can land just behind the revision
+// that was already seen. Asking for a margin back is safe because mergeRoutes dedupes.
+const CURSOR_MARGIN_MS = 5000;
+
+function sinceCursor(revision) {
+  if (revision == null) return null;
+  return new Date(new Date(revision).getTime() - CURSOR_MARGIN_MS).toISOString();
 }
 
 export function startPolling({
@@ -73,7 +95,7 @@ export function startPolling({
         const status = await fetchStatus();
         guarded(onStatus, status);
         if (!loaded || status.revision !== revision) {
-          const changed = await fetchRoutes(revision);
+          const changed = await fetchRoutes(sinceCursor(revision));
           // The fetch succeeded, so the cursor advances even if rendering it fails.
           loaded = true;
           revision = status.revision;

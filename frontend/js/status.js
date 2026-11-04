@@ -1,5 +1,5 @@
 import { fetchRoutes, fetchStatus } from "./api.js";
-import { statusLine, startPolling } from "./live.js";
+import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createStatusMap, updateRoutes, setLastPatrol } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -17,14 +17,28 @@ function main() {
     return;
   }
 
+  let routes = [];
+  let lastStatus = null;
+
+  function renderStatusLine() {
+    if (lastStatus !== null) {
+      liveStatusEl.textContent = statusLine(lastStatus, new Date(), uncomputedLegs(routes));
+    }
+  }
+
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
     fetchRoutes,
     isHidden: () => document.hidden,
-    onData: (changed) => updateRoutes(state, changed),
+    onData: (changed) => {
+      routes = mergeRoutes(routes, changed);
+      renderStatusLine();
+      updateRoutes(state, changed);
+    },
     onStatus: (status) => {
-      liveStatusEl.textContent = statusLine(status, new Date());
+      lastStatus = status;
+      renderStatusLine();
       setLastPatrol(state, status.last_patrol ? status.last_patrol.external_id : null);
     },
     onError: (error) => {

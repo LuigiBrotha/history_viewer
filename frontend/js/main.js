@@ -3,7 +3,7 @@ import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import { initTimeline } from "./timeline.js";
 import { renderBoatList, updateDateLabel } from "./sidebar.js";
-import { mergeRoutes, statusLine, startPolling } from "./live.js";
+import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_DATED_POINTS = "Geen gedateerde routepunten beschikbaar.";
@@ -89,8 +89,17 @@ function main() {
     }
   }
 
+  let lastStatus = null;
+
+  function renderStatusLine() {
+    if (lastStatus !== null) {
+      liveStatusEl.textContent = statusLine(lastStatus, new Date(), uncomputedLegs(routes));
+    }
+  }
+
   function onData(changed) {
     routes = mergeRoutes(routes, changed);
+    renderStatusLine();
     routesBySlug = new Map();
     for (const patrol of routes) {
       if (!routesBySlug.has(patrol.boat_slug)) {
@@ -131,7 +140,8 @@ function main() {
     isHidden: () => document.hidden,
     onData,
     onStatus: (status) => {
-      liveStatusEl.textContent = statusLine(status, new Date());
+      lastStatus = status;
+      renderStatusLine();
     },
     onError: (error) => {
       console.error(error);
