@@ -104,3 +104,23 @@ After upgrading to a version with water routes, run the backfill once: until the
 both maps show no route lines and the status line says how many legs are not
 computed yet. Rerun it after any crawl that was started by an older version, since
 that crawl stores patrols without routes.
+
+## Crawling ships hit
+
+The ships each boat sank, damaged or captured are fetched by a second standalone
+command, because their positions are only on the page of each ship:
+
+```
+poetry run python -m app.crawl_ships [--limit N] [--slugs u99,u100] [--force] [--delay N]
+```
+
+- Without `--slugs` it uses the boats in the database.
+- It reads each boat's list of successes (one request per boat) and stores the
+  hits at once, so they show on the maps before their positions are known. Then it
+  fetches the page of every hit without a position (one request per ship).
+- `--limit N` — fetch the position of at most N ships in this run, for a small sample.
+- `--force` — fetch positions again, also for ships whose page has no position
+  (those are otherwise not retried; ships that failed on the network always are).
+- Requests are made one at a time with the same delay as the main crawl (10 s by
+  default), so a boat with 40 ships takes about 7 minutes. Stopping loses at most
+  the ship in flight; run it again to continue.

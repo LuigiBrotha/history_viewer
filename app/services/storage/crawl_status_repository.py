@@ -3,7 +3,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.export.uboats import CrawlStatusOut, LastPatrolOut
-from app.services.storage.models import Boat, BoatCrawlState, CrawlProgress, Patrol
+from app.services.storage.models import Boat, BoatCrawlState, CrawlProgress, Patrol, ShipHit
 
 
 class CrawlStatusRepository:
@@ -21,7 +21,11 @@ class CrawlStatusRepository:
         boats_crawled = await self._count_boats("success")
         boats_failed = await self._count_boats("failed")
         patrol_count = await self._session.scalar(select(func.count()).select_from(Patrol))
-        revision = await self._session.scalar(select(func.max(Patrol.updated_at)))
+        revisions = [
+            await self._session.scalar(select(func.max(Patrol.updated_at))),
+            await self._session.scalar(select(func.max(ShipHit.updated_at))),
+        ]
+        revision = max((r for r in revisions if r is not None), default=None)
 
         last_row = (await self._session.execute(
             select(Boat.slug, Boat.number, Patrol.external_id, Patrol.crawled_at)

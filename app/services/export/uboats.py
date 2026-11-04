@@ -84,3 +84,19 @@ class CrawlStatusOut:
     patrol_count: int
     revision: datetime | None
     last_patrol: LastPatrolOut | None
+
+
+@dataclass(frozen=True)
+class ShipHitOut:
+    ship_external_id: str
+    boat_slug: str
+    boat_number: str
+    name: str
+    date: date
+    tons: int
+    nationality: str | None
+    convoy: str | None
+    outcome: str
+    lat: float | None
+    lng: float | None
+    updated_at: datetime

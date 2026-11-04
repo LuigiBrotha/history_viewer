@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -111,3 +111,25 @@ class WaterRoute(Base):
     status: Mapped[str] = mapped_column(String, nullable=False)
     path: Mapped[str | None] = mapped_column(Text, nullable=True)
     length_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class ShipHit(Base):
+    __tablename__ = "ship_hits"
+    __table_args__ = (
+        UniqueConstraint("ship_external_id", "boat_slug", "date", name="uq_ship_hits_ship_boat_date"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ship_external_id: Mapped[str] = mapped_column(String, nullable=False)
+    boat_slug: Mapped[str] = mapped_column(String, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    tons: Mapped[int] = mapped_column(Integer, nullable=False)
+    nationality: Mapped[str | None] = mapped_column(String, nullable=True)
+    convoy: Mapped[str | None] = mapped_column(String, nullable=True)
+    outcome: Mapped[str] = mapped_column(String, nullable=False)
+    detail_url: Mapped[str] = mapped_column(String, nullable=False)
+    lat: Mapped[float | None] = mapped_column(Float, nullable=True)
+    lng: Mapped[float | None] = mapped_column(Float, nullable=True)
+    position_checked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
