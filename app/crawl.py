@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 
+from app.compute_water_routes import compute_routes_for_points
 from app.core.config import settings
 from app.services.scraping.uboat_net.boat import fetch_boat
 from app.services.scraping.uboat_net.http_client import PoliteHttpClient, build_user_agent
@@ -41,7 +42,9 @@ async def select_boats_to_crawl(boat_refs, session_factory, limit=None, force=Fa
     return selected
 
 
-async def crawl_boats(boat_refs, session_factory, fetch_boat, fetch_patrol_list, fetch_patrol_detail, force=False):
+async def crawl_boats(
+    boat_refs, session_factory, fetch_boat, fetch_patrol_list, fetch_patrol_detail, force=False, route_leg=None
+):
     succeeded = 0
     failed = 0
     total = len(boat_refs)
@@ -63,6 +66,8 @@ async def crawl_boats(boat_refs, session_factory, fetch_boat, fetch_patrol_list,
             summaries = await asyncio.to_thread(fetch_patrol_list, ref.slug)
             for summary in summaries:
                 detail = await asyncio.to_thread(fetch_patrol_detail, summary.detail_url)
+                if route_leg is not None:
+                    await compute_routes_for_points(detail.route_points, session_factory, route_leg)
                 async with session_factory() as session:
                     await PatrolRepository(session).upsert_patrol(boat_id, summary, detail)
 
@@ -95,6 +100,8 @@ async def main(argv=None) -> None:
     await init_models(engine)
     session_factory = create_session_factory(engine)
 
+    from app.services.routing import water_router  # imports numpy/shapely; load land only when first routing
+
     client = PoliteHttpClient(delay_seconds=delay, user_agent=build_user_agent(settings.CRAWLER_CONTACT))
 
     boat_refs = fetch_listing(client)
@@ -115,6 +122,7 @@ async def main(argv=None) -> None:
         fetch_patrol_list=lambda slug: fetch_patrol_list(client, slug),
         fetch_patrol_detail=lambda url: fetch_patrol_detail(client, url),
         force=args.force,
+        route_leg=water_router.route_leg,
     )
 
     await engine.dispose()

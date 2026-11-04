@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,6 +64,16 @@ class PatrolRepository:
                 lng=point.lng,
                 date=point.date,
             ))
+        await self._session.commit()
+
+    async def touch(self, external_id: str) -> None:
+        """Mark a patrol as changed so pollers refetch it; crawled_at is left alone."""
+        # Taken right before the write: the revision cursor uses max(updated_at),
+        # and an earlier timestamp could fall behind a poll that already happened.
+        now = datetime.now(timezone.utc)
+        await self._session.execute(
+            update(Patrol).where(Patrol.external_id == external_id).values(updated_at=now)
+        )
         await self._session.commit()
 
     async def list_routes(self, since: datetime | None = None) -> list[PatrolRouteOut]:

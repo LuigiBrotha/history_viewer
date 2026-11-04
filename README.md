@@ -65,3 +65,17 @@ poetry run python -m app.crawl [--limit N] [--slugs u99,u100] [--force] [--delay
 With no flags, it crawls the full listing (~1153 boats), which at the
 10-second-minimum crawl delay takes on the order of hours. Progress and any
 per-boat failures are printed to stdout as the crawl runs.
+
+The crawl also computes the shortest water route between consecutive route
+points of each patrol (stored before the patrol appears). A routing failure is
+printed and never fails the crawl. To fill in routes for patrols that are
+already crawled:
+
+```bash
+poetry run python -m app.compute_water_routes [--force]
+```
+
+It skips legs that are already stored (`--force` recomputes them), bumps
+`updated_at` of each patrol that got new legs so the status page picks them
+up, and prints progress plus a summary per status. Loading the land data takes
+about 5 seconds.
