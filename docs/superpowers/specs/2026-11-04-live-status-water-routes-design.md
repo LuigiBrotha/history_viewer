@@ -104,7 +104,7 @@ red; suspect legs are not orange there, and uncertain legs have no label.
 | Reading | `points` and `legs` skip excluded points, so markers, timeline and tails simply follow. Excluded points are listed in `excluded_points`. |
 | New leg | Excluding B from A-B-C computes A-C immediately on a worker thread, loading land data lazily on first use (about 5 s). If routing fails the exclusion still succeeds and the leg is `not_computed`. |
 | UI | Click a dot of the followed route for a popup with `Punt uitsluiten`. The sidebar lists `Uitgesloten punten` for the shown patrol, each with `Herstellen`. No confirmation dialog, because it is reversible. |
-| Network | This is the first write endpoint and has no login. `python -m app.main` therefore binds to `127.0.0.1`, not `0.0.0.0`. |
+| Network | The app may run on the local network (`--host 0.0.0.0`) to be viewed from a phone, without a login, and is read-only there. `POST` and `DELETE` on excluded points return 403 unless the client address is loopback (`127.0.0.1` or `::1`). `GET /api/uboats/status` gains `can_edit`, true only for a loopback client, and the UI hides `Punt uitsluiten`, `Herstellen` when it is false, while still listing excluded points. `python -m app.main` binds to `127.0.0.1` by default. |
 
 ## Phase 4: ships hit by U-boats
 

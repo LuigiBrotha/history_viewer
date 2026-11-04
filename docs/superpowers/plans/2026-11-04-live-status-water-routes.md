@@ -564,6 +564,10 @@ async def test_unknown_sequence_returns_404(tmp_path): ...
 async def test_excluding_the_last_point_returns_409(tmp_path): ...
 async def test_restoring_returns_the_point_to_the_route(tmp_path): ...
 def test_main_binds_to_loopback(): ...   # uvicorn.run host in app/main.py is 127.0.0.1
+async def test_excluding_from_a_network_client_returns_403(tmp_path): ...    # client host 192.168.2.20
+async def test_restoring_from_a_network_client_returns_403(tmp_path): ...
+async def test_loopback_clients_may_edit_including_ipv6(tmp_path): ...       # 127.0.0.1 and ::1
+async def test_status_reports_can_edit_only_for_a_loopback_client(tmp_path): ...
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -573,7 +577,7 @@ Expected: FAIL because the handler does not exist.
 
 - [ ] **Step 3: Implement**
 
-Route through `asyncio.to_thread`, so the 5-second land load never blocks other requests. Restoring also computes any legs that are missing.
+Route through `asyncio.to_thread`, so the 5-second land load never blocks other requests. Restoring also computes any legs that are missing. Check `request.client.host` before doing anything, and add `can_edit` to the status response from the same check. Document the network command, `poetry run uvicorn app.main:app --host 0.0.0.0 --port 8001`, in the README, including that it is read-only.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -595,7 +599,7 @@ git commit -m "Add an API to exclude and restore route points"
 
 **Interfaces:**
 - Consumes: the exclusion API, `mergeRoutes`
-- Produces: `excludePoint(externalId, sequence)`, `restorePoint(externalId, sequence)`; `renderExcludedPoints({ listEl, patrol, onRestore })`
+- Produces: `excludePoint(externalId, sequence)`, `restorePoint(externalId, sequence)`, `canEdit(status) -> boolean`; `renderExcludedPoints({ listEl, patrol, onRestore })`, with `onRestore` null when editing is not allowed
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -603,6 +607,7 @@ git commit -m "Add an API to exclude and restore route points"
 test("excludePoint posts the sequence as JSON and returns the patrol", ...);
 test("restorePoint sends DELETE with the sequence as JSON", ...);
 test("excludePoint rejects with a message on a 409", ...);
+test("canEdit is false unless the status says so", ...);
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -612,7 +617,7 @@ Expected: FAIL on missing exports.
 
 - [ ] **Step 3: Implement**
 
-Clicking a followed route dot opens a popup with `Punt uitsluiten`. Merge the returned patrol with `mergeRoutes` and render without moving the map; keep the button disabled while a request runs, since the first can take about 5 seconds. Show API errors in `#follow-status`. Add **Uitgesloten punt** to `CONTEXT.md`, and describe the feature in the README.
+Clicking a followed route dot opens a popup with `Punt uitsluiten`. When `status.can_edit` is false, show no popup button and no `Herstellen`, but keep listing excluded points. Merge the returned patrol with `mergeRoutes` and render without moving the map; keep the button disabled while a request runs, since the first can take about 5 seconds. Show API errors in `#follow-status`. Add **Uitgesloten punt** to `CONTEXT.md`, and describe the feature in the README.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
