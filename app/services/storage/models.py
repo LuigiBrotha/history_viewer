@@ -138,10 +138,12 @@ class ShipHit(Base):
 class ExcludedRoutePoint(Base):
     """A route point a user hid. Keyed on position, not sequence or date, so it survives a re-crawl.
 
-    One row hides every source row of the patrol at those coordinates."""
+    `occurrence` is the 0-based ordinal, by sequence, among the patrol's rows with the same
+    coordinates, so a twin elsewhere on the route stays visible."""
 
     __tablename__ = "excluded_route_points"
 
     external_id: Mapped[str] = mapped_column(String, primary_key=True)
     lat: Mapped[float] = mapped_column(Float, primary_key=True)
     lng: Mapped[float] = mapped_column(Float, primary_key=True)
+    occurrence: Mapped[int] = mapped_column(Integer, primary_key=True)

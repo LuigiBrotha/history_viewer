@@ -480,7 +480,7 @@ def _duplicate_points():
     ]
 
 
-async def test_one_exclusion_covers_every_row_with_the_same_coordinates(tmp_path):
+async def test_excluding_one_of_two_twins_keeps_the_other(tmp_path):
     factory = await _session_factory(tmp_path)
     async with factory() as session:
         boat_id = await _seed_boat(session)
@@ -488,15 +488,62 @@ async def test_one_exclusion_covers_every_row_with_the_same_coordinates(tmp_path
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
         await repo.exclude_point("patrol_4754", 2)
         excluded = await repo.list_routes()
+    assert [p.sequence for p in excluded[0].points] == [1, 3]
+    assert [p.sequence for p in excluded[0].excluded_points] == [2]
+
+
+async def test_excluding_the_first_home_port_point_keeps_the_last(tmp_path):
+    home = [
+        RoutePointData(sequence=1, lat=54.0, lng=10.0, date=date(1940, 6, 18)),
+        RoutePointData(sequence=2, lat=56.0, lng=5.0, date=date(1940, 6, 19)),
+        RoutePointData(sequence=3, lat=54.0, lng=10.0, date=date(1940, 6, 25)),
+    ]
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(home))
+        await repo.exclude_point("patrol_4754", 1)
+        routes = await repo.list_routes()
+    assert [p.sequence for p in routes[0].points] == [2, 3]
+    assert [p.sequence for p in routes[0].excluded_points] == [1]
+
+
+async def test_restoring_one_twin_leaves_the_other_excluded(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
+        await repo.exclude_point("patrol_4754", 2)
+        await repo.exclude_point("patrol_4754", 3)
+        both = await repo.list_routes()
         await repo.restore_point("patrol_4754", 3)
         restored = await repo.list_routes()
-    assert [p.sequence for p in excluded[0].points] == [1]
-    assert [p.sequence for p in excluded[0].excluded_points] == [2, 3]
-    assert [p.sequence for p in restored[0].points] == [1, 2, 3]
-    assert restored[0].excluded_points == []
+    assert [p.sequence for p in both[0].points] == [1]
+    assert [p.sequence for p in restored[0].points] == [1, 3]
+    assert [p.sequence for p in restored[0].excluded_points] == [2]
 
 
-async def test_last_point_error_counts_rows_not_exclusions(tmp_path):
+async def test_a_twin_exclusion_survives_a_recrawl_with_shifted_sequences(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        boat_id = await _seed_boat(session)
+        repo = PatrolRepository(session)
+        await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
+        await repo.exclude_point("patrol_4754", 3)
+        recrawled = [
+            RoutePointData(sequence=10, lat=50.0, lng=-5.0, date=None),
+            RoutePointData(sequence=11, lat=51.0, lng=-4.0, date=None),
+            RoutePointData(sequence=12, lat=51.0, lng=-4.0, date=None),
+        ]
+        await repo.upsert_patrol(boat_id, _summary(), _detail(recrawled))
+        routes = await repo.list_routes()
+    assert [p.sequence for p in routes[0].points] == [10, 11]
+    assert [p.sequence for p in routes[0].excluded_points] == [12]
+
+
+async def test_last_point_error_counts_visible_rows(tmp_path):
     from app.services.storage.patrol_repository import LastPointError
 
     factory = await _session_factory(tmp_path)
@@ -505,11 +552,11 @@ async def test_last_point_error_counts_rows_not_exclusions(tmp_path):
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
         await repo.exclude_point("patrol_4754", 1)
-        # Rows 2 and 3 share coordinates: excluding them would hide every row.
+        await repo.exclude_point("patrol_4754", 2)
         with pytest.raises(LastPointError):
-            await repo.exclude_point("patrol_4754", 2)
+            await repo.exclude_point("patrol_4754", 3)
         routes = await repo.list_routes()
-    assert [p.sequence for p in routes[0].points] == [2, 3]
+    assert [p.sequence for p in routes[0].points] == [3]
 
 
 async def test_excluding_twice_is_idempotent(tmp_path):

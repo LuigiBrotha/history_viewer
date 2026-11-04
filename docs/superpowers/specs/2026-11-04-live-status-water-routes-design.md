@@ -99,7 +99,7 @@ suspect legs are not orange there, and uncertain legs have no label.
 
 | Topic | Decision |
 |---|---|
-| Storage | `excluded_route_points`, keyed on `(external_id, lat, lng)`. Keyed by position rather than sequence or date, so exclusions survive a re-crawl, including one that changes a stored date to NULL. One exclusion covers every row of the patrol with those coordinates; the last-point check still counts rows. Source data stays untouched. |
+| Storage | `excluded_route_points`, keyed on `(external_id, lat, lng, occurrence)`, where `occurrence` is the 0-based ordinal, by sequence, among the patrol's rows with those coordinates. Keyed by position rather than sequence or date, so exclusions survive a re-crawl, including one that changes a stored date to NULL or shifts sequences. An exclusion hides only the clicked row, never a twin elsewhere on the route (a home port is often both first and last); the last-point check counts visible rows. Source data stays untouched. |
 | API | `POST /api/uboats/routes/{external_id}/excluded-points` and `DELETE` on the same path, both with JSON body `{"sequence": n}`. Both return the updated patrol and bump `updated_at`. 404 for an unknown patrol or sequence. 409 when excluding would leave no point. |
 | Reading | `points` and `legs` skip excluded points, so markers, timeline and tails simply follow. Excluded points are listed in `excluded_points`. |
 | New leg | Excluding B from A-B-C computes A-C immediately on a worker thread, loading land data lazily on first use (about 5 s). If routing fails the exclusion still succeeds and the leg is `not_computed`. |
