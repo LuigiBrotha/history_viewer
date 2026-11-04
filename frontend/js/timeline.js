@@ -5,7 +5,7 @@ export function sliderValueForDate(minDate, date) {
   return Math.round((date.getTime() - minDate.getTime()) / DAY_MS);
 }
 
-export function initTimeline({ sliderEl, playPauseEl, dateDisplayEl, minDate, maxDate, onDateChange }) {
+export function initTimeline({ sliderEl, playPauseEl, stepBackEl, stepForwardEl, dateDisplayEl, minDate, maxDate, onDateChange }) {
   let totalDays = sliderValueForDate(minDate, maxDate);
   sliderEl.min = "0";
   sliderEl.max = String(totalDays);
@@ -65,6 +65,21 @@ export function initTimeline({ sliderEl, playPauseEl, dateDisplayEl, minDate, ma
       play();
     }
   });
+
+  // On a phone one pixel of slider is several days; these reach every single day.
+  function step(days) {
+    if (playing) {
+      stop();
+    }
+    const next = Math.min(Math.max(Number(sliderEl.value) + days, 0), totalDays);
+    if (next !== Number(sliderEl.value)) {
+      sliderEl.value = String(next);
+      emitDate();
+    }
+  }
+
+  stepBackEl?.addEventListener("click", () => step(-1));
+  stepForwardEl?.addEventListener("click", () => step(1));
 
   function setRange(newMin, newMax) {
     const current = dateForValue(sliderEl.value);

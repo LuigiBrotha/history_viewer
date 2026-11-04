@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
 import { boatColor } from "../js/boat-color.js";
-import { pointPopup, renderActiveBoats, renderFollowedRoute } from "../js/map.js";
+import { dotRadius, pointPopup, renderActiveBoats, renderFollowedRoute } from "../js/map.js";
 import { installFakeDom } from "./fake-dom.js";
 
 function setup() {
@@ -407,4 +407,9 @@ test("a read-only current-position popup shows only the date", () => {
   const box = markers[markers.length - 1].popups[0].content();
   assert.equal(box.children.length, 1);
   assert.equal(box.children[0].textContent, "1940-06-18");
+});
+
+test("route dots are larger for a finger than for a mouse", () => {
+  assert.ok(dotRadius(true) > dotRadius(false));
+  assert.equal(dotRadius(false), 3);
 });

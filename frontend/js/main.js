@@ -233,6 +233,8 @@ function main() {
       timeline = initTimeline({
         sliderEl,
         playPauseEl,
+    stepBackEl: document.getElementById("step-back"),
+    stepForwardEl: document.getElementById("step-forward"),
         dateDisplayEl,
         minDate: range.min,
         maxDate: range.max,

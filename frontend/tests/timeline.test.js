@@ -82,3 +82,52 @@ test("initTimeline still returns the timeline when the first render throws", () 
   assert.equal(typeof timeline.setRange, "function");
   timeline.setRange(new Date(Date.UTC(1940, 5, 1)), new Date(Date.UTC(1940, 6, 5)));
 });
+
+function fakeButton() {
+  const listeners = {};
+  return {
+    textContent: "",
+    addEventListener(name, listener) {
+      listeners[name] = listener;
+    },
+    click() {
+      listeners.click();
+    },
+  };
+}
+
+function steppingTimeline() {
+  const slider = { value: "0", addEventListener() {} };
+  const back = fakeButton();
+  const forward = fakeButton();
+  const dates = [];
+  initTimeline({
+    sliderEl: slider,
+    playPauseEl: fakeButton(),
+    stepBackEl: back,
+    stepForwardEl: forward,
+    dateDisplayEl: {},
+    minDate: new Date(Date.UTC(1940, 0, 1)),
+    maxDate: new Date(Date.UTC(1940, 0, 3)),
+    onDateChange: (date) => dates.push(date.toISOString().slice(0, 10)),
+  });
+  return { slider, back, forward, dates };
+}
+
+test("the step buttons move one day, since a phone's slider jumps many days per pixel", () => {
+  const { forward, back, dates } = steppingTimeline();
+  forward.click();
+  assert.equal(dates.at(-1), "1940-01-02");
+  back.click();
+  assert.equal(dates.at(-1), "1940-01-01");
+});
+
+test("the step buttons stop at both ends of the range", () => {
+  const { forward, back, slider } = steppingTimeline();
+  back.click();
+  assert.equal(slider.value, "0");
+  forward.click();
+  forward.click();
+  forward.click();
+  assert.equal(slider.value, "2");
+});

@@ -19,6 +19,14 @@ export function createMap(containerId) {
   return { map, activeBoatsLayer, followedRouteLayer, fittedExternalId: null };
 }
 
+const MOUSE_DOT_RADIUS = 3;
+const FINGER_DOT_RADIUS = 7;
+const COARSE_POINTER = () => globalThis.matchMedia?.("(pointer: coarse)").matches ?? false;
+
+export function dotRadius(coarsePointer) {
+  return coarsePointer ? FINGER_DOT_RADIUS : MOUSE_DOT_RADIUS;
+}
+
 // A hollow marker: the position is known, but its date is an approximation.
 const APPROXIMATE_FILL = 0.2;
 
@@ -131,7 +139,7 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
 
   for (const point of patrol.points) {
     const dot = L.circleMarker([point.lat, point.lng], {
-      radius: 3,
+      radius: dotRadius(COARSE_POINTER()),
       color,
       fillColor: color,
       fillOpacity: 1,

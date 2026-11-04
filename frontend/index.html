@@ -32,10 +32,15 @@
     </aside>
 
     <div id="timeline">
-      <button id="play-pause">▶</button>
-      <input type="range" id="date-slider" min="0" max="0" value="0" step="1" />
-      <span id="date-display"></span>
+      <input type="range" id="date-slider" min="0" max="0" value="0" step="1" aria-label="Datum" />
+      <div id="timeline-controls">
+        <button id="play-pause" type="button" aria-label="Afspelen of pauzeren">▶</button>
+        <button id="step-back" type="button" aria-label="Een dag terug">‹</button>
+        <span id="date-display"></span>
+        <button id="step-forward" type="button" aria-label="Een dag vooruit">›</button>
+      </div>
     </div>
+  </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

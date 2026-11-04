@@ -37,7 +37,7 @@ Keep `--no-proxy-headers`; requests carrying `X-Forwarded-For`, `Forwarded` or `
 ## Pages and live updates
 
 - `/` is the timeline map: a date slider shows which boats were on patrol and
-  lets you follow one boat.
+  lets you follow one boat. It is designed mobile first; `‹` and `›` step one day.
 - `/status` shows every crawled patrol route at once as very thin dashed water
   routes, coloured by departure date on Google's Turbo ramp from the oldest to
   the newest patrol of the selected period. The patrol that was crawled last is black and on top. Drag
