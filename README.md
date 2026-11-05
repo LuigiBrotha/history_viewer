@@ -84,6 +84,8 @@ situation per month, not exact borders.
 
 On the first load a large indicator in the middle of the page shows the percentage of
 patrols received, reading them page by page.
+The server keeps all routes as ready JSON and only rebuilds patrols that changed; it
+fills this in the background when it starts.
 
 All pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are

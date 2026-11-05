@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,7 @@ from app.core.config import FRONTEND_DIR, settings
 from app.core.container import container
 from app.core.database import engine
 from app.services.storage.database import init_models
+from app.services.storage.route_cache import RouteCache
 from fastapi import FastAPI
 
 
@@ -39,7 +41,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # A mount at "/" matches every path, so it must follow the API routes. Wireup registers
     # class-based handlers during its own lifespan, which runs before this one.
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    # Filled in the background, so that the first visitor need not wait for it.
+    with async_container_force_sync_scope(container) as scope:
+        warming = asyncio.create_task(scope.get(RouteCache).refresh())
     yield
+    warming.cancel()
     await engine.dispose()
 
 

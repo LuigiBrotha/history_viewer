@@ -244,6 +244,7 @@ class PatrolRepository:
                 boat_slug=boat_slug,
                 boat_number=boat_number,
                 external_id=patrol.external_id,
+                patrol_number=patrol.patrol_number,
                 departure_date=patrol.departure_date,
                 arrival_date=patrol.arrival_date,
                 # Legs use the source dates: speed must never be judged on an approximation.

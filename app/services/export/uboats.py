@@ -67,6 +67,7 @@ class PatrolRouteOut:
     external_id: str
     departure_date: date | None
     arrival_date: date | None
+    patrol_number: int = 0
     points: list[RoutePointOut] = field(default_factory=list)
     legs: list[LegOut] = field(default_factory=list)
     excluded_points: list[RoutePointOut] = field(default_factory=list)

@@ -2,7 +2,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import update
 
+import json
+
 from app.http.api.uboats.routes import RequestHandler
+from app.services.storage.route_cache import RouteCache
 from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
@@ -30,11 +33,12 @@ async def test_handle_request_returns_patrol_routes(tmp_path):
         detail = PatrolDetail(description=None, route_points=[RoutePointData(0, 54.3667, 10.1667, None)])
         await PatrolRepository(session).upsert_patrol(boat_id, summary, detail)
 
-    result = await RequestHandler(session_factory).handle_request()
+    response = await RequestHandler(session_factory, RouteCache(session_factory)).handle_request()
+    result = json.loads(response.body)
 
     assert len(result) == 1
-    assert result[0].boat_slug == "u99"
-    assert len(result[0].points) == 1
+    assert result[0]["boat_slug"] == "u99"
+    assert len(result[0]["points"]) == 1
 
     await engine.dispose()
 
@@ -62,8 +66,9 @@ async def test_handle_request_since_filters_to_changed_patrols(tmp_path):
             await session.execute(update(Patrol).where(Patrol.external_id == external_id).values(updated_at=stamp))
         await session.commit()
 
-    result = await RequestHandler(session_factory).handle_request(since=cursor)
+    response = await RequestHandler(session_factory, RouteCache(session_factory)).handle_request(since=cursor)
+    result = json.loads(response.body)
 
-    assert [r.external_id for r in result] == ["new"]
+    assert [r["external_id"] for r in result] == ["new"]
 
     await engine.dispose()
