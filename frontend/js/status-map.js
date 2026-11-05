@@ -1,3 +1,4 @@
+import { addBaseMaps } from "./base-maps.js";
 import { turboColor } from "./color-ramp.js";
 import { datedPoints, legStyle } from "./time-model.js";
 
@@ -106,10 +107,7 @@ export function newStatusState(map, layer) {
 export function createStatusMap(containerId) {
   const map = L.map(containerId, { renderer: L.canvas({ tolerance: HIT_TOLERANCE_PX }) }).setView([54.5, 8.0], 5);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 12,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
+  addBaseMaps(map);
 
   return newStatusState(map, L.featureGroup().addTo(map));
 }

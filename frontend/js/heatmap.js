@@ -1,3 +1,4 @@
+import { addBaseMaps } from "./base-maps.js";
 import { fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
@@ -40,10 +41,7 @@ function main() {
   }
 
   const map = L.map("status-map").setView([54.5, 8.0], 3);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 12,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
+  addBaseMaps(map);
   map.createPane(PANE);
   map.getPane(PANE).style.zIndex = PANE_Z_INDEX;
   map.getPane(PANE).style.pointerEvents = "none";

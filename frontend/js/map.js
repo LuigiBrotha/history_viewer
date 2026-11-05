@@ -1,3 +1,4 @@
+import { addBaseMaps } from "./base-maps.js";
 import { boatColor } from "./boat-color.js";
 import { reopenPoint } from "./edit-state.js";
 import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from "./time-model.js";
@@ -8,10 +9,7 @@ const ROUTE_UNCERTAIN = " — route onzeker";
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 12,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
+  addBaseMaps(map);
 
   const activeBoatsLayer = L.layerGroup().addTo(map);
   const followedRouteLayer = L.layerGroup().addTo(map);
