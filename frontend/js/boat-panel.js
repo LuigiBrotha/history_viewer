@@ -74,6 +74,10 @@ function coordinate(value, positive, negative) {
 }
 
 // What is known of a hit; `details` is the ship's page, or null while it is missing.
+export function hitSummary(ship) {
+  return `${dutchNumber(ship.tons)} ton · ${OUTCOME_TEXT[ship.outcome]} op ${ship.date}`;
+}
+
 export function shipFacts(ship, details) {
   const d = details ?? {};
   const position =
@@ -166,12 +170,12 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
       const { title, lines } = patrolLines(patrol);
       const section = element("section", undefined, "boat-panel-patrol");
       section.append(element("h4", title));
-      for (const line of lines) {
-        section.append(element("p", line));
-      }
       if (patrol.description) {
+        section.append(element("p", patrol.description));
+      }
+      if (lines.length > 0) {
         const details = element("details");
-        details.append(element("summary", "Beschrijving"), element("p", patrol.description));
+        details.append(element("summary", "Gegevens"), ...lines.map((line) => element("p", line)));
         section.append(details);
       }
       if (onShowPatrol !== null && patrol.departure_date) {
@@ -227,24 +231,28 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   // `more` is what the ship's own page adds: its details and the other hits, a message
   // when they are missing or could not be loaded, nothing while they are still coming.
   function renderShip(ship, more, scrollToTop) {
-    const nodes = [element("h2", ship.name)];
-    const facts = element("dl");
-    for (const [label, value] of shipFacts(ship, more?.details ?? null)) {
-      facts.append(element("dt", label), element("dd", value));
+    const nodes = [element("h2", ship.name), element("p", hitSummary(ship), "boat-panel-summary")];
+
+    if (more?.details?.notes) {
+      nodes.push(element("h3", "Wat er gebeurde"), element("p", more.details.notes));
     }
-    nodes.push(facts);
+    if (more?.message) {
+      nodes.push(element("p", more.message));
+    }
 
     const by = element("button", hitBy(ship), "boat-panel-ship");
     by.type = "button";
     by.addEventListener("click", () => open(ship.boat_slug));
     nodes.push(by);
 
-    if (more?.message) {
-      nodes.push(element("p", more.message));
+    const facts = element("dl");
+    for (const [label, value] of shipFacts(ship, more?.details ?? null)) {
+      facts.append(element("dt", label), element("dd", value));
     }
-    if (more?.details?.notes) {
-      nodes.push(element("h3", "Wat er gebeurde"), element("p", more.details.notes));
-    }
+    const factsBox = element("details");
+    factsBox.append(element("summary", "Gegevens"), facts);
+    nodes.push(factsBox);
+
     const others = otherHits(ship, more?.hits ?? []);
     if (others.length > 0) {
       nodes.push(element("h3", "Ook getroffen"));

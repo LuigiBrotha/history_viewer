@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { boatFacts, boatSummary, patrolLines, boatShips, shipLine, shipFacts, hitLine, otherHits, hitBy, sourceUrl } from "../js/boat-panel.js";
+import { boatFacts, boatSummary, patrolLines, boatShips, shipLine, shipFacts, hitLine, otherHits, hitBy, sourceUrl, hitSummary } from "../js/boat-panel.js";
 
 const boat = {
   slug: "u99",
@@ -168,4 +168,11 @@ test("hitLine names date, boat and outcome", () => {
 test("hitBy names the boat and sourceUrl points at the ship's page", () => {
   assert.equal(hitBy(hit), "Getroffen door U-99");
   assert.equal(sourceUrl("408"), "https://uboat.net/allies/merchants/ship/408.html");
+});
+
+test("hitSummary says what happened to the ship and when", () => {
+  assert.equal(
+    hitSummary({ tons: 2053, outcome: "damaged", date: "1940-07-05" }),
+    "2.053 ton · beschadigd op 1940-07-05",
+  );
 });
