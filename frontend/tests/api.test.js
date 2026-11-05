@@ -236,6 +236,7 @@ test("fetchAllRoutes rejects when a page fails", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 500 });
 
   await assert.rejects(() => fetchAllRoutes({ pageSize: 2 }), /Failed to fetch routes: 500/);
+});
 
 test("fetchShip asks for the encoded ship id and returns parsed JSON", async () => {
   const calls = [];
