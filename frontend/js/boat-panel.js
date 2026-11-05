@@ -157,7 +157,7 @@ function makeClickable(section, action) {
 // Text from the source only ever goes in through textContent. `getShips` returns all
 // loaded ship hits; `onShowPatrol`, when given, makes each patrol clickable to show its route on the map.
 // Whatever was opened last wins: an answer that arrives after another open or a close is dropped.
-export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
+export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenBoat = null, onClose = null }) {
   const closeEl = element("button", "×", "boat-panel-close");
   closeEl.type = "button";
   closeEl.setAttribute("aria-label", "Paneel sluiten");
@@ -264,7 +264,10 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
 
     const by = element("button", hitBy(ship), "boat-panel-ship");
     by.type = "button";
-    by.addEventListener("click", () => open(ship.boat_slug));
+    by.addEventListener("click", () => {
+      onOpenBoat?.(ship.boat_slug);
+      open(ship.boat_slug);
+    });
     nodes.push(by);
 
     const facts = element("dl");
@@ -314,10 +317,14 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
     }
   }
 
-  closeEl.addEventListener("click", close);
+  closeEl.addEventListener("click", () => {
+    close();
+    onClose?.();
+  });
   rootEl.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       close();
+      onClose?.();
     }
   });
   close();

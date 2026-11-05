@@ -7,7 +7,7 @@ import { initAtlas } from "./atlas.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
-import { createStatusMap, highlightPatrol, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
+import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -30,8 +30,13 @@ function main() {
     rootEl: document.getElementById("boat-panel"),
     getShips: () => ships,
     onShowPatrol: (patrol) => highlightPatrol(state, patrol.external_id),
+    onOpenBoat: (slug) => selectBoat(state, slug),
+    onClose: () => selectBoat(state, null),
   });
-  state.onRouteClick = (patrol) => boatPanel.open(patrol.boat_slug);
+  state.onRouteClick = (patrol) => {
+    selectBoat(state, patrol.boat_slug);
+    boatPanel.open(patrol.boat_slug);
+  };
 
   function renderShips() {
     shipLayer.setShips(shipsInPeriod(ships, state.from, state.to));

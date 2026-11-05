@@ -6,6 +6,8 @@ const UNDATED_COLOR = "#888888";
 const LINE_WEIGHT = 0.75;
 const LINE_OPACITY = 0.9;
 const HIGHLIGHT_WEIGHT = 3;
+const OTHER_BOAT_COLOR = "#9a9a9a";
+const SELECTED_WEIGHT = 1.5;
 const MARKER_RADIUS = 2;
 // Lines this thin are hard to hit, by finger above all.
 const HIT_TOLERANCE_PX = 8;
@@ -97,6 +99,7 @@ export function newStatusState(map, layer) {
     fitted: false,
     lastExternalId: null,
     highlightedExternalId: null,
+    selectedSlug: null,
   };
 }
 
@@ -113,8 +116,15 @@ export function createStatusMap(containerId) {
 
 function applyColor(state, externalId, polyline) {
   const range = colorRange(state.history, state.from, state.to);
-  const color = routeColor(state.patrols.get(externalId), state.lastExternalId, range);
-  const style = { color, weight: externalId === state.highlightedExternalId ? HIGHLIGHT_WEIGHT : LINE_WEIGHT };
+  const patrol = state.patrols.get(externalId);
+  const isSelected = state.selectedSlug !== null && patrol.boat_slug === state.selectedSlug;
+  const greyed = state.selectedSlug !== null && !isSelected;
+  const color = greyed ? OTHER_BOAT_COLOR : routeColor(patrol, state.lastExternalId, range);
+  let weight = isSelected ? SELECTED_WEIGHT : LINE_WEIGHT;
+  if (externalId === state.highlightedExternalId) {
+    weight = HIGHLIGHT_WEIGHT;
+  }
+  const style = { color, weight };
   if (!state.markers.has(externalId)) {
     style.dashArray = statusLegStyle("ok", color).dashArray;
   }
@@ -180,7 +190,9 @@ export function updateRoutes(state, changed) {
       }
     }
   }
-  bringLastToFront(state);
+  if (state.selectedSlug === null) {
+    bringLastToFront(state);
+  }
 
   if (!state.fitted && state.extents.size > 0) {
     state.fitted = true;
@@ -200,6 +212,28 @@ export function setLastPatrol(state, externalId) {
     }
   }
   bringLastToFront(state);
+}
+
+function recolorAll(state) {
+  for (const [id, polyline] of state.polylines) {
+    applyColor(state, id, polyline);
+  }
+}
+
+// With a boat selected, only its own routes keep their colours; null shows all again.
+export function selectBoat(state, slug) {
+  state.selectedSlug = slug;
+  state.highlightedExternalId = null;
+  recolorAll(state);
+  if (slug === null) {
+    bringLastToFront(state);
+    return;
+  }
+  for (const [id, polyline] of state.polylines) {
+    if (state.patrols.get(id).boat_slug === slug && state.layer.hasLayer(polyline)) {
+      polyline.bringToFront();
+    }
+  }
 }
 
 // Shows one patrol's route clearly among all the others.

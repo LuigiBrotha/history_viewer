@@ -461,3 +461,58 @@ test("a highlighted patrol keeps its weight when recoloured", async () => {
   setPeriod(state, "1940-01-01", null);
   assert.equal(state.polylines.get("a").style.weight, weight);
 });
+
+test("selecting a boat greys out the routes of other boats and keeps its own colours", async () => {
+  const log = fakeLeaflet();
+  const { updateRoutes, selectBoat } = await import("../js/status-map.js");
+  const state = newState("last");
+  updateRoutes(state, [
+    { ...dated("mine1", "1940-01-01", "1940-02-01"), boat_slug: "u99" },
+    { ...dated("mine2", "1941-01-01", "1941-02-01"), boat_slug: "u99" },
+    { ...dated("other", "1940-06-01", "1940-07-01"), boat_slug: "u47" },
+    { ...dated("last", "1942-01-01", "1942-02-01"), boat_slug: "u47" },
+  ]);
+  const own = state.polylines.get("mine1").style.color;
+  state.polylines.get("mine1").id = "mine1";
+  state.polylines.get("mine2").id = "mine2";
+  log.length = 0;
+
+  selectBoat(state, "u99");
+
+  assert.equal(state.polylines.get("mine1").style.color, own);
+  assert.equal(state.polylines.get("other").style.color, "#9a9a9a");
+  assert.equal(state.polylines.get("last").style.color, "#9a9a9a");
+  assert.ok(log.includes("mine1") && log.includes("mine2"));
+});
+
+test("clearing the selection restores colours and the highlight", async () => {
+  fakeLeaflet();
+  const { updateRoutes, selectBoat, highlightPatrol } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [
+    { ...dated("a", "1940-01-01", "1940-02-01"), boat_slug: "u99" },
+    { ...dated("b", "1941-01-01", "1941-02-01"), boat_slug: "u47" },
+  ]);
+  const colourB = state.polylines.get("b").style.color;
+  const thin = state.polylines.get("a").style.weight;
+  selectBoat(state, "u99");
+  highlightPatrol(state, "a");
+
+  selectBoat(state, null);
+
+  assert.equal(state.polylines.get("b").style.color, colourB);
+  assert.equal(state.polylines.get("a").style.weight, thin);
+  assert.equal(state.highlightedExternalId, null);
+});
+
+test("a patrol arriving during a selection is grey when it belongs to another boat", async () => {
+  fakeLeaflet();
+  const { updateRoutes, selectBoat } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [{ ...dated("a", "1940-01-01", "1940-02-01"), boat_slug: "u99" }]);
+  selectBoat(state, "u99");
+
+  updateRoutes(state, [{ ...dated("n", "1941-01-01", "1941-02-01"), boat_slug: "u47" }]);
+
+  assert.equal(state.polylines.get("n").style.color, "#9a9a9a");
+});
