@@ -51,10 +51,10 @@ function fakeMap() {
   };
 }
 
-test("savedBaseMap falls back on the street map", () => {
-  assert.equal(savedBaseMap(fakeStorage()), "Straatkaart");
-  assert.equal(savedBaseMap(fakeStorage("bestaat niet")), "Straatkaart");
-  assert.equal(savedBaseMap(fakeStorage("Oceaandiepte")), "Oceaandiepte");
+test("savedBaseMap falls back on the depth map", () => {
+  assert.equal(savedBaseMap(fakeStorage()), "Oceaandiepte");
+  assert.equal(savedBaseMap(fakeStorage("bestaat niet")), "Oceaandiepte");
+  assert.equal(savedBaseMap(fakeStorage("Straatkaart")), "Straatkaart");
 });
 
 test("savedBaseMap survives blocked storage", () => {
@@ -63,7 +63,7 @@ test("savedBaseMap survives blocked storage", () => {
       throw new Error("blocked");
     },
   };
-  assert.equal(savedBaseMap(blocked), "Straatkaart");
+  assert.equal(savedBaseMap(blocked), "Oceaandiepte");
 });
 
 test("the depth map credits its sources and does not ask for tiles that don't exist", () => {

@@ -1,5 +1,5 @@
 const STORAGE_KEY = "uboats.baseMap";
-const DEFAULT_MAP = "Straatkaart";
+const DEFAULT_MAP = "Oceaandiepte";
 
 export const BASE_MAPS = {
   Straatkaart: {

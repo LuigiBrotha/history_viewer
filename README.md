@@ -73,8 +73,8 @@ on `/` also sets the date to its start. The data is in `frontend/battles/battles
 built by `tools/extract_battles.py` from the Wikipedia dump (see
 `frontend/battles/README.md`); dates and coordinates are parsed automatically.
 
-A layer button on each map switches the background between the street map and a map of
-ocean depth (Esri Ocean); the choice is remembered in the browser.
+Maps open on a background of ocean depth (Esri Ocean). A layer button switches to the
+street map; the choice is remembered in the browser.
 
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
