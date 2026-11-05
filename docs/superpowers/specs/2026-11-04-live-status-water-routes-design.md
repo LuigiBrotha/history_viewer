@@ -126,6 +126,8 @@ ship costs one request. The site says some positions are unknown.
 | Symbols | Sunk: filled dark circle (`#222222`). Damaged: hollow dark circle. Captured: filled purple circle (`#7a3db8`). |
 | Totals | In the sidebar, up to the selected date: `87 gezonken (412.000 ton) · 5 beschadigd (37.965 ton) · 1 buitgemaakt (4.000 ton)`, with parts at zero left out. The followed boat's total covers only that boat. |
 | Unknown position | Never plotted and never estimated. Counted in totals, and followed boats list them in the sidebar as `positie onbekend`. |
+| Ship details | The same request that gives the position also gives the facts on the ship's page (type, completion, owner, homeport, nationality, fate, complement, convoy, route, cargo, history, notes on the event). They go in `ship_details`, one row per ship. A hit is pending when its position is unchecked or its ship has no details row, so earlier crawls fill in details on the next run; a ship hit twice is fetched once per run. |
+| Ship panel | `GET /api/uboats/ships/{id}` returns the details and every hit of that ship (404 when none). Clicking a ship marker opens the boat panel with the hit's own facts at once, then the details, the notes under `Wat er gebeurde` and other hits under `Ook getroffen`. A button opens the panel of the boat that hit it, without changing the followed boat. Ships in a boat's panel are buttons that open the ship. |
 
 Validation: parsing the U-99 page must reproduce the site's own figures, 39 ships sunk for 246,794
 tons and 5 damaged for 37,965 tons, 284,759 in all.

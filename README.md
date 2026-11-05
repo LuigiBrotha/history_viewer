@@ -57,7 +57,9 @@ markers and `(datum benaderd)` in the tooltip. Speed checks never use these date
 
 Click a boat on the timeline or a route on `/status` for a panel with the boat's
 details, its patrols and the ships it hit: a bottom sheet on a phone, a side panel on
-larger screens.
+larger screens. Click a ship on either map, or in a boat's list of ships hit, for a panel
+with that ship: tonnage, outcome, position, and what its page on uboat.net says (owner,
+cargo, fate, what happened), plus any other time it was hit.
 
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
@@ -137,7 +139,7 @@ that crawl stores patrols without routes.
 ## Crawling ships hit
 
 The ships each boat sank, damaged or captured are fetched by a second standalone
-command, because their positions are only on the page of each ship:
+command, because their positions and details are only on the page of each ship:
 
 ```
 poetry run python -m app.crawl_ships [--limit N] [--slugs u99,u100] [--force] [--delay N]
@@ -146,10 +148,13 @@ poetry run python -m app.crawl_ships [--limit N] [--slugs u99,u100] [--force] [-
 - Without `--slugs` it uses the boats in the database.
 - It reads each boat's list of successes (one request per boat) and stores the
   hits at once, so they show on the maps before their positions are known. Then it
-  fetches the page of every hit without a position (one request per ship).
-- `--limit N` — fetch the position of at most N ships in this run, for a small sample.
-- `--force` — fetch positions again, also for ships whose page has no position
-  (those are otherwise not retried; ships that failed on the network always are).
+  fetches the page of every hit whose position is unchecked or whose ship has no
+  details yet (one request per ship, however often it was hit). One page gives the
+  position and the details, so a database from an earlier version gets its details
+  on the next run.
+- `--limit N` — fetch the page of at most N ships in this run, for a small sample.
+- `--force` — fetch pages again, also for ships that already have one
+  (a page without a position is otherwise not retried; ships that failed on the network always are).
 - Requests are made one at a time with the same delay as the main crawl (10 s by
   default), so a boat with 40 ships takes about 7 minutes. Stopping loses at most
   the ship in flight; run it again to continue.
