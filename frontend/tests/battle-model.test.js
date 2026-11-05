@@ -10,6 +10,7 @@ import {
   labelsToShow,
   overlaps,
   squaresToDraw,
+  wrapLng,
 } from "../js/battle-model.js";
 
 const battle = (over = {}) => ({
@@ -173,4 +174,21 @@ test("yearMarks gives the first year at the start and each new year at its Janua
   assert.equal(marks[0].fraction, 0);
   assert.ok(Math.abs(marks[1].fraction - 122 / 2194) < 0.001);
   assert.ok(marks.every((m, i) => i === 0 || m.fraction > marks[i - 1].fraction));
+});
+
+test("wrapLng picks the copy of a longitude nearest to the centre of the view", () => {
+  assert.equal(wrapLng(36.1, 0), 36.1);
+  assert.equal(wrapLng(-177, 180), 183);
+  assert.equal(wrapLng(166, 180), 166);
+  assert.equal(wrapLng(183, 0), -177);
+});
+
+test("squaresToDraw finds a battle past the date line in a view across it", () => {
+  const list = [
+    battle({ title: "Midway", lat: 28, lng: -177 }),
+    battle({ title: "Wake", lat: 19, lng: 166 }),
+    battle({ title: "Kursk", lat: 51, lng: 36 }),
+  ];
+  const across = { south: -45, west: 100, north: 62, east: 260 };
+  assert.deepEqual(squaresToDraw(list, across, 10).map((b) => b.title).sort(), ["Midway", "Wake"]);
 });

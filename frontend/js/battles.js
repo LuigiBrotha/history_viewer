@@ -2,6 +2,7 @@ import { activeOn, overlaps } from "./battle-model.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
+import { addPacificButton } from "./pacific-view.js";
 
 const BATTLES_URL = "battles/battles.json";
 
@@ -45,6 +46,8 @@ export function initBattles({ map, mode, onPickDate = null, doc = document, win 
     storage: safeStorage(win),
     win,
   });
+
+  addPacificButton(map);
 
   let battles = [];
   let selection = null;

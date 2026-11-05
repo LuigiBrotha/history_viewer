@@ -3,6 +3,7 @@ import { fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
+import { isPacificShown } from "./pacific-view.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, heatColor, patrolCells, ROWS, scaleMax, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
@@ -150,7 +151,9 @@ function main() {
         const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));
         if (!fitted && points.length > 0) {
           fitted = true;
-          map.fitBounds(points, { padding: [40, 40] });
+          if (!isPacificShown(map)) {
+            map.fitBounds(points, { padding: [40, 40] });
+          }
         }
       } finally {
         loadIndicator.finish();

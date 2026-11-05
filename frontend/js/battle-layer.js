@@ -1,6 +1,6 @@
-import { durationText, labelsToShow, squaresToDraw } from "./battle-model.js";
+import { durationText, labelsToShow, squaresToDraw, wrapLng } from "./battle-model.js";
 
-const MAX_SQUARES = 300;
+const MAX_SQUARES = 1500;
 const SQUARE_SIZE = 10;
 const LABEL_OFFSET_PX = 12;
 
@@ -52,6 +52,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     const bounds = map.getBounds();
     const view = { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
     const wanted = squaresToDraw(battles, view, MAX_SQUARES);
+    const centerLng = (view.west + view.east) / 2;
+    const position = (battle) => [battle.lat, wrapLng(battle.lng, centerLng)];
     const wantedTitles = new Set(wanted.map((battle) => battle.title));
 
     for (const [title, marker] of squares) {
@@ -61,8 +63,11 @@ export function createBattleLayer(map, { onBattleClick }) {
       }
     }
     for (const battle of wanted) {
-      if (squares.has(battle.title)) continue;
-      const marker = L.marker([battle.lat, battle.lng], {
+      if (squares.has(battle.title)) {
+        squares.get(battle.title).setLatLng(position(battle));
+        continue;
+      }
+      const marker = L.marker(position(battle), {
         icon: squareIcon(selected === battle.title),
         battleTitle: battle.title,
         keyboard: false,
@@ -78,7 +83,7 @@ export function createBattleLayer(map, { onBattleClick }) {
       group.removeLayer(label);
     }
     labels = labelsToShow(wanted, map.getZoom()).map((battle) =>
-      L.marker([battle.lat, battle.lng], { icon: labelIcon(battle), interactive: false, keyboard: false }),
+      L.marker(position(battle), { icon: labelIcon(battle), interactive: false, keyboard: false }),
     );
     for (const label of labels) {
       group.addLayer(label);
@@ -102,7 +107,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     // Pans without touching the zoom: the square stays at the zoom the user chose.
     showBattle(battle) {
       if (battle.lat != null && battle.lng != null) {
-        map.panTo([battle.lat, battle.lng]);
+        const bounds = map.getBounds();
+        map.panTo([battle.lat, wrapLng(battle.lng, (bounds.getWest() + bounds.getEast()) / 2)]);
       }
     },
   };

@@ -1197,3 +1197,19 @@ html, body {
   outline: 2px solid var(--series-1);
   outline-offset: -2px;
 }
+
+.pacific-toggle {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: #fff;
+  color: #222;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pacific-toggle[aria-pressed="true"] {
+  background: #222;
+  color: #fff;
+}

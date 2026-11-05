@@ -40,6 +40,9 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
         setIcon(icon) {
           marker.options = { ...marker.options, icon };
         },
+        setLatLng(next) {
+          marker.latlng = next;
+        },
       };
       return marker;
     },
@@ -134,11 +137,11 @@ test("only battles in view are drawn and the map redraws when it moves or zooms"
   assert.equal(squares().length, 2);
 });
 
-test("no more than 300 squares are drawn, the longest first", () => {
+test("no more than 1500 squares are drawn, the longest first", () => {
   const { layer, squares } = setup();
-  const many = Array.from({ length: 305 }, (_, i) => battle({ title: `b${i}`, end: i < 5 ? "1943-07-05" : "1943-08-23" }));
+  const many = Array.from({ length: 1505 }, (_, i) => battle({ title: `b${i}`, end: i < 5 ? "1943-07-05" : "1943-08-23" }));
   layer.setBattles(many);
-  assert.equal(squares().length, 300);
+  assert.equal(squares().length, 1500);
   assert.ok(!squares().some((m) => ["b0", "b1", "b2", "b3", "b4"].includes(m.options.battleTitle)));
 });
 
@@ -172,4 +175,25 @@ test("setSelected marks one square and showBattle pans to it", () => {
   assert.deepEqual(pans, [[51.7, 36.1]]);
   layer.showBattle(battle({ lat: null, lng: null }));
   assert.equal(pans.length, 1);
+});
+
+test("a battle past the date line appears in the copy of the world that is in view", () => {
+  const { layer, squares, labels } = setup({ zoom: 7, bounds: { south: -45, west: 100, north: 62, east: 260 } });
+  layer.setBattles([battle({ title: "Pearl Harbor", lat: 21.4, lng: -157.9 })]);
+  assert.deepEqual(squares()[0].latlng, [21.4, 202.1]);
+  assert.deepEqual(labels()[0].latlng, [21.4, 202.1]);
+});
+
+test("a square moves back when the map returns to the other side of the date line", () => {
+  const { layer, map, handlers, squares } = setup({ bounds: { south: -45, west: 100, north: 62, east: 260 } });
+  layer.setBattles([battle({ title: "Pearl Harbor", lat: 21.4, lng: -157.9 })]);
+  map.bounds = { south: -60, west: -180, north: 80, east: 0 };
+  handlers.moveend();
+  assert.deepEqual(squares()[0].latlng, [21.4, -157.9]);
+});
+
+test("showBattle pans to the copy of the battle nearest to the view", () => {
+  const { layer, pans } = setup({ bounds: { south: -45, west: 100, north: 62, east: 260 } });
+  layer.showBattle(battle({ lat: 21.4, lng: -157.9 }));
+  assert.deepEqual(pans, [[21.4, 202.1]]);
 });

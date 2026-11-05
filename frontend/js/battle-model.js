@@ -61,17 +61,27 @@ export function barPosition(battle, bounds) {
   return { left: Math.max(0, left), width };
 }
 
+// The same place in the copy of the world nearest to a longitude: a map centred on the
+// Pacific runs past 180, where Midway is at 183 instead of -177.
+export function wrapLng(lng, centerLng) {
+  return lng + 360 * Math.round((centerLng - lng) / 360);
+}
+
 // viewBounds is { south, west, north, east }. The longest battles stay when the cap bites.
 export function squaresToDraw(battles, viewBounds, max) {
-  const inView = battles.filter(
-    (battle) =>
-      battle.lat != null &&
-      battle.lng != null &&
+  const centerLng = (viewBounds.west + viewBounds.east) / 2;
+  const inView = battles.filter((battle) => {
+    if (battle.lat == null || battle.lng == null) {
+      return false;
+    }
+    const lng = wrapLng(battle.lng, centerLng);
+    return (
       battle.lat >= viewBounds.south &&
       battle.lat <= viewBounds.north &&
-      battle.lng >= viewBounds.west &&
-      battle.lng <= viewBounds.east,
-  );
+      lng >= viewBounds.west &&
+      lng <= viewBounds.east
+    );
+  });
   inView.sort((a, b) => durationDays(b) - durationDays(a) || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
   return inView.slice(0, max);
 }

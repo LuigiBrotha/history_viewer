@@ -34,6 +34,7 @@ function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {})
       const marker = {
         options,
         events: {},
+        setLatLng() {},
         on(type, fn) {
           marker.events[type] = fn;
           return marker;
@@ -47,6 +48,7 @@ function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {})
       };
       return marker;
     },
+    control: () => ({ addTo() {} }),
     layerGroup: () => ({ addTo() { return this; }, addLayer: (l) => layers.add(l), removeLayer: (l) => layers.delete(l) }),
   };
   const map = {

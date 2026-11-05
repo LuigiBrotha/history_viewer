@@ -1,6 +1,7 @@
 import { addBaseMaps } from "./base-maps.js";
 import { turboColor } from "./color-ramp.js";
 import { datedPoints, legStyle } from "./time-model.js";
+import { isPacificShown } from "./pacific-view.js";
 
 const LAST_COLOR = "#000000";
 const UNDATED_COLOR = "#888888";
@@ -194,7 +195,9 @@ export function updateRoutes(state, changed) {
 
   if (!state.fitted && state.extents.size > 0) {
     state.fitted = true;
-    state.map.fitBounds([...state.extents.values()].flat(), { padding: [40, 40] });
+    if (!isPacificShown(state.map)) {
+      state.map.fitBounds([...state.extents.values()].flat(), { padding: [40, 40] });
+    }
   }
 }
 
