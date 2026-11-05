@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat, fetchAllRoutes } from "../js/api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat, fetchAllRoutes, fetchShip } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -236,4 +236,22 @@ test("fetchAllRoutes rejects when a page fails", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 500 });
 
   await assert.rejects(() => fetchAllRoutes({ pageSize: 2 }), /Failed to fetch routes: 500/);
+
+test("fetchShip asks for the encoded ship id and returns parsed JSON", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => ({ ship_external_id: "4 8" }) };
+  };
+
+  const result = await fetchShip("4 8");
+
+  assert.equal(calls[0], "api/uboats/ships/4%208");
+  assert.deepEqual(result, { ship_external_id: "4 8" });
+});
+
+test("fetchShip rejects when the response is not ok", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+
+  await assert.rejects(() => fetchShip("408"), /Failed to fetch ship: 404/);
 });

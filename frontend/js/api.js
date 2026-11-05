@@ -119,3 +119,13 @@ export async function fetchBoat(slug) {
   }
   return response.json();
 }
+
+export async function fetchShip(shipExternalId) {
+  const response = await fetch(`api/uboats/ships/${encodeURIComponent(shipExternalId)}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ship: ${response.status}`);
+  }
+  return response.json();
+}

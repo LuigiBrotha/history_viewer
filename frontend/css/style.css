@@ -593,6 +593,20 @@ html, body {
   padding: 3px 0;
 }
 
+.boat-panel-ship {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 2px 0;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #f7f7f7;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 @media (min-width: 700px) {
   :root {
     --panel-bottom: 76px;

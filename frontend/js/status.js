@@ -24,7 +24,7 @@ function main() {
     return;
   }
 
-  const shipLayer = createShipLayer(state.map);
+  const shipLayer = createShipLayer(state.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
   let ships = [];
   const boatPanel = createBoatPanel({
     rootEl: document.getElementById("boat-panel"),

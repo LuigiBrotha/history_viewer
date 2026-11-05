@@ -233,7 +233,7 @@ function main() {
     } else if (timeline === null) {
       if (mapState === null) {
         mapState = createMap("map");
-        shipLayer = createShipLayer(mapState.map);
+        shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));

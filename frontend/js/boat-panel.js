@@ -1,7 +1,10 @@
-import { fetchBoat } from "./api.js";
+import { fetchBoat, fetchShip } from "./api.js";
 
 const OUTCOME_TEXT = { sunk: "gezonken", damaged: "beschadigd", captured: "buitgemaakt" };
 const SOURCE_URL = "https://uboat.net/boats/";
+const NOT_FETCHED = "Meer gegevens zijn nog niet opgehaald.";
+const FETCH_FAILED = "Meer gegevens konden niet worden geladen.";
+const SHIP_SOURCE_URL = "https://uboat.net/allies/merchants/ship/";
 
 function dutchNumber(value) {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -66,6 +69,57 @@ export function shipLine(ship) {
   return `${ship.date} · ${ship.name} · ${dutchNumber(ship.tons)} ton · ${OUTCOME_TEXT[ship.outcome]}`;
 }
 
+function coordinate(value, positive, negative) {
+  return `${Math.abs(value).toFixed(3).replace(".", ",")}° ${value < 0 ? negative : positive}`;
+}
+
+// What is known of a hit; `details` is the ship's page, or null while it is missing.
+export function shipFacts(ship, details) {
+  const d = details ?? {};
+  const position =
+    ship.lat == null || ship.lng == null
+      ? "onbekend"
+      : `${coordinate(ship.lat, "N", "S")}, ${coordinate(ship.lng, "E", "W")}`;
+  return [
+    ["Tonnage", `${dutchNumber(ship.tons)} ton`],
+    ["Datum", ship.date],
+    ["Uitkomst", OUTCOME_TEXT[ship.outcome]],
+    ["Positie", position],
+    ["Type", d.ship_type],
+    ["Gebouwd", d.completed],
+    ["Eigenaar", d.owner],
+    ["Thuishaven", d.homeport],
+    ["Nationaliteit", d.nationality ?? ship.nationality],
+    ["Lot", d.fate],
+    ["Bemanning", d.complement],
+    ["Konvooi", d.convoy ?? ship.convoy],
+    ["Route", d.route],
+    ["Lading", d.cargo],
+    ["Geschiedenis", d.history],
+  ].filter(([, value]) => value);
+}
+
+export function hitBy(ship) {
+  return `Getroffen door ${ship.boat_number}`;
+}
+
+export function hitLine(ship) {
+  return `${ship.date} · ${ship.boat_number} · ${OUTCOME_TEXT[ship.outcome]}`;
+}
+
+function sameHit(a, b) {
+  return a.boat_slug === b.boat_slug && a.date === b.date && a.ship_external_id === b.ship_external_id;
+}
+
+// The other times this ship was hit, oldest first.
+export function otherHits(ship, hits) {
+  return hits.filter((hit) => !sameHit(hit, ship)).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export function sourceUrl(shipExternalId) {
+  return `${SHIP_SOURCE_URL}${encodeURIComponent(shipExternalId)}.html`;
+}
+
 function element(tag, text, className) {
   const node = document.createElement(tag);
   if (text !== undefined) {
@@ -79,6 +133,7 @@ function element(tag, text, className) {
 
 // Text from the source only ever goes in through textContent. `getShips` returns all
 // loaded ship hits; `onShowPatrol`, when given, adds a button that shows a patrol on the map.
+// Whatever was opened last wins: an answer that arrives after another open or a close is dropped.
 export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   const closeEl = element("button", "×", "boat-panel-close");
   closeEl.type = "button";
@@ -86,10 +141,10 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   const bodyEl = element("div");
   rootEl.append(closeEl, bodyEl);
 
-  let requested = null;
+  let generation = 0;
 
   function close() {
-    requested = null;
+    generation += 1;
     rootEl.hidden = true;
   }
 
@@ -132,7 +187,12 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
       nodes.push(element("h3", "Getroffen schepen"));
       const list = element("ul");
       for (const ship of ships) {
-        list.append(element("li", shipLine(ship)));
+        const item = element("li");
+        const button = element("button", shipLine(ship), "boat-panel-ship");
+        button.type = "button";
+        button.addEventListener("click", () => openShip(ship));
+        item.append(button);
+        list.append(item);
       }
       nodes.push(list);
     }
@@ -148,19 +208,79 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   }
 
   async function open(slug) {
-    requested = slug;
+    const mine = ++generation;
     rootEl.hidden = false;
     bodyEl.replaceChildren(element("p", "Laden…"));
     try {
       const boat = await fetchBoat(slug);
-      if (requested === slug) {
+      if (generation === mine) {
         render(boat);
       }
     } catch (error) {
       console.error(error);
-      if (requested === slug) {
+      if (generation === mine) {
         bodyEl.replaceChildren(element("p", "Gegevens konden niet worden geladen."));
       }
+    }
+  }
+
+  // `more` is what the ship's own page adds: its details and the other hits, a message
+  // when they are missing or could not be loaded, nothing while they are still coming.
+  function renderShip(ship, more, scrollToTop) {
+    const nodes = [element("h2", ship.name)];
+    const facts = element("dl");
+    for (const [label, value] of shipFacts(ship, more?.details ?? null)) {
+      facts.append(element("dt", label), element("dd", value));
+    }
+    nodes.push(facts);
+
+    const by = element("button", hitBy(ship), "boat-panel-ship");
+    by.type = "button";
+    by.addEventListener("click", () => open(ship.boat_slug));
+    nodes.push(by);
+
+    if (more?.message) {
+      nodes.push(element("p", more.message));
+    }
+    if (more?.details?.notes) {
+      nodes.push(element("h3", "Wat er gebeurde"), element("p", more.details.notes));
+    }
+    const others = otherHits(ship, more?.hits ?? []);
+    if (others.length > 0) {
+      nodes.push(element("h3", "Ook getroffen"));
+      const list = element("ul");
+      for (const hit of others) {
+        list.append(element("li", hitLine(hit)));
+      }
+      nodes.push(list);
+    }
+
+    const source = element("a", "Bron: uboat.net");
+    source.href = sourceUrl(ship.ship_external_id);
+    source.target = "_blank";
+    source.rel = "noopener";
+    nodes.push(source);
+
+    bodyEl.replaceChildren(...nodes);
+    if (scrollToTop) {
+      rootEl.scrollTop = 0;
+    }
+  }
+
+  async function openShip(ship) {
+    const mine = ++generation;
+    rootEl.hidden = false;
+    renderShip(ship, null, true);
+    let more;
+    try {
+      const { details, hits } = await fetchShip(ship.ship_external_id);
+      more = { details, hits, message: details ? null : NOT_FETCHED };
+    } catch (error) {
+      console.error(error);
+      more = { details: null, hits: [], message: FETCH_FAILED };
+    }
+    if (generation === mine) {
+      renderShip(ship, more, false);
     }
   }
 
@@ -172,5 +292,5 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   });
   close();
 
-  return { open, close };
+  return { open, openShip, close };
 }

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { boatFacts, boatSummary, patrolLines, boatShips, shipLine } from "../js/boat-panel.js";
+import { boatFacts, boatSummary, patrolLines, boatShips, shipLine, shipFacts, hitLine, otherHits, hitBy, sourceUrl } from "../js/boat-panel.js";
 
 const boat = {
   slug: "u99",
@@ -81,4 +81,91 @@ test("shipLine names date, ship, tonnage and outcome", () => {
     shipLine({ date: "1940-07-05", name: "Magog", tons: 2053, outcome: "sunk" }),
     "1940-07-05 · Magog · 2.053 ton · gezonken",
   );
+});
+
+const hit = {
+  ship_external_id: "408",
+  boat_slug: "u99",
+  boat_number: "U-99",
+  name: "Magog",
+  date: "1940-07-05",
+  tons: 2053,
+  nationality: "ca",
+  convoy: "HX-52",
+  outcome: "damaged",
+  lat: 50.5167,
+  lng: -11.0833,
+};
+
+const details = {
+  ship_type: "Steam merchant",
+  completed: "1923 - Frazer Brace Ltd, Three Rivers PQ",
+  owner: "Canada Steamship Lines Ltd, Montreal",
+  homeport: "Montreal",
+  nationality: "Canadian",
+  fate: "Sunk by U-99 (Otto Kretschmer)",
+  complement: "23 (0 dead and 23 survivors).",
+  convoy: "HX-52 (straggler)",
+  route: "Halifax (21 Jun) - Preston",
+  cargo: "512 standards of timber",
+  history: "Built as John C. Howard, later renamed Magog",
+  notes: "At 12.51 hours",
+};
+
+test("shipFacts shows what the hit knows before the details arrive", () => {
+  assert.deepEqual(shipFacts(hit, null), [
+    ["Tonnage", "2.053 ton"],
+    ["Datum", "1940-07-05"],
+    ["Uitkomst", "beschadigd"],
+    ["Positie", "50,517° N, 11,083° W"],
+    ["Nationaliteit", "ca"],
+    ["Konvooi", "HX-52"],
+  ]);
+});
+
+test("shipFacts adds the details in order and prefers their nationality and convoy", () => {
+  assert.deepEqual(shipFacts(hit, details), [
+    ["Tonnage", "2.053 ton"],
+    ["Datum", "1940-07-05"],
+    ["Uitkomst", "beschadigd"],
+    ["Positie", "50,517° N, 11,083° W"],
+    ["Type", "Steam merchant"],
+    ["Gebouwd", "1923 - Frazer Brace Ltd, Three Rivers PQ"],
+    ["Eigenaar", "Canada Steamship Lines Ltd, Montreal"],
+    ["Thuishaven", "Montreal"],
+    ["Nationaliteit", "Canadian"],
+    ["Lot", "Sunk by U-99 (Otto Kretschmer)"],
+    ["Bemanning", "23 (0 dead and 23 survivors)."],
+    ["Konvooi", "HX-52 (straggler)"],
+    ["Route", "Halifax (21 Jun) - Preston"],
+    ["Lading", "512 standards of timber"],
+    ["Geschiedenis", "Built as John C. Howard, later renamed Magog"],
+  ]);
+});
+
+test("shipFacts writes south and east, and says when the position is unknown", () => {
+  const south = shipFacts({ ...hit, lat: -33.5, lng: 18 }, null);
+  assert.deepEqual(south.find(([label]) => label === "Positie"), ["Positie", "33,500° S, 18,000° E"]);
+  const unknown = shipFacts({ ...hit, lat: null, lng: null }, null);
+  assert.deepEqual(unknown.find(([label]) => label === "Positie"), ["Positie", "onbekend"]);
+});
+
+test("shipFacts skips unknown details", () => {
+  const labels = shipFacts({ ...hit, nationality: null, convoy: null }, { owner: "Acme", cargo: null }).map(([l]) => l);
+  assert.deepEqual(labels, ["Tonnage", "Datum", "Uitkomst", "Positie", "Eigenaar"]);
+});
+
+test("otherHits leaves out the hit itself but keeps another hit by the same boat", () => {
+  const same = { ...hit, date: "1940-07-08" };
+  const other = { ...hit, boat_slug: "u100", boat_number: "U-100", date: "1940-07-09" };
+  assert.deepEqual(otherHits(hit, [other, hit, same]), [same, other]);
+});
+
+test("hitLine names date, boat and outcome", () => {
+  assert.equal(hitLine({ ...hit, outcome: "sunk" }), "1940-07-05 · U-99 · gezonken");
+});
+
+test("hitBy names the boat and sourceUrl points at the ship's page", () => {
+  assert.equal(hitBy(hit), "Getroffen door U-99");
+  assert.equal(sourceUrl("408"), "https://uboat.net/allies/merchants/ship/408.html");
 });

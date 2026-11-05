@@ -4,10 +4,10 @@ const RADIUS = 4;
 const HIT_TOLERANCE_PX = 6;
 
 // Draws the ships it is given on a canvas, below the route lines. Ships without a
-// position are never drawn. A map that already has a canvas renderer (the status
-// page) shares it: events only reach the topmost canvas, so a second one would
-// hide the tooltips of the ships below it.
-export function createShipLayer(map) {
+// position are never drawn. Clicking one calls `onShipClick` with its newest data.
+// A map that already has a canvas renderer (the status page) shares it: events only
+// reach the topmost canvas, so a second one would hide the tooltips of the ships below it.
+export function createShipLayer(map, { onShipClick = null } = {}) {
   const shared = map.options.renderer instanceof L.Canvas ? map.options.renderer : null;
   const renderer = shared ?? L.canvas({ tolerance: HIT_TOLERANCE_PX }).addTo(map);
   const group = L.layerGroup().addTo(map);
@@ -34,6 +34,8 @@ export function createShipLayer(map) {
         if (ship === undefined || signature(ship) !== entry.signature) {
           group.removeLayer(entry.marker);
           markers.delete(id);
+        } else {
+          entry.ship = ship;
         }
       }
       for (const [id, ship] of wanted) {
@@ -45,10 +47,11 @@ export function createShipLayer(map) {
           ...shipStyle(ship.outcome),
         });
         marker.bindTooltip(shipTooltip(ship));
+        marker.on("click", () => onShipClick?.(markers.get(id).ship));
         group.addLayer(marker);
         // Routes drawn later land on top; ones drawn earlier must stay above these.
         marker.bringToBack();
-        markers.set(id, { marker, signature: signature(ship) });
+        markers.set(id, { marker, ship, signature: signature(ship) });
       }
     },
   };
