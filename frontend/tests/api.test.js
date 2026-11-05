@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat } from "../js/api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat, fetchAllRoutes } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -213,4 +213,27 @@ test("fetchBoat rejects when the response is not ok", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 404 });
 
   await assert.rejects(() => fetchBoat("u1"), /Failed to fetch boat: 404/);
+});
+
+test("fetchAllRoutes reads pages until one comes back short, and reports progress", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    const offset = Number(new URL(url, "http://x").searchParams.get("offset"));
+    const count = offset === 0 ? 2 : 1;
+    return { ok: true, json: async () => Array.from({ length: count }, (_, i) => ({ external_id: `p${offset + i}` })) };
+  };
+  const progress = [];
+
+  const routes = await fetchAllRoutes({ pageSize: 2, onProgress: (received) => progress.push(received) });
+
+  assert.deepEqual(routes.map((route) => route.external_id), ["p0", "p1", "p2"]);
+  assert.deepEqual(calls, ["api/uboats/routes?limit=2&offset=0", "api/uboats/routes?limit=2&offset=2"]);
+  assert.deepEqual(progress, [2, 3]);
+});
+
+test("fetchAllRoutes rejects when a page fails", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 500 });
+
+  await assert.rejects(() => fetchAllRoutes({ pageSize: 2 }), /Failed to fetch routes: 500/);
 });

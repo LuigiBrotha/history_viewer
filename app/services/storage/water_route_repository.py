@@ -1,6 +1,6 @@
 import json
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,7 @@ from app.services.storage.models import WaterRoute
 Pair = tuple[LatLng, LatLng]
 
 # Four parameters per pair; SQLite allows 999 variables in older builds.
-CHUNK_SIZE = 200
+LATITUDE_CHUNK_SIZE = 500
 # Above this many unique pairs, thousands of OR-ed conditions cost more than reading the table once.
 FULL_READ_THRESHOLD = 2000
 
@@ -48,20 +48,19 @@ class WaterRouteRepository:
                 if pair in wanted:
                     found[pair] = self._to_leg(status, path, length_km)
             return found
-        for i in range(0, len(unique), CHUNK_SIZE):
-            chunk = unique[i:i + CHUNK_SIZE]
-            condition = or_(*(
-                and_(
-                    WaterRoute.from_lat == s[0], WaterRoute.from_lng == s[1],
-                    WaterRoute.to_lat == e[0], WaterRoute.to_lng == e[1],
-                )
-                for s, e in chunk
-            ))
-            result = await self._session.execute(select(WaterRoute).where(condition))
-            for row in result.scalars():
-                found[((row.from_lat, row.from_lng), (row.to_lat, row.to_lng))] = self._to_leg(
-                    row.status, row.path, row.length_km
-                )
+        # The primary key starts with from_lat, and positions share few distinct latitudes,
+        # so this reads far less than the whole table and stays well under the variable limit.
+        wanted = set(unique)
+        latitudes = list({start[0] for start, _ in unique})
+        for i in range(0, len(latitudes), LATITUDE_CHUNK_SIZE):
+            result = await self._session.execute(select(
+                WaterRoute.from_lat, WaterRoute.from_lng, WaterRoute.to_lat, WaterRoute.to_lng,
+                WaterRoute.status, WaterRoute.path, WaterRoute.length_km,
+            ).where(WaterRoute.from_lat.in_(latitudes[i:i + LATITUDE_CHUNK_SIZE])))
+            for from_lat, from_lng, to_lat, to_lng, status, path, length_km in result:
+                pair = ((from_lat, from_lng), (to_lat, to_lng))
+                if pair in wanted:
+                    found[pair] = self._to_leg(status, path, length_km)
         return found
 
     @staticmethod

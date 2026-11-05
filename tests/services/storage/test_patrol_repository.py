@@ -600,3 +600,25 @@ async def test_excluding_a_point_respreads_approximate_dates_over_the_rest(tmp_p
     assert [p.date for p in after[0].points] == [date(1940, 6, d) for d in (18, 19, 21, 22)]
     assert all(p.date_approximate for p in after[0].points)
     assert after[0].excluded_points[0].date is None
+
+
+async def _seed_three_patrols(session_factory):
+    async with session_factory() as session:
+        boat_id = await _seed_boat(session)
+        for number in (1, 2, 3):
+            await PatrolRepository(session).upsert_patrol(
+                boat_id, _summary(f"patrol_{number}", patrol_number=number), _detail()
+            )
+
+
+async def test_list_routes_returns_a_page(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    await _seed_three_patrols(session_factory)
+
+    async with session_factory() as session:
+        repo = PatrolRepository(session)
+        first = await repo.list_routes(limit=2, offset=0)
+        second = await repo.list_routes(limit=2, offset=2)
+
+    assert [r.external_id for r in first] == ["patrol_1", "patrol_2"]
+    assert [r.external_id for r in second] == ["patrol_3"]

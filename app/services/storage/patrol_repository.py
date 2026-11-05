@@ -170,15 +170,25 @@ class PatrolRepository:
             raise PatrolNotFound(external_id)
         return routes[0]
 
-    async def list_routes(self, since: datetime | None = None) -> list[PatrolRouteOut]:
-        return await self._routes(since=since)
+    async def list_routes(
+        self, since: datetime | None = None, limit: int | None = None, offset: int = 0
+    ) -> list[PatrolRouteOut]:
+        return await self._routes(since=since, limit=limit, offset=offset)
 
-    async def _routes(self, since: datetime | None = None, external_id: str | None = None) -> list[PatrolRouteOut]:
+    async def _routes(
+        self,
+        since: datetime | None = None,
+        external_id: str | None = None,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[PatrolRouteOut]:
         stmt = (
             select(Patrol, Boat.slug, Boat.number)
             .join(Boat, Patrol.boat_id == Boat.id)
-            .order_by(Boat.slug, Patrol.patrol_number)
+            .order_by(Boat.slug, Patrol.patrol_number, Patrol.id)
         )
+        if limit is not None:
+            stmt = stmt.limit(limit).offset(offset)
         if since is not None:
             stmt = stmt.where(Patrol.updated_at >= since)
         if external_id is not None:

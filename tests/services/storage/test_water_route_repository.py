@@ -72,7 +72,7 @@ async def test_get_many_reads_the_whole_table_above_the_threshold(tmp_path, monk
         chunked = await repo.get_many(asked)
 
         monkeypatch.setattr(water_route_repository, "FULL_READ_THRESHOLD", 2)
-        monkeypatch.setattr(water_route_repository, "CHUNK_SIZE", 1)
+        monkeypatch.setattr(water_route_repository, "LATITUDE_CHUNK_SIZE", 1)
         full = await repo.get_many(asked)
 
     assert chunked == full == {(A, B): stored[(A, B)], (B, C): stored[(B, C)]}

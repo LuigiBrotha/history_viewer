@@ -1,5 +1,6 @@
-import { EditError, canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus, restorePoint } from "./api.js";
+import { EditError, canEdit, excludePoint, fetchBoats, fetchShips, fetchStatus, restorePoint } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage, parseDate } from "./time-model.js";
+import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
@@ -258,13 +259,22 @@ function main() {
     refreshBoats();
   }
 
+  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
+
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
-    fetchRoutes,
+    fetchRoutes: loadIndicator.fetchRoutes,
     isHidden: () => document.hidden,
-    onData,
+    onData: (changed) => {
+      try {
+        onData(changed);
+      } finally {
+        loadIndicator.finish();
+      }
+    },
     onStatus: (status) => {
+      loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
       const wasEditable = editable;
       editable = canEdit(status);

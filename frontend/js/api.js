@@ -19,6 +19,27 @@ export async function fetchRoutes(since = null) {
   return response.json();
 }
 
+const ROUTES_PAGE_SIZE = 250;
+
+// Reads every patrol page by page, so that a loading indicator can show real progress.
+export async function fetchAllRoutes({ pageSize = ROUTES_PAGE_SIZE, onProgress = () => {} } = {}) {
+  const routes = [];
+  for (;;) {
+    const response = await fetch(`api/uboats/routes?limit=${pageSize}&offset=${routes.length}`, {
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch routes: ${response.status}`);
+    }
+    const page = await response.json();
+    routes.push(...page);
+    onProgress(routes.length);
+    if (page.length < pageSize) {
+      return routes;
+    }
+  }
+}
+
 export async function fetchShips(since = null) {
   const query = since ? `?since=${encodeURIComponent(since)}` : "";
   const response = await fetch(`api/uboats/ships${query}`, { signal: AbortSignal.timeout(since ? REQUEST_TIMEOUT_MS : FULL_LOAD_TIMEOUT_MS) });

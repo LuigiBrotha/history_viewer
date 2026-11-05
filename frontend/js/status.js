@@ -1,7 +1,8 @@
-import { fetchRoutes, fetchShips, fetchStatus } from "./api.js";
+import { fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
+import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
@@ -93,22 +94,29 @@ function main() {
   });
   renderCount();
 
+  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
+
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
-    fetchRoutes,
+    fetchRoutes: loadIndicator.fetchRoutes,
     isHidden: () => document.hidden,
     onData: (changed) => {
-      routes = mergeRoutes(routes, changed);
-      renderStatusLine();
-      updateRoutes(state, changed);
-      if (state.history !== null) {
-        slider.setBounds(state.history);
+      try {
+        routes = mergeRoutes(routes, changed);
+        renderStatusLine();
+        updateRoutes(state, changed);
+        if (state.history !== null) {
+          slider.setBounds(state.history);
+        }
+        renderCount();
+        renderAtlas();
+      } finally {
+        loadIndicator.finish();
       }
-      renderCount();
-      renderAtlas();
     },
     onStatus: (status) => {
+      loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
       renderStatusLine();
       loadShips(status.revision);

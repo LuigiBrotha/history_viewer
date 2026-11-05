@@ -65,6 +65,9 @@ last map on or before the selected date, `/status` the last map on or before the
 the selection. The maps are coarse, about 25 km per pixel: they show the broad
 situation per month, not exact borders.
 
+On the first load a large indicator in the middle of the page shows the percentage of
+patrols received, reading them page by page.
+
 All pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are
 fetched. A status line shows when the last patrol was crawled; if the server

@@ -1,4 +1,5 @@
-import { fetchRoutes, fetchStatus } from "./api.js";
+import { fetchStatus } from "./api.js";
+import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, heatColor, patrolCells, ROWS, scaleMax, smooth } from "./heat-model.js";
@@ -123,30 +124,37 @@ function main() {
     renderAtlas();
   });
 
+  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
+
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
-    fetchRoutes,
+    fetchRoutes: loadIndicator.fetchRoutes,
     isHidden: () => document.hidden,
     onData: (changed) => {
-      routes = mergeRoutes(routes, changed);
-      for (const patrol of changed) {
-        entries.set(patrol.external_id, { patrol, cells: patrolCells(patrol) });
-      }
-      history = historyRange(routes);
-      if (history !== null) {
-        slider.setBounds(history);
-      }
-      renderStatusLine();
-      renderHeat();
-      renderAtlas();
-      const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));
-      if (!fitted && points.length > 0) {
-        fitted = true;
-        map.fitBounds(points, { padding: [40, 40] });
+      try {
+        routes = mergeRoutes(routes, changed);
+        for (const patrol of changed) {
+          entries.set(patrol.external_id, { patrol, cells: patrolCells(patrol) });
+        }
+        history = historyRange(routes);
+        if (history !== null) {
+          slider.setBounds(history);
+        }
+        renderStatusLine();
+        renderHeat();
+        renderAtlas();
+        const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));
+        if (!fitted && points.length > 0) {
+          fitted = true;
+          map.fitBounds(points, { padding: [40, 40] });
+        }
+      } finally {
+        loadIndicator.finish();
       }
     },
     onStatus: (status) => {
+      loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
       renderStatusLine();
     },
