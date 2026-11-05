@@ -3,10 +3,11 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import update
 
-from app.services.scraping.uboat_net.types import BoatData, ShipHitRef
+from app.services.scraping.uboat_net.types import BoatData, ShipDetails, ShipHitRef
 from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.models import ShipHit
+from app.services.storage.ship_detail_repository import ShipDetailRepository
 from app.services.storage.ship_hit_repository import ShipHitRepository
 
 
@@ -32,11 +33,12 @@ async def test_upsert_refs_keeps_a_stored_position(tmp_path):
         async with session_factory() as session:
             repo = ShipHitRepository(session)
             await repo.upsert_refs([_ref()])
-            [pending] = await repo.pending_positions()
+            [pending] = await repo.pending_pages()
             await repo.set_position(pending.id, (50.5, -11.0))
+            await ShipDetailRepository(session).save("408", ShipDetails())
             await repo.upsert_refs([_ref(tons=2054)])
             [hit] = await repo.list_hits()
-            still_pending = await repo.pending_positions()
+            still_pending = await repo.pending_pages()
 
     assert (hit.lat, hit.lng, hit.tons) == (50.5, -11.0, 2054)
     assert still_pending == []
@@ -92,12 +94,13 @@ async def test_ship_without_a_position_is_not_retried_unless_forced(tmp_path):
         async with session_factory() as session:
             repo = ShipHitRepository(session)
             await repo.upsert_refs([_ref()])
-            [pending] = await repo.pending_positions()
+            [pending] = await repo.pending_pages()
             await repo.set_position(pending.id, None)
+            await ShipDetailRepository(session).save("408", ShipDetails())
 
-            normal = await repo.pending_positions()
-            forced = await repo.pending_positions(force=True)
-            other_boat = await repo.pending_positions(force=True, slugs=["u1"])
+            normal = await repo.pending_pages()
+            forced = await repo.pending_pages(force=True)
+            other_boat = await repo.pending_pages(force=True, slugs=["u1"])
             [hit] = await repo.list_hits()
 
     assert normal == []
@@ -119,3 +122,18 @@ async def test_ships_since_returns_only_changed_hits(tmp_path):
             changed = await repo.list_hits(since=cursor)
 
     assert [h.ship_external_id for h in changed] == ["new"]
+
+
+async def test_hit_with_a_position_but_no_details_is_pending(tmp_path):
+    async with _session_factory(tmp_path) as session_factory:
+        async with session_factory() as session:
+            repo = ShipHitRepository(session)
+            await repo.upsert_refs([_ref(), _ref(slug="u100")])
+            for hit in await repo.pending_pages():
+                await repo.set_position(hit.id, (50.5, -11.0))
+            without_details = await repo.pending_pages()
+            await ShipDetailRepository(session).save("408", ShipDetails())
+            with_details = await repo.pending_pages()
+
+    assert [h.boat_slug for h in without_details] == ["u99", "u100"]
+    assert with_details == []

@@ -60,3 +60,19 @@ class ShipHitRef:
     convoy: str | None
     outcome: Literal["sunk", "damaged", "captured"]
     detail_url: str
+
+
+@dataclass(frozen=True)
+class ShipDetails:
+    ship_type: str | None = None
+    completed: str | None = None
+    owner: str | None = None
+    homeport: str | None = None
+    nationality: str | None = None
+    fate: str | None = None
+    complement: str | None = None
+    convoy: str | None = None
+    route: str | None = None
+    cargo: str | None = None
+    history: str | None = None
+    notes: str | None = None

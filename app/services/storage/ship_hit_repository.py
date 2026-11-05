@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.export.uboats import ShipHitOut
 from app.services.scraping.uboat_net.types import ShipHitRef
-from app.services.storage.models import Boat, ShipHit
+from app.services.storage.models import Boat, ShipDetail, ShipHit
 
 _SLUG_RE = re.compile(r"^([a-z]+)(\d+)$")
 
@@ -49,11 +49,15 @@ class ShipHitRepository:
             await self._session.execute(stmt)
         await self._session.commit()
 
-    async def pending_positions(self, force: bool = False, slugs: list[str] | None = None) -> list[ShipHit]:
+    async def pending_pages(self, force: bool = False, slugs: list[str] | None = None) -> list[ShipHit]:
+        """Hits whose ship page is still to be fetched: position unchecked or ship without details."""
         # populate_existing: rows are written with core statements, so instances held by the session go stale.
         stmt = select(ShipHit).order_by(ShipHit.id).execution_options(populate_existing=True)
         if not force:
-            stmt = stmt.where(ShipHit.position_checked.is_(False))
+            has_details = select(ShipDetail.ship_external_id).where(
+                ShipDetail.ship_external_id == ShipHit.ship_external_id
+            )
+            stmt = stmt.where(or_(ShipHit.position_checked.is_(False), ~has_details.exists()))
         if slugs is not None:
             stmt = stmt.where(ShipHit.boat_slug.in_(slugs))
         return list((await self._session.execute(stmt)).scalars())

@@ -3,9 +3,10 @@ from datetime import date
 import pytest
 
 from app.crawl_ships import crawl_ships
-from app.services.scraping.uboat_net.types import ShipHitRef
+from app.services.scraping.uboat_net.types import ShipDetails, ShipHitRef
 from app.services.storage.crawl_status_repository import CrawlStatusRepository
 from app.services.storage.database import create_engine, create_session_factory, init_models
+from app.services.storage.ship_detail_repository import ShipDetailRepository
 from app.services.storage.ship_hit_repository import ShipHitRepository
 
 
@@ -24,7 +25,7 @@ def _refs(slug):
 
 
 class _Positions:
-    """A position fetcher that records its calls; `plan` maps a ship page to a result or an exception."""
+    """A page fetcher that records its calls; `plan` maps a ship page to a position, None or an exception."""
 
     def __init__(self, plan=None):
         self.calls = []
@@ -35,7 +36,7 @@ class _Positions:
         result = self.plan.get(self.calls[-1], (50.0, -10.0))
         if isinstance(result, BaseException):
             raise result
-        return result
+        return result, ShipDetails(owner=f"Owner {self.calls[-1]}")
 
 
 async def _hits(session_factory):
@@ -124,3 +125,54 @@ async def test_status_revision_moves_when_a_ship_is_stored(tmp_path):
         after = (await CrawlStatusRepository(session).get_status()).revision
     assert before is None
     assert after is not None
+
+
+async def test_crawl_stores_the_details_of_each_ship(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+
+    await crawl_ships(["u99"], session_factory, _refs, _Positions({"2": None}))
+
+    async with session_factory() as session:
+        details = [await ShipDetailRepository(session).get(n) for n in "123"]
+    assert [d.owner for d in details] == ["Owner 1", "Owner 2", "Owner 3"]
+
+
+async def test_hits_with_a_position_but_no_details_are_fetched_once(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    async with session_factory() as session:
+        repo = ShipHitRepository(session)
+        await repo.upsert_refs(_refs("u99"))
+        for hit in await repo.pending_pages():
+            await repo.set_position(hit.id, (50.0, -10.0))
+
+    first = _Positions()
+    await crawl_ships(["u99"], session_factory, _refs, first)
+    second = _Positions()
+    await crawl_ships(["u99"], session_factory, _refs, second)
+
+    assert first.calls == ["1", "2", "3"]
+    assert second.calls == []
+
+
+async def test_two_hits_of_one_ship_cost_one_fetch(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    pages = _Positions()
+
+    await crawl_ships(["u99", "u100"], session_factory, _refs, pages)
+
+    assert pages.calls == ["1", "2", "3"]
+    hits = await _hits(session_factory)
+    assert len(hits) == 6
+    assert {h.lat for h in hits} == {50.0}
+
+
+async def test_saving_a_page_moves_the_hits_updated_at(tmp_path):
+    session_factory = await _session_factory(tmp_path)
+    async with session_factory() as session:
+        await ShipHitRepository(session).upsert_refs(_refs("u99"))
+    before = {h.ship_external_id: h.updated_at for h in await _hits(session_factory)}
+
+    await crawl_ships(["u99"], session_factory, lambda slug: [], _Positions())
+
+    after = {h.ship_external_id: h.updated_at for h in await _hits(session_factory)}
+    assert all(after[k] > before[k] for k in before)

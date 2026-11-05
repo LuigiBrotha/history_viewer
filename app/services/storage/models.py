@@ -147,3 +147,24 @@ class ExcludedRoutePoint(Base):
     lat: Mapped[float] = mapped_column(Float, primary_key=True)
     lng: Mapped[float] = mapped_column(Float, primary_key=True)
     occurrence: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+class ShipDetail(Base):
+    """What a ship's own page says, once per ship however often it was hit."""
+
+    __tablename__ = "ship_details"
+
+    ship_external_id: Mapped[str] = mapped_column(String, primary_key=True)
+    ship_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    completed: Mapped[str | None] = mapped_column(String, nullable=True)
+    owner: Mapped[str | None] = mapped_column(String, nullable=True)
+    homeport: Mapped[str | None] = mapped_column(String, nullable=True)
+    nationality: Mapped[str | None] = mapped_column(String, nullable=True)
+    fate: Mapped[str | None] = mapped_column(String, nullable=True)
+    complement: Mapped[str | None] = mapped_column(String, nullable=True)
+    convoy: Mapped[str | None] = mapped_column(String, nullable=True)
+    route: Mapped[str | None] = mapped_column(String, nullable=True)
+    cargo: Mapped[str | None] = mapped_column(String, nullable=True)
+    history: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
