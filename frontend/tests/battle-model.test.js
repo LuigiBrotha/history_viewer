@@ -10,6 +10,7 @@ import {
   labelsToShow,
   overlaps,
   squaresToDraw,
+  visibleLngs,
   wrapLng,
 } from "../js/battle-model.js";
 
@@ -191,4 +192,16 @@ test("squaresToDraw finds a battle past the date line in a view across it", () =
   ];
   const across = { south: -45, west: 100, north: 62, east: 260 };
   assert.deepEqual(squaresToDraw(list, across, 10).map((b) => b.title).sort(), ["Midway", "Wake"]);
+});
+
+test("visibleLngs gives each copy of a longitude between two edges of the view", () => {
+  assert.deepEqual(visibleLngs(36, -180, 180), [36]);
+  assert.deepEqual(visibleLngs(-177, 100, 260), [183]);
+  assert.deepEqual(visibleLngs(10, -400, 400), [-350, 10, 370]);
+  assert.deepEqual(visibleLngs(10, 50, 100), []);
+});
+
+test("squaresToDraw counts a battle once, however many copies are in view", () => {
+  const wide = { south: -90, west: -500, north: 90, east: 500 };
+  assert.equal(squaresToDraw([battle({ title: "Midway", lat: 28, lng: -177 })], wide, 10).length, 1);
 });

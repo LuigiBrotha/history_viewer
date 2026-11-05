@@ -78,7 +78,7 @@ street map; the choice is remembered in the browser.
 
 - `/grafiek` shows stacked bars of the cumulative sunk tonnage per day, week or month, with a block per boat. The eight biggest boats have a colour, the others are grey until you hover over them, search for them or pick them in the table. `poetry run python -m app.crawl_ships --lists-only` reads only each boat's list of ships, one request per boat.
 
-The `Stille Oceaan` button on every map centres it on the Pacific, with Asia on the left and America on the right. Battle squares follow across the date line; routes and the historical and heat layers stop at it.
+The `Stille Oceaan` button on every map centres it on the Pacific, with Asia on the left and America on the right. Battle squares appear in every copy of the world in view, so they continue across the date line; routes and the historical and heat layers stop at it.
 
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the

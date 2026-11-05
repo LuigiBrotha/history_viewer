@@ -34,7 +34,6 @@ function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {})
       const marker = {
         options,
         events: {},
-        setLatLng() {},
         on(type, fn) {
           marker.events[type] = fn;
           return marker;

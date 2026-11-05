@@ -1,4 +1,4 @@
-import { durationText, labelsToShow, squaresToDraw, wrapLng } from "./battle-model.js";
+import { durationText, labelsToShow, squaresToDraw, visibleLngs, wrapLng } from "./battle-model.js";
 
 const MAX_SQUARES = 1500;
 const SQUARE_SIZE = 10;
@@ -52,38 +52,39 @@ export function createBattleLayer(map, { onBattleClick }) {
     const bounds = map.getBounds();
     const view = { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
     const wanted = squaresToDraw(battles, view, MAX_SQUARES);
-    const centerLng = (view.west + view.east) / 2;
-    const position = (battle) => [battle.lat, wrapLng(battle.lng, centerLng)];
-    const wantedTitles = new Set(wanted.map((battle) => battle.title));
+    const copies = (battle) => visibleLngs(battle.lng, view.west, view.east);
+    const key = (battle, lng) => `${battle.title}@${lng}`;
+    const wantedKeys = new Set(wanted.flatMap((battle) => copies(battle).map((lng) => key(battle, lng))));
 
-    for (const [title, marker] of squares) {
-      if (!wantedTitles.has(title)) {
+    for (const [squareKey, marker] of squares) {
+      if (!wantedKeys.has(squareKey)) {
         group.removeLayer(marker);
-        squares.delete(title);
+        squares.delete(squareKey);
       }
     }
     for (const battle of wanted) {
-      if (squares.has(battle.title)) {
-        squares.get(battle.title).setLatLng(position(battle));
-        continue;
+      for (const lng of copies(battle)) {
+        if (squares.has(key(battle, lng))) continue;
+        const marker = L.marker([battle.lat, lng], {
+          icon: squareIcon(selected === battle.title),
+          battleTitle: battle.title,
+          keyboard: false,
+          riseOnHover: true,
+        });
+        marker.bindTooltip(tooltipContent(battle), { direction: "top", offset: [0, -SQUARE_SIZE / 2] });
+        marker.on("click", () => onBattleClick?.(battle));
+        group.addLayer(marker);
+        squares.set(key(battle, lng), marker);
       }
-      const marker = L.marker(position(battle), {
-        icon: squareIcon(selected === battle.title),
-        battleTitle: battle.title,
-        keyboard: false,
-        riseOnHover: true,
-      });
-      marker.bindTooltip(tooltipContent(battle), { direction: "top", offset: [0, -SQUARE_SIZE / 2] });
-      marker.on("click", () => onBattleClick?.(battle));
-      group.addLayer(marker);
-      squares.set(battle.title, marker);
     }
 
     for (const label of labels) {
       group.removeLayer(label);
     }
-    labels = labelsToShow(wanted, map.getZoom()).map((battle) =>
-      L.marker(position(battle), { icon: labelIcon(battle), interactive: false, keyboard: false }),
+    labels = labelsToShow(wanted, map.getZoom()).flatMap((battle) =>
+      copies(battle).map((lng) =>
+        L.marker([battle.lat, lng], { icon: labelIcon(battle), interactive: false, keyboard: false }),
+      ),
     );
     for (const label of labels) {
       group.addLayer(label);
@@ -100,8 +101,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     // Marks the square of one battle (or none) as the one the pane points at.
     setSelected(battle) {
       selected = battle === null ? null : battle.title;
-      for (const [title, marker] of squares) {
-        marker.setIcon(squareIcon(title === selected));
+      for (const marker of squares.values()) {
+        marker.setIcon(squareIcon(marker.options.battleTitle === selected));
       }
     },
     // Pans without touching the zoom: the square stays at the zoom the user chose.

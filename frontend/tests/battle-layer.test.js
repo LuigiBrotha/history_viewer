@@ -40,9 +40,6 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
         setIcon(icon) {
           marker.options = { ...marker.options, icon };
         },
-        setLatLng(next) {
-          marker.latlng = next;
-        },
       };
       return marker;
     },
@@ -196,4 +193,18 @@ test("showBattle pans to the copy of the battle nearest to the view", () => {
   const { layer, pans } = setup({ bounds: { south: -45, west: 100, north: 62, east: 260 } });
   layer.showBattle(battle({ lat: 21.4, lng: -157.9 }));
   assert.deepEqual(pans, [[21.4, 202.1]]);
+});
+
+test("a battle gets a square in every copy of the world in view, as the base map repeats", () => {
+  const { layer, squares } = setup({ bounds: { south: -60, west: -300, north: 80, east: 300 } });
+  layer.setBattles([battle({ title: "Pearl Harbor", lat: 21.4, lng: -157.9 })]);
+  assert.deepEqual(squares().map((m) => m.latlng).sort((a, b) => a[1] - b[1]), [[21.4, -157.9], [21.4, 202.1]]);
+});
+
+test("selecting a battle marks its square in every copy", () => {
+  const { layer, squares } = setup({ bounds: { south: -60, west: -300, north: 80, east: 300 } });
+  const pearl = battle({ title: "Pearl Harbor", lat: 21.4, lng: -157.9 });
+  layer.setBattles([pearl]);
+  layer.setSelected(pearl);
+  assert.deepEqual(squares().map((m) => m.options.icon.className), ["battle-square selected", "battle-square selected"]);
 });
