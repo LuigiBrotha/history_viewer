@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
+import tools.extract_battles as tools_extract
 from tools.extract_battles import (
     DateSkip,
     extract_battle,
     extract_coordinates,
     find_infobox,
-    iter_pages,
     parse_date,
     run,
 )
@@ -298,14 +298,6 @@ DUMP_PAGES = [
 ]
 
 
-def test_iter_pages_streams_only_articles_that_are_not_redirects(tmp_path):
-    dump = tmp_path / "dump.xml.bz2"
-    make_dump(dump, DUMP_PAGES)
-    titles = [title for title, _ in iter_pages(dump)]
-    assert titles == ["Battle B", "Battle A", "Early battle", "Plain article", "Verdun", "Vague"]
-    assert dict(iter_pages(dump))["Plain article"] == "Just words, World War II."
-
-
 def test_run_writes_sorted_compact_json_and_counts_skips(tmp_path, capsys):
     dump = tmp_path / "dump.xml.bz2"
     out = tmp_path / "out" / "battles.json"
@@ -325,7 +317,6 @@ def test_run_writes_sorted_compact_json_and_counts_skips(tmp_path, capsys):
     assert (battles[0]["lat"], battles[0]["lng"]) == (10, 20)
     report = capsys.readouterr().out
     assert "3 battles written" in report
-    assert "1 no infobox" in report or "no infobox: 1" in report
     assert "outside the war period: 1" in report
     assert "date: only a year: 1" in report
 
@@ -335,3 +326,84 @@ def test_run_accepts_a_directory_holding_the_dump(tmp_path):
     out = tmp_path / "battles.json"
     run(tmp_path, out)
     assert len(json.loads(out.read_text(encoding="utf-8"))) == 3
+
+
+def test_candidate_pages_keep_only_pages_with_a_conflict_infobox(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    titles = [title for _, title, _ in tools_extract.iter_candidate_pages(dump)]
+    assert "Plain article" not in titles
+    assert "Old redirect" not in titles
+    assert "Talk:Battle A" not in titles
+    assert {"Battle A", "Battle B", "Early battle"} <= set(titles)
+
+
+def test_candidate_pages_can_skip_pages_already_read(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    assert [t for _, t, _ in tools_extract.iter_candidate_pages(dump, skip_pages=2)][0] == "Early battle"
+
+
+def test_candidate_pages_report_the_number_of_each_page(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    numbers = {t: n for n, t, _ in tools_extract.iter_candidate_pages(dump)}
+    assert numbers["Battle B"] == 1
+    assert numbers["Early battle"] == 3
+
+
+def test_run_adds_to_what_the_output_already_holds(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    out = tmp_path / "battles.json"
+    existing = [
+        {"title": "Older", "start": "1939-09-03", "end": "1939-09-04"},
+        {"title": "Battle A", "start": "1900-01-01", "end": "1900-01-01"},
+    ]
+    out.write_text(json.dumps(existing), encoding="utf-8")
+
+    run(dump, out)
+
+    battles = {b["title"]: b for b in json.loads(out.read_text(encoding="utf-8"))}
+    assert "Older" in battles
+    assert battles["Battle A"]["start"] == "1943-06-05"
+
+
+def test_run_saves_along_the_way_and_resumes_after_a_crash(tmp_path, monkeypatch):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    out = tmp_path / "battles.json"
+    real = tools_extract.iter_candidate_pages
+
+    def crashing(path, skip_pages=0):
+        for count, page in enumerate(real(path, skip_pages)):
+            if count == 2:
+                raise OSError("interrupted")
+            yield page
+
+    monkeypatch.setattr(tools_extract, "iter_candidate_pages", crashing)
+    with pytest.raises(OSError):
+        run(dump, out, save_every_seconds=0)
+    assert {b["title"] for b in json.loads(out.read_text(encoding="utf-8"))} == {"Battle A", "Battle B"}
+
+    seen = []
+
+    def recording(path, skip_pages=0):
+        seen.append(skip_pages)
+        return real(path, skip_pages)
+
+    monkeypatch.setattr(tools_extract, "iter_candidate_pages", recording)
+    run(dump, out, save_every_seconds=0)
+
+    assert seen == [2]
+    assert len(json.loads(out.read_text(encoding="utf-8"))) == 3
+
+
+def test_run_leaves_no_temporary_file_and_clears_progress_when_done(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    out = tmp_path / "battles.json"
+
+    run(dump, out, save_every_seconds=0)
+
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["battles.json", "d.xml.bz2"]
