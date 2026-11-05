@@ -677,6 +677,8 @@ html, body {
   transition: width 0.2s ease;
 
 /* Battles: square amber markers, unlike the round boat and ship markers. */
+}
+
 .battle-square {
   position: relative;
 }
