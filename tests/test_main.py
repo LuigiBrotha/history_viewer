@@ -90,6 +90,12 @@ def test_pages_and_assets_must_be_revalidated_after_an_update(reload_server, pat
     assert response.headers["cache-control"] == "no-cache"
 
 
+def test_reload_server_serves_the_tonnage_chart_without_a_redirect(reload_server):
+    response = requests.get(f"{reload_server}/grafiek", timeout=5, allow_redirects=False)
+    assert response.status_code == 200
+    assert "js/tonnage.js" in response.text
+
+
 def test_reload_server_serves_the_heatmap_without_a_redirect(reload_server):
     response = requests.get(f"{reload_server}/heatmap", timeout=5, allow_redirects=False)
     assert response.status_code == 200

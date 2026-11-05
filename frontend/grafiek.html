@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U-boat Tonnage</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="tonnage-page">
+  <header id="status-header">
+    <div id="status-summary">
+      <nav id="page-links">
+        <a href="./">Tijdlijn</a>
+        <a href="status">Alle routes</a>
+        <a href="heatmap">Heatmap</a>
+      </nav>
+      <div id="live-status"></div>
+    </div>
+  </header>
+  <main id="tonnage-main">
+    <h1>Gezonken tonnage per U-boot, cumulatief</h1>
+    <p id="tonnage-note">Gezonken en buitgemaakte schepen; beschadigde schepen tellen niet mee. <span id="tonnage-count"></span></p>
+    <input type="search" id="tonnage-search" placeholder="Zoek een boot, bijvoorbeeld U-99" aria-label="Zoek een boot" />
+    <div id="tonnage-legend"></div>
+    <div id="tonnage-plot">
+      <canvas id="tonnage-chart" role="img" aria-label="Cumulatief gezonken tonnage per boot over de tijd; de tabel hieronder bevat dezelfde totalen"></canvas>
+      <div id="tonnage-tooltip" hidden></div>
+    </div>
+    <table id="tonnage-table">
+      <thead>
+        <tr><th scope="col">Boot</th><th scope="col">Ton</th><th scope="col">Schepen</th></tr>
+      </thead>
+      <tbody id="tonnage-rows"></tbody>
+    </table>
+    <p id="tonnage-source">Bron: uboat.net</p>
+  </main>
+  <script type="module" src="js/tonnage.js"></script>
+</body>
+</html>

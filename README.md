@@ -76,6 +76,8 @@ built by `tools/extract_battles.py` from the Wikipedia dump (see
 Maps open on a background of ocean depth (Esri Ocean). A layer button switches to the
 street map; the choice is remembered in the browser.
 
+- `/grafiek` shows each boat's cumulative sunk tonnage over time. The eight biggest boats have a colour, the others are grey until you hover over them, search for them or pick them in the table. `poetry run python -m app.crawl_ships --lists-only` reads only each boat's list of ships, one request per boat.
+
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
 last map on or before the selected date, `/status` the last map on or before the end of
