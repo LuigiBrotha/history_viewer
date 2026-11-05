@@ -56,7 +56,7 @@ markers and `(datum benaderd)` in the tooltip. Speed checks never use these date
   once per cell, and fully if it overlaps the period at all.
 
 Click a boat on the timeline or a route on `/status` for a panel with the boat's
-details, its patrols and the ships it hit: a bottom sheet on a phone, a side panel on
+details, its patrols and the ships it hit; click a patrol to show its route: a bottom sheet on a phone, a side panel on
 larger screens. Click a ship on either map, or in a boat's list of ships hit, for a panel
 with that ship: tonnage, outcome, position, and what its page on uboat.net says (owner,
 cargo, fate, what happened), plus any other time it was hit.

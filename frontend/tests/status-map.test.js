@@ -424,3 +424,40 @@ test("clicking a route reports its boat", async () => {
 
   assert.deepEqual(clicked, ["u99"]);
 });
+
+test("highlightPatrol thickens the route and fits the map to it, and the next one replaces it", async () => {
+  fakeLeaflet();
+  const { updateRoutes, highlightPatrol } = await import("../js/status-map.js");
+  const fits = [];
+  const state = newState();
+  state.map = { fitBounds: (...args) => fits.push(args) };
+  updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01"), dated("b", "1941-01-01", "1941-02-01")]);
+  const thin = state.polylines.get("a").style.weight;
+
+  highlightPatrol(state, "a");
+  assert.ok(state.polylines.get("a").style.weight > thin);
+  assert.equal(fits.length, 1);
+
+  highlightPatrol(state, "b");
+  assert.equal(state.polylines.get("a").style.weight, thin);
+  assert.ok(state.polylines.get("b").style.weight > thin);
+});
+
+test("highlightPatrol ignores a patrol without a line", async () => {
+  fakeLeaflet();
+  const { highlightPatrol } = await import("../js/status-map.js");
+  const state = newState();
+  highlightPatrol(state, "missing");
+  assert.equal(state.highlightedExternalId, null);
+});
+
+test("a highlighted patrol keeps its weight when recoloured", async () => {
+  fakeLeaflet();
+  const { updateRoutes, highlightPatrol, setPeriod } = await import("../js/status-map.js");
+  const state = newState();
+  updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01")]);
+  highlightPatrol(state, "a");
+  const weight = state.polylines.get("a").style.weight;
+  setPeriod(state, "1940-01-01", null);
+  assert.equal(state.polylines.get("a").style.weight, weight);
+});

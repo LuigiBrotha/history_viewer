@@ -163,16 +163,23 @@ function main() {
   const boatPanel = createBoatPanel({
     rootEl: document.getElementById("boat-panel"),
     getShips: () => ships,
-    onShowPatrol: (patrol) => timeline?.setDate(parseDate(patrol.departure_date)),
+    onShowPatrol: (patrol, boat) => {
+      followBoat(boat.slug);
+      timeline?.setDate(parseDate(patrol.departure_date));
+    },
   });
 
-  function onBoatSelect(slug) {
+  function followBoat(slug) {
     followedSlug = slug;
-    boatPanel.open(slug);
     clearEditError(editState);
     clearDrawnRoute();
     resetButton.hidden = false;
     render(currentDate, true);
+  }
+
+  function onBoatSelect(slug) {
+    boatPanel.open(slug);
+    followBoat(slug);
   }
 
   resetButton.addEventListener("click", () => {

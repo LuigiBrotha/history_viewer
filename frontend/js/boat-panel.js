@@ -135,8 +135,27 @@ function element(tag, text, className) {
   return node;
 }
 
+// Inner controls, such as the foldable details, keep their own behaviour.
+function makeClickable(section, action) {
+  section.classList.add("clickable");
+  section.tabIndex = 0;
+  section.setAttribute("role", "button");
+  section.setAttribute("aria-label", "Toon deze route op de kaart");
+  section.addEventListener("click", (event) => {
+    if (!event.target.closest("details")) {
+      action();
+    }
+  });
+  section.addEventListener("keydown", (event) => {
+    if (event.target === section && (event.key === "Enter" || event.key === " ")) {
+      event.preventDefault();
+      action();
+    }
+  });
+}
+
 // Text from the source only ever goes in through textContent. `getShips` returns all
-// loaded ship hits; `onShowPatrol`, when given, adds a button that shows a patrol on the map.
+// loaded ship hits; `onShowPatrol`, when given, makes each patrol clickable to show its route on the map.
 // Whatever was opened last wins: an answer that arrives after another open or a close is dropped.
 export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
   const closeEl = element("button", "×", "boat-panel-close");
@@ -179,10 +198,13 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null }) {
         section.append(details);
       }
       if (onShowPatrol !== null && patrol.departure_date) {
-        const show = element("button", "Toon op kaart");
-        show.type = "button";
-        show.addEventListener("click", () => onShowPatrol(patrol));
-        section.append(show);
+        makeClickable(section, () => {
+          for (const other of bodyEl.querySelectorAll(".boat-panel-patrol.selected")) {
+            other.classList.remove("selected");
+          }
+          section.classList.add("selected");
+          onShowPatrol(patrol, boat);
+        });
       }
       nodes.push(section);
     }

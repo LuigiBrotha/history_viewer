@@ -5,6 +5,7 @@ const LAST_COLOR = "#000000";
 const UNDATED_COLOR = "#888888";
 const LINE_WEIGHT = 0.75;
 const LINE_OPACITY = 0.9;
+const HIGHLIGHT_WEIGHT = 3;
 const MARKER_RADIUS = 2;
 // Lines this thin are hard to hit, by finger above all.
 const HIT_TOLERANCE_PX = 8;
@@ -95,6 +96,7 @@ export function newStatusState(map, layer) {
     to: null,
     fitted: false,
     lastExternalId: null,
+    highlightedExternalId: null,
   };
 }
 
@@ -112,7 +114,7 @@ export function createStatusMap(containerId) {
 function applyColor(state, externalId, polyline) {
   const range = colorRange(state.history, state.from, state.to);
   const color = routeColor(state.patrols.get(externalId), state.lastExternalId, range);
-  const style = { color, weight: LINE_WEIGHT };
+  const style = { color, weight: externalId === state.highlightedExternalId ? HIGHLIGHT_WEIGHT : LINE_WEIGHT };
   if (!state.markers.has(externalId)) {
     style.dashArray = statusLegStyle("ok", color).dashArray;
   }
@@ -198,6 +200,26 @@ export function setLastPatrol(state, externalId) {
     }
   }
   bringLastToFront(state);
+}
+
+// Shows one patrol's route clearly among all the others.
+export function highlightPatrol(state, externalId) {
+  const polyline = state.polylines.get(externalId);
+  if (polyline === undefined) {
+    return;
+  }
+  const previousId = state.highlightedExternalId;
+  state.highlightedExternalId = externalId;
+  const previous = state.polylines.get(previousId);
+  if (previous) {
+    applyColor(state, previousId, previous);
+  }
+  applyColor(state, externalId, polyline);
+  if (!state.layer.hasLayer(polyline)) {
+    state.layer.addLayer(polyline);
+  }
+  polyline.bringToFront();
+  state.map.fitBounds(state.extents.get(externalId), { padding: [40, 40] });
 }
 
 export function setPeriod(state, from, to) {

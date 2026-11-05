@@ -572,10 +572,17 @@ html, body {
   border-bottom: 1px solid #eee;
 }
 
-.boat-panel-patrol button {
-  min-height: 44px;
-  margin-top: 4px;
-  padding: 0 12px;
+.boat-panel-patrol.clickable {
+  cursor: pointer;
+}
+
+.boat-panel-patrol.clickable:hover {
+  background: #f3f6fa;
+}
+
+.boat-panel-patrol.selected {
+  box-shadow: inset 3px 0 0 #0077cc;
+  padding-left: 8px;
 }
 
 #boat-panel details summary {
