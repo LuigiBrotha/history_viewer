@@ -176,3 +176,58 @@ async def test_saving_a_page_moves_the_hits_updated_at(tmp_path):
 
     after = {h.ship_external_id: h.updated_at for h in await _hits(session_factory)}
     assert all(after[k] > before[k] for k in before)
+
+
+async def test_lists_only_stores_hits_without_fetching_any_ship_page(tmp_path):
+    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
+    await init_models(engine)
+    factory = create_session_factory(engine)
+    pages = []
+
+    def page(url):
+        pages.append(url)
+        return None, None
+
+    await crawl_ships(
+        ["u99"],
+        factory,
+        fetch_successes=_refs,
+        fetch_ship_page=page,
+        lists_only=True,
+    )
+
+    async with factory() as session:
+        hits = await ShipHitRepository(session).list_hits()
+    assert hits
+    assert pages == []
+    await engine.dispose()
+
+
+async def test_top_boats_by_tonnage_picks_the_biggest_first(tmp_path):
+    from app.crawl_ships import top_boats_by_tonnage
+    from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary
+    from app.services.storage.boat_repository import BoatRepository
+    from app.services.storage.patrol_repository import PatrolRepository
+
+    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
+    await init_models(engine)
+    factory = create_session_factory(engine)
+    async with factory() as session:
+        boats = BoatRepository(session)
+        for slug, tons in (("small", 10), ("big", 500), ("none", None), ("mid", 100)):
+            await boats.upsert_boat(BoatData(
+                slug=slug, number=slug, type=None, builder=None,
+                laid_down=None, launched=None, commissioned=None, fate=None,
+            ))
+            await PatrolRepository(session).upsert_patrol(
+                await boats.get_id_by_slug(slug),
+                PatrolSummary(
+                    external_id=slug, patrol_number=1, commander=None, departure_port=None,
+                    departure_date=None, arrival_port=None, arrival_date=None, days_at_sea=None,
+                    tonnage=tons, detail_url="https://uboat.net/x",
+                ),
+                PatrolDetail(description=None, route_points=[]),
+            )
+
+    assert await top_boats_by_tonnage(factory, 2) == ["big", "mid"]
+    await engine.dispose()
