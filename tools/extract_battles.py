@@ -12,8 +12,10 @@ import bz2
 import calendar
 import html
 import json
+import os
 import re
 import sys
+import time
 import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import date
@@ -25,6 +27,9 @@ DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "frontend" / "battles"
 WAR_START = date(1939, 9, 1)
 WAR_END = date(1945, 9, 2)
 PROGRESS_EVERY = 100_000
+READ_SIZE = 1 << 20
+SAVE_EVERY_SECONDS = 60
+CANDIDATE = re.compile(rb"infobox[ _]+(?:military[ _]+conflict|military[ _]+operation|battle)", re.IGNORECASE)
 MAX_PLACE = 160
 WIKI_URL = "https://en.wikipedia.org/wiki/"
 
@@ -346,33 +351,29 @@ def extract_battle(title, text):
     }, None
 
 
-def iter_pages(path):
-    """(title, wikitext) of every article that is not a redirect, streamed from the dump."""
+def iter_raw_pages(path):
+    """The bytes of each page in the dump, in order, ending just before its closing tag."""
     with bz2.open(path, "rb") as stream:
-        root = None
-        for event, element in ET.iterparse(stream, events=("start", "end")):
-            if event == "start":
-                if root is None:
-                    root = element
-                continue
-            if element.tag.rpartition("}")[2] != "page":
-                continue
-            title, namespace, redirect, text = None, None, False, ""
-            for child in element:
-                tag = child.tag.rpartition("}")[2]
-                if tag == "title":
-                    title = child.text
-                elif tag == "ns":
-                    namespace = child.text
-                elif tag == "redirect":
-                    redirect = True
-                elif tag == "revision":
-                    for part in child:
-                        if part.tag.rpartition("}")[2] == "text":
-                            text = part.text or ""
-            root.clear()
-            if namespace == "0" and not redirect and title:
-                yield title, text
+        pending = b""
+        while chunk := stream.read(READ_SIZE):
+            parts = (pending + chunk).split(b"</page>")
+            pending = parts.pop()
+            yield from parts
+
+
+def iter_candidate_pages(path, skip_pages=0):
+    """(page number, title, wikitext) of articles with a conflict infobox, streamed from the dump.
+
+    Nearly every page in the dump has no such infobox, so a byte search rules those out
+    before any XML is parsed. Page numbers count every page, so that a run can resume.
+    """
+    for number, raw in enumerate(iter_raw_pages(path), 1):
+        if number <= skip_pages or CANDIDATE.search(raw) is None:
+            continue
+        start = raw.rfind(b"<page>")
+        page = ET.fromstring(raw[start:] + b"</page>")
+        if page.findtext("ns") == "0" and page.find("redirect") is None and page.findtext("title"):
+            yield number, page.findtext("title"), page.findtext("revision/text") or ""
 
 
 def resolve_dump(path):
@@ -385,22 +386,52 @@ def resolve_dump(path):
     return candidates[-1]
 
 
-def run(dump, output):
+def _write_atomically(path, text):
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(text, encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _load_json(path, fallback):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return fallback
+
+
+def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
+    """Add the dump's battles to `output`, saving along the way so that a page can show them
+    during the run and a stopped run can continue where it was."""
     dump = resolve_dump(dump)
-    battles = []
-    skipped = Counter()
-    for count, (title, text) in enumerate(iter_pages(dump), 1):
-        battle, reason = extract_battle(title, text) if "nfobox" in text or "NFOBOX" in text else (None, "no infobox")
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    progress_path = dump.with_name(f"{output.stem}.progress.json")
+    progress = _load_json(progress_path, {"pages": 0, "skipped": {}})
+    skipped = Counter(progress["skipped"])
+    battles = {battle["title"]: battle for battle in _load_json(output, [])}
+    pages = progress["pages"]
+
+    def save():
+        ordered = sorted(battles.values(), key=lambda b: (b["start"], b["title"]))
+        _write_atomically(output, json.dumps(ordered, ensure_ascii=False, separators=(",", ":")))
+        _write_atomically(progress_path, json.dumps({"pages": pages, "skipped": skipped}))
+
+    last_save = time.monotonic()
+    last_report = pages
+    for pages, title, text in iter_candidate_pages(dump, skip_pages=pages):
+        battle, reason = extract_battle(title, text)
         if battle is None:
             skipped[reason] += 1
         else:
-            battles.append(battle)
-        if count % PROGRESS_EVERY == 0:
-            print(f"{count} articles read, {len(battles)} battles so far", file=sys.stderr, flush=True)
-    battles.sort(key=lambda b: (b["start"], b["title"]))
-    output = Path(output)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(battles, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            battles[title] = battle
+        if time.monotonic() - last_save >= save_every_seconds:
+            save()
+            last_save = time.monotonic()
+        if pages - last_report >= PROGRESS_EVERY:
+            last_report = pages
+            print(f"{pages} pages read, {len(battles)} battles so far", file=sys.stderr, flush=True)
+    save()
+    progress_path.unlink()
     print(f"{len(battles)} battles written to {output}")
     for reason, count in skipped.most_common():
         print(f"  {reason}: {count}")
