@@ -1,6 +1,7 @@
 import { fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
+import { initBattles } from "./battles.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, heatColor, patrolCells, ROWS, scaleMax, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
@@ -114,10 +115,14 @@ function main() {
     resetEl: document.getElementById("period-reset"),
     onChange: (next) => {
       period = next;
+      battles.setPeriod(next.from, next.to);
       renderHeat();
       renderAtlas();
     },
   });
+
+  const battles = initBattles({ map, mode: "period" });
+  battles.setPeriod(null, null);
 
   initAtlas(map).then((loaded) => {
     atlas = loaded;

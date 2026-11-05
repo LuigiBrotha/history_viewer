@@ -156,3 +156,26 @@ do not count. Ships hit by U-boats are not included.
 - Offline maps.
 - Canals other than the Kiel Canal.
 - Editing or adding coordinates.
+
+## Battles
+
+World War II battles from the English Wikipedia (CC BY-SA 4.0) are shown on `/`, `/status`
+and `/heatmap`, as squares on the map and as a resizable pane with a list.
+
+- `tools/extract_battles.py` streams the `pages-articles` dump once (never in memory) and
+  writes `frontend/battles/battles.json`. An article counts when it has a military
+  conflict, operation or battle infobox, its dates overlap 1939-09-01 to 1945-09-02 and
+  it names World War II in a category line or in `part_of`/`campaign`. Only the `date`
+  field of the infobox is read. A date that is only a year, or not understood, skips the
+  article: nothing is guessed. A month-only date gets `precision: month`. The first
+  `{{coord}}` gives the position; none, or an out-of-range one, gives null and the battle
+  is only listed.
+- `battle-model.js` holds the pure logic (overlap, duration text, filter, bar position,
+  which squares to draw), `battle-layer.js` the Leaflet squares (at most 300, longest
+  first; names only when at most 25 squares or zoom 6 or more), `battle-pane.js` the list,
+  `battle-split.js` the divider and `battles.js` ties them to a page.
+- The page tells the selection with `setDate(iso)` (`/`) or `setPeriod(from, to)`. Rows are
+  built once; a new selection only changes classes, so playback does not rebuild the list.
+- The pane is to the right of the map from 700px and under it on a phone. It starts hidden
+  under 900px; its state and size are kept in `localStorage`. If the file cannot be loaded
+  the pane says so and the page keeps working.

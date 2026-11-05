@@ -2,6 +2,7 @@ import { EditError, canEdit, excludePoint, fetchBoats, fetchShips, fetchStatus, 
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage, parseDate } from "./time-model.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
+import { initBattles } from "./battles.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import {
@@ -55,6 +56,7 @@ function main() {
   let followedSlug = null;
   let currentDate = null;
   let atlas = { setDate() {} };
+  let battles = { setDate() {} };
   let ships = [];
   let shipLayer = null;
   let editable = false;
@@ -69,6 +71,7 @@ function main() {
     const active = activeBoatsOnDate(routes, date);
     updateDateLabel(labelEl, date);
     atlas.setDate(date.toISOString().slice(0, 10));
+    battles.setDate(date.toISOString().slice(0, 10));
 
     let notOnPatrol = "";
 
@@ -241,6 +244,7 @@ function main() {
       if (mapState === null) {
         mapState = createMap("map");
         shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
+        battles = initBattles({ map: mapState.map, mode: "date", onPickDate: (iso) => timeline?.setDate(parseDate(iso)) });
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));

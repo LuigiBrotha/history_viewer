@@ -144,3 +144,33 @@ test("labelsToShow names few squares at any zoom and many only when zoomed in", 
   assert.equal(labelsToShow(many(100), 6).length, 100);
   assert.deepEqual(labelsToShow(many(100), 5), []);
 });
+
+import { AXIS_BOUNDS, bandPosition, datePosition, yearMarks } from "../js/battle-model.js";
+
+test("the axis runs over the war, from September 1939 to September 1945", () => {
+  assert.deepEqual(AXIS_BOUNDS, { min: "1939-09-01", max: "1945-09-02" });
+});
+
+test("datePosition is a fraction of the axis, held inside it", () => {
+  assert.equal(datePosition("1939-09-01", AXIS_BOUNDS), 0);
+  assert.ok(Math.abs(datePosition("1945-09-02", AXIS_BOUNDS) - 1) < 0.001);
+  assert.equal(datePosition("1930-01-01", AXIS_BOUNDS), 0);
+  assert.equal(datePosition("1950-01-01", AXIS_BOUNDS), 1);
+  assert.ok(Math.abs(datePosition("1942-09-01", AXIS_BOUNDS) - 0.5) < 0.01);
+});
+
+test("bandPosition shades a period, open ends reaching the edge of the axis", () => {
+  assert.deepEqual(bandPosition(null, null, AXIS_BOUNDS), { from: 0, to: 1 });
+  const band = bandPosition("1942-09-01", null, AXIS_BOUNDS);
+  assert.ok(Math.abs(band.from - 0.5) < 0.01);
+  assert.equal(band.to, 1);
+  assert.equal(bandPosition(null, "1930-01-01", AXIS_BOUNDS).to, 0);
+});
+
+test("yearMarks gives the first year at the start and each new year at its January", () => {
+  const marks = yearMarks(AXIS_BOUNDS);
+  assert.deepEqual(marks.map((m) => m.year), [1939, 1940, 1941, 1942, 1943, 1944, 1945]);
+  assert.equal(marks[0].fraction, 0);
+  assert.ok(Math.abs(marks[1].fraction - 122 / 2194) < 0.001);
+  assert.ok(marks.every((m, i) => i === 0 || m.fraction > marks[i - 1].fraction));
+});

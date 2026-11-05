@@ -4,6 +4,7 @@ import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
+import { initBattles } from "./battles.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
@@ -83,6 +84,9 @@ function main() {
     renderAtlas();
   });
 
+  const battles = initBattles({ map: state.map, mode: "period" });
+  battles.setPeriod(null, null);
+
   const slider = initPeriodSlider({
     trackEl,
     windowEl,
@@ -93,6 +97,7 @@ function main() {
     resetEl: document.getElementById("period-reset"),
     onChange: ({ from, to }) => {
       setPeriod(state, from, to);
+      battles.setPeriod(from, to);
       renderShips();
       renderCount();
       renderAtlas();

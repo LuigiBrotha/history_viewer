@@ -1,0 +1,214 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { createBattlePane } from "../js/battle-pane.js";
+import { Element, installDom } from "./battle-dom.js";
+
+const battle = (over = {}) => ({
+  title: "Battle of Kursk",
+  url: "https://en.wikipedia.org/wiki/Battle_of_Kursk",
+  start: "1943-07-05",
+  end: "1943-08-23",
+  precision: "day",
+  date_text: "5 July 1943 – 23 August 1943",
+  lat: 51.7,
+  lng: 36.1,
+  part_of: "the Eastern Front of World War II",
+  place: "Kursk, Soviet Union",
+  ...over,
+});
+
+const LIST = [
+  battle(),
+  battle({ title: "Atlantic", url: "https://en.wikipedia.org/wiki/Battle_of_the_Atlantic", start: "1939-09-03", end: "1945-05-08", date_text: "3 September 1939 – 8 May 1945", lat: null, lng: null, place: "Atlantic Ocean", part_of: "the Second World War" }),
+  battle({ title: "Midway", url: "https://en.wikipedia.org/wiki/Battle_of_Midway", start: "1942-06-04", end: "1942-06-07", date_text: "4–7 June 1942", place: "Midway Atoll", part_of: "the Pacific War" }),
+];
+
+function setup(mode = "date", battles = LIST) {
+  installDom();
+  const rootEl = new Element("aside");
+  const selected = [];
+  const pane = createBattlePane({ rootEl, mode, onSelect: (b) => selected.push(b) });
+  pane.setBattles(battles);
+  const rows = () => rootEl.byClass("battle-row");
+  const titleOf = (row) => row.byClass("battle-row-title")[0].textContent;
+  return { pane, rootEl, selected, rows, titleOf };
+}
+
+test("the heading counts the battles and the rows go oldest first", () => {
+  const { rootEl, rows, titleOf } = setup();
+  assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (3)");
+  assert.deepEqual(rows().map(titleOf), ["Atlantic", "Midway", "Battle of Kursk"]);
+});
+
+test("a row shows the dates, the duration and a bar on the shared axis", () => {
+  const { rows } = setup();
+  const midway = rows()[1];
+  assert.equal(midway.byClass("battle-row-dates")[0].textContent, "4–7 June 1942");
+  assert.equal(midway.byClass("battle-row-duration")[0].textContent, "4 dagen");
+  const bar = midway.byClass("battle-bar")[0];
+  assert.match(bar.styleProps["--left"], /^\d+(\.\d+)?%$/);
+  assert.match(bar.styleProps["--width"], /^\d+(\.\d+)?%$/);
+});
+
+test("the axis names the years", () => {
+  const { rootEl } = setup();
+  assert.deepEqual(rootEl.byClass("battle-year").map((y) => y.textContent), ["1939", "1940", "1941", "1942", "1943", "1944", "1945"]);
+});
+
+test("a battle without a position says so, one with a position does not", () => {
+  const { rows } = setup();
+  assert.equal(rows()[0].byClass("battle-nopos")[0].textContent, "geen positie");
+  assert.equal(rows()[1].byClass("battle-nopos").length, 0);
+});
+
+test("the Wikipedia link opens in a new tab without giving the page access", () => {
+  const { rows } = setup();
+  const link = rows()[2].byClass("battle-row-link")[0];
+  assert.equal(link.textContent, "Wikipedia");
+  assert.equal(link.getAttribute("href"), "https://en.wikipedia.org/wiki/Battle_of_Kursk");
+  assert.equal(link.getAttribute("target"), "_blank");
+  assert.match(link.getAttribute("rel"), /noopener/);
+});
+
+test("a url that is not Wikipedia gets no link", () => {
+  const { rows } = setup("date", [battle({ url: "javascript:alert(1)" })]);
+  assert.equal(rows()[0].byClass("battle-row-link").length, 0);
+});
+
+test("source text only becomes text", () => {
+  const { rows } = setup("date", [battle({ title: "<img src=x onerror=alert(1)>", date_text: "<b>x</b>" })]);
+  assert.equal(rows()[0].byClass("battle-row-title")[0].textContent, "<img src=x onerror=alert(1)>");
+  assert.equal(rows()[0].byClass("battle-row-dates")[0].textContent, "<b>x</b>");
+});
+
+test("the footer names the source", () => {
+  const { rootEl } = setup();
+  assert.equal(rootEl.byClass("battle-source")[0].textContent, "Bron: Engelse Wikipedia, CC BY-SA 4.0");
+});
+
+test("the search hides rows that do not match and counts the rest", () => {
+  const { rootEl, rows } = setup();
+  const search = rootEl.byClass("battle-search")[0];
+  assert.equal(search.tag, "input");
+  assert.equal(search.getAttribute("type"), "search");
+  search.value = "ATOLL";
+  search.dispatch("input");
+  assert.deepEqual(rows().map((r) => r.hidden), [true, false, true]);
+  assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (1)");
+  search.value = "zzz";
+  search.dispatch("input");
+  assert.equal(rootEl.byClass("battle-empty")[0].hidden, false);
+  search.value = "";
+  search.dispatch("input");
+  assert.equal(rootEl.byClass("battle-empty")[0].hidden, true);
+  assert.ok(rows().every((r) => !r.hidden));
+});
+
+test("on a date the active battles are highlighted and the others stay as they are", () => {
+  const { pane, rows } = setup("date");
+  pane.setSelection({ date: "1942-06-05" });
+  assert.deepEqual(rows().map((r) => [r.classes.has("active"), r.classes.has("dimmed")]), [
+    [true, false],
+    [true, false],
+    [false, false],
+  ]);
+  pane.setSelection({ date: "1943-07-05" });
+  assert.deepEqual(rows().map((r) => r.classes.has("active")), [true, false, true]);
+});
+
+test("the selected date is a line on the axis", () => {
+  const { pane, rootEl } = setup("date");
+  pane.setSelection({ date: "1942-09-01" });
+  const line = rootEl.byClass("battle-marker")[0];
+  assert.equal(line.hidden, false);
+  assert.ok(Math.abs(Number(line.styleProps["--pos"]) - 0.5) < 0.01);
+});
+
+test("a period highlights the battles that overlap it and dims the rest, without removing any", () => {
+  const { pane, rows } = setup("period");
+  pane.setSelection({ from: "1942-06-07", to: "1942-12-31" });
+  assert.deepEqual(rows().map((r) => [r.classes.has("active"), r.classes.has("dimmed"), r.hidden]), [
+    [true, false, false],
+    [true, false, false],
+    [false, true, false],
+  ]);
+});
+
+test("the selected period is a shaded band, and an open period dims nothing", () => {
+  const { pane, rootEl, rows } = setup("period");
+  pane.setSelection({ from: "1942-09-01", to: null });
+  const band = rootEl.byClass("battle-band")[0];
+  assert.equal(band.hidden, false);
+  assert.ok(Math.abs(Number(band.styleProps["--from"]) - 0.5) < 0.01);
+  assert.equal(band.styleProps["--to"], "1");
+  pane.setSelection({ from: null, to: null });
+  assert.ok(rows().every((r) => !r.classes.has("active") && !r.classes.has("dimmed")));
+});
+
+test("changing the selection updates classes and builds no new elements", () => {
+  const many = Array.from({ length: 3000 }, (_, i) => battle({ title: `b${i}`, start: "1941-01-01", end: "1941-02-01" }));
+  const { pane, rows } = setup("date", many);
+  const before = rows().slice();
+  let created = 0;
+  const original = globalThis.document.createElement;
+  globalThis.document.createElement = (tag) => {
+    created += 1;
+    return original(tag);
+  };
+  for (let day = 1; day <= 28; day++) {
+    pane.setSelection({ date: `1941-01-${String(day).padStart(2, "0")}` });
+  }
+  pane.setSelection({ date: "1942-01-01" });
+  globalThis.document.createElement = original;
+  assert.equal(created, 0);
+  assert.deepEqual(rows(), before);
+  assert.ok(rows().every((r) => !r.classes.has("active")));
+});
+
+test("a click on a row reports the battle, a click on the Wikipedia link does not", () => {
+  const { rows, selected } = setup();
+  rows()[1].byClass("battle-row-meta")[0].dispatch("click");
+  assert.deepEqual(selected.map((b) => b.title), ["Midway"]);
+  rows()[2].byClass("battle-row-link")[0].dispatch("click");
+  rows()[0].byClass("battle-row-title")[0].dispatch("click");
+  assert.deepEqual(selected.map((b) => b.title), ["Midway", "Atlantic"]);
+});
+
+test("reveal scrolls to the row and marks it, undoing the mark of the previous one", () => {
+  const { pane, rows } = setup();
+  pane.reveal(LIST[2]);
+  assert.equal(rows()[1].classes.has("selected"), true);
+  assert.equal(rows()[1].scrolled, 1);
+  pane.reveal(LIST[0]);
+  assert.equal(rows()[1].classes.has("selected"), false);
+  assert.equal(rows()[2].classes.has("selected"), true);
+});
+
+test("reveal clears a search that hides the row", () => {
+  const { pane, rootEl, rows } = setup();
+  const search = rootEl.byClass("battle-search")[0];
+  search.value = "atlantic";
+  search.dispatch("input");
+  pane.reveal(LIST[2]);
+  assert.equal(search.value, "");
+  assert.equal(rows()[1].hidden, false);
+});
+
+test("a selection given before the battles arrive is applied to them", () => {
+  installDom();
+  const rootEl = new Element("aside");
+  const pane = createBattlePane({ rootEl, mode: "date", onSelect() {} });
+  pane.setSelection({ date: "1942-06-05" });
+  pane.setBattles(LIST);
+  assert.deepEqual(rootEl.byClass("battle-row").map((r) => r.classes.has("active")), [true, true, false]);
+});
+
+test("when the battles cannot be loaded the pane says so", () => {
+  installDom();
+  const rootEl = new Element("aside");
+  const pane = createBattlePane({ rootEl, mode: "date", onSelect() {} });
+  pane.showError();
+  assert.match(rootEl.allText(), /Veldslagen konden niet worden geladen\./);
+  assert.equal(rootEl.byClass("battle-row").length, 0);
+});

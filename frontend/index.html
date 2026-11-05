@@ -9,6 +9,8 @@
 </head>
 <body>
   <div id="app">
+   <div id="battle-split">
+    <div id="map-side">
     <div id="map"></div>
 
     <aside id="sidebar">
@@ -42,7 +44,11 @@
         <button id="step-forward" type="button" aria-label="Een dag vooruit">›</button>
       </div>
     </div>
-  </div>
+    <button id="battle-toggle" type="button" aria-controls="battle-pane" aria-expanded="false">Veldslagen</button>
+    </div>
+    <div id="battle-divider" role="separator" aria-orientation="vertical" aria-label="Formaat van de lijst met veldslagen" aria-controls="battle-pane" tabindex="0"></div>
+    <aside id="battle-pane" aria-label="Veldslagen"></aside>
+   </div>
   </div>
 
   <div id="load-indicator"></div>

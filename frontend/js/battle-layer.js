@@ -33,7 +33,7 @@ function labelIcon(battle) {
   return L.divIcon({
     className: "battle-label",
     iconSize: [0, 0],
-    iconAnchor: [-LABEL_OFFSET_PX, SQUARE_SIZE / 2],
+    iconAnchor: [-LABEL_OFFSET_PX, 0],
     html: text("span", "battle-label-text", battle.title),
   });
 }

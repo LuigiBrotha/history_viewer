@@ -80,3 +80,37 @@ export function squaresToDraw(battles, viewBounds, max) {
 export function labelsToShow(squares, zoom) {
   return squares.length <= MAX_NAMED_SQUARES || zoom >= NAMED_FROM_ZOOM ? squares : [];
 }
+
+// The one axis every row's bar is drawn on.
+export const AXIS_BOUNDS = { min: "1939-09-01", max: "1945-09-02" };
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
+// Fraction (0 to 1) of the axis at which an ISO date lies; dates outside stick to the edge.
+export function datePosition(isoDate, bounds) {
+  const first = dayNumber(bounds.min);
+  return clamp01((dayNumber(isoDate) - first) / (dayNumber(bounds.max) - first));
+}
+
+// The shaded part of the axis for a period; an open end reaches the edge.
+export function bandPosition(from, to, bounds) {
+  return {
+    from: from === null ? 0 : datePosition(from, bounds),
+    to: to === null ? 1 : datePosition(to, bounds),
+  };
+}
+
+export function yearMarks(bounds) {
+  const firstYear = Number(bounds.min.slice(0, 4));
+  const lastYear = Number(bounds.max.slice(0, 4));
+  const marks = [{ year: firstYear, fraction: 0 }];
+  for (let year = firstYear + 1; year <= lastYear; year++) {
+    const fraction = datePosition(`${year}-01-01`, bounds);
+    if (fraction > 0 && fraction < 1) {
+      marks.push({ year, fraction });
+    }
+  }
+  return marks;
+}

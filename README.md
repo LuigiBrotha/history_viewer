@@ -61,6 +61,18 @@ larger screens. Click a ship on either map, or in a boat's list of ships hit, fo
 with that ship: tonnage, outcome, position, and what its page on uboat.net says (owner,
 cargo, fate, what happened), plus any other time it was hit.
 
+All three pages also show World War II battles, taken from the English Wikipedia
+(CC BY-SA 4.0): small amber squares with the battle's name on the map, and a pane with
+all of them in a list, oldest first, each with its dates, duration and a bar on one
+1939-1945 axis. The pane sits to the right of the map (drag the divider to resize it,
+or use the arrow keys on it) and under the map on a phone; the `Veldslagen` button shows
+or hides it. On `/` the squares are the battles active on the selected date, on `/status`
+and `/heatmap` those overlapping the selected period; the list always holds all of them,
+the ones outside the selection dimmed. Clicking a row pans the map to its square, and
+on `/` also sets the date to its start. The data is in `frontend/battles/battles.json`,
+built by `tools/extract_battles.py` from the Wikipedia dump (see
+`frontend/battles/README.md`); dates and coordinates are parsed automatically.
+
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
 last map on or before the selected date, `/status` the last map on or before the end of

@@ -721,3 +721,297 @@ html, body {
 .battle-tooltip-name {
   font-weight: 600;
 }
+
+/* The page is split into the map side and the battle pane: under the map on a phone,
+   to the right of it from 700px. The divider is dragged to change the pane's size. */
+#battle-split {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+#map-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Fixed to the window, it would cover the pane: keep it inside the map side. */
+#map-side #boat-panel {
+  position: absolute;
+}
+
+#battle-split.resizing {
+  user-select: none;
+}
+
+#battle-toggle {
+  position: absolute;
+  top: 12px;
+  left: 56px;
+  z-index: 1000;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  background: white;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#battle-toggle[aria-expanded="true"] {
+  background: #ffe9a8;
+}
+
+#battle-divider {
+  position: relative;
+  flex: 0 0 44px;
+  background: #222;
+  touch-action: none;
+  cursor: row-resize;
+}
+
+#battle-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 4px;
+  margin: -2px 0 0 -24px;
+  border-radius: 2px;
+  background: #999;
+}
+
+#battle-divider:hover::before,
+#battle-divider:focus-visible::before {
+  background: #ffb300;
+}
+
+#battle-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 var(--battle-pane-size, 40%);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: white;
+  font-size: 14px;
+}
+
+#battle-split.pane-hidden #battle-pane,
+#battle-split.pane-hidden #battle-divider {
+  display: none;
+}
+
+#battle-pane [hidden] {
+  display: none;
+}
+
+@media (min-width: 700px) {
+  #battle-split {
+    flex-direction: row;
+  }
+
+  #battle-divider {
+    flex: 0 0 12px;
+    cursor: col-resize;
+  }
+
+  /* A wider target for the pointer than the line that is drawn. */
+  #battle-divider::after {
+    content: "";
+    position: absolute;
+    inset: 0 -8px;
+  }
+
+  #battle-divider::before {
+    width: 4px;
+    height: 48px;
+    margin: -24px 0 0 -2px;
+  }
+
+  #battle-pane {
+    flex-basis: var(--battle-pane-size, 360px);
+  }
+}
+
+.battle-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 4px;
+}
+
+.battle-pane-title {
+  margin: 0;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.battle-search {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 16px;
+}
+
+.battle-axis {
+  position: relative;
+  flex: 0 0 18px;
+  margin: 0 12px;
+  border-bottom: 1px solid #bbb;
+  font-size: 11px;
+  color: #555;
+}
+
+.battle-year {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--pos) * 100%);
+  padding-left: 2px;
+  border-left: 1px solid #bbb;
+}
+
+.battle-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.battle-track {
+  position: relative;
+}
+
+.battle-marker,
+.battle-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.battle-marker {
+  left: calc(12px + (100% - 24px) * var(--pos));
+  width: 2px;
+  margin-left: -1px;
+  background: #d33;
+}
+
+.battle-band {
+  left: calc(12px + (100% - 24px) * var(--from));
+  width: calc((100% - 24px) * (var(--to) - var(--from)));
+  background: rgba(74, 158, 255, 0.2);
+}
+
+.battle-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.battle-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "title link" "meta meta" "bar bar";
+  align-items: center;
+  column-gap: 8px;
+  padding: 2px 12px 8px;
+  border-bottom: 1px solid #eee;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 96px;
+}
+
+.battle-row.active {
+  background: #fff6dc;
+  box-shadow: inset 3px 0 0 #ffb300;
+}
+
+.battle-row.dimmed {
+  opacity: 0.45;
+}
+
+.battle-row.selected {
+  outline: 2px solid #4a9eff;
+  outline-offset: -2px;
+}
+
+.battle-row-title {
+  grid-area: title;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.battle-row-link {
+  grid-area: link;
+  padding: 12px 0;
+}
+
+.battle-row-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 13px;
+  color: #444;
+}
+
+.battle-nopos {
+  color: #8a5a00;
+  font-style: italic;
+}
+
+.battle-bar-track {
+  grid-area: bar;
+  position: relative;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: #eee;
+}
+
+.battle-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--left);
+  width: var(--width);
+  box-sizing: border-box;
+  border: 1px solid #3b2a00;
+  border-radius: 2px;
+  background: #ffb300;
+}
+
+.battle-empty,
+.battle-error {
+  margin: 0;
+  padding: 12px;
+  color: #555;
+}
+
+.battle-source {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  color: #555;
+}
