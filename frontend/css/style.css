@@ -675,4 +675,49 @@ html, body {
   height: 100%;
   background: #4a9eff;
   transition: width 0.2s ease;
+
+/* Battles: square amber markers, unlike the round boat and ship markers. */
+.battle-square {
+  position: relative;
+}
+
+.battle-square span {
+  display: block;
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  background: #ffb300;
+  border: 2px solid #3b2a00;
+}
+
+/* A larger hit area for a finger. */
+.battle-square span::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.battle-square.selected span {
+  background: #fff3b0;
+  box-shadow: 0 0 0 2px #3b2a00, 0 0 0 4px #ffb300;
+}
+
+.battle-label {
+  pointer-events: none;
+}
+
+.battle-label-text {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #3b2a00;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
+  transform: translateY(-50%);
+  top: 50%;
+}
+
+.battle-tooltip-name {
+  font-weight: 600;
 }
