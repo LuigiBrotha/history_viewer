@@ -4,20 +4,24 @@ import { mergeShips } from "./ship-model.js";
 import {
   boatSeries,
   colorSlots,
+  formatNumber,
   formatTons,
   matchSeries,
-  nearestSeries,
   niceMax,
+  periodLabel,
+  segmentAt,
+  stackedBars,
   tableRows,
-  tonsOn,
 } from "./tonnage-model.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
 const SLOT_COUNT = 8;
+const MAX_TOOLTIP_SHIPS = 4;
+const DIMMED_ALPHA = 0.35;
 const MARGIN = { top: 12, right: 16, bottom: 26, left: 72 };
 const Y_TICKS = 5;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const MIN_YEAR_LABEL_GAP = 40;
 
 function main() {
   const canvas = document.getElementById("tonnage-chart");
@@ -27,6 +31,7 @@ function main() {
   const bodyEl = document.getElementById("tonnage-rows");
   const countEl = document.getElementById("tonnage-count");
   const searchEl = document.getElementById("tonnage-search");
+  const unitEl = document.getElementById("tonnage-unit");
   const liveStatusEl = document.getElementById("live-status");
   const rootStyle = getComputedStyle(document.querySelector(".tonnage-page"));
 
@@ -34,7 +39,8 @@ function main() {
   let series = [];
   let selected = null;
   let hovered = null;
-  let crosshairX = null;
+  let bars = [];
+  let unit = "month";
   const slots = new Map();
   let scale = null;
 
@@ -47,42 +53,50 @@ function main() {
   }
 
   function buildScale(width, height) {
-    if (series.length === 0) {
+    if (bars.length === 0) {
       return null;
     }
-    const dates = series.flatMap(({ steps }) => [steps[0].date, steps[steps.length - 1].date]).sort();
-    const min = Date.parse(`${dates[0].slice(0, 4)}-01-01`);
-    const max = Date.parse(dates[dates.length - 1]) + 30 * DAY_MS;
-    const top = niceMax(series[0].total);
+    const top = niceMax(bars[bars.length - 1].total);
     const plotWidth = Math.max(10, width - MARGIN.left - MARGIN.right);
     const plotHeight = Math.max(10, height - MARGIN.top - MARGIN.bottom);
+    const step = plotWidth / bars.length;
     return {
-      min,
-      max,
       top,
-      x: (date) => MARGIN.left + ((Date.parse(date) - min) / (max - min)) * plotWidth,
+      step,
+      barWidth: Math.max(1, step >= 4 ? step - 1 : step),
+      x: (index) => MARGIN.left + index * step,
       y: (tons) => MARGIN.top + plotHeight - (tons / top) * plotHeight,
-      dateAt: (x) => new Date(min + ((x - MARGIN.left) / plotWidth) * (max - min)).toISOString().slice(0, 10),
       tonsAt: (y) => ((MARGIN.top + plotHeight - y) / plotHeight) * top,
       plotWidth,
       plotHeight,
     };
   }
 
-  function drawLine(line, stroke, width) {
-    const { x, y } = scale;
-    context.beginPath();
-    context.moveTo(x(line.steps[0].date), y(0));
-    let previous = 0;
-    for (const step of line.steps) {
-      context.lineTo(x(step.date), y(previous));
-      context.lineTo(x(step.date), y(step.total));
-      previous = step.total;
-    }
-    context.lineTo(MARGIN.left + scale.plotWidth, y(previous));
-    context.strokeStyle = stroke;
-    context.lineWidth = width;
-    context.stroke();
+  function drawSegment(index, segment, fill) {
+    const y = scale.y(segment.to);
+    const height = scale.y(segment.from) - y;
+    context.fillStyle = fill;
+    // A sliver of surface keeps boats apart wherever a block is tall enough to spare it.
+    context.fillRect(scale.x(index), y, scale.barWidth, height >= 3 ? height - 1 : Math.max(height, 0.5));
+  }
+
+  function drawYearLabels() {
+    const years = [];
+    bars.forEach((bar, index) => {
+      const year = bar.period.slice(0, 4);
+      if (years.length === 0 || years[years.length - 1].year !== year) {
+        years.push({ year, x: scale.x(index) });
+      }
+    });
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillStyle = color("--text-secondary");
+    years.forEach(({ year, x }, index) => {
+      const next = years[index + 1];
+      if (next === undefined || next.x - x >= MIN_YEAR_LABEL_GAP) {
+        context.fillText(year, x, MARGIN.top + scale.plotHeight + 8);
+      }
+    });
   }
 
   function draw() {
@@ -113,64 +127,50 @@ function main() {
       context.stroke();
       context.fillStyle = color("--text-secondary");
       context.textAlign = "right";
-      context.fillText(Math.round(tons).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."), MARGIN.left - 8, y);
+      context.fillText(formatNumber(Math.round(tons)), MARGIN.left - 8, y);
     }
-    context.textAlign = "center";
-    context.textBaseline = "top";
-    const firstYear = new Date(scale.min).getUTCFullYear();
-    const lastYear = new Date(scale.max).getUTCFullYear();
-    for (let year = firstYear; year <= lastYear; year++) {
-      const x = scale.x(`${year}-01-01`);
-      if (x >= MARGIN.left && x <= MARGIN.left + scale.plotWidth) {
-        context.fillStyle = color("--text-secondary");
-        context.fillText(String(year), x, MARGIN.top + scale.plotHeight + 8);
-      }
-    }
+    drawYearLabels();
 
-    for (const line of series) {
-      if (!slots.has(line.slug)) {
-        drawLine(line, color("--context"), 1);
+    const contextFill = color("--context");
+    const slotFills = new Map([...slots].map(([slug, slot]) => [slug, color(`--series-${slot + 1}`)]));
+    const focus = selected?.slug ?? hovered ?? null;
+    const focusFill = slotFills.get(focus) ?? color("--text-primary");
+    bars.forEach((bar, index) => {
+      context.globalAlpha = focus === null ? 1 : DIMMED_ALPHA;
+      for (const segment of bar.segments) {
+        if (segment.slug !== focus) {
+          drawSegment(index, segment, slotFills.get(segment.slug) ?? contextFill);
+        }
       }
-    }
-    for (const line of series) {
-      if (slots.has(line.slug)) {
-        drawLine(line, slotColor(line.slug), 2);
+      context.globalAlpha = 1;
+      const focused = bar.segments.find((segment) => segment.slug === focus);
+      if (focused !== undefined) {
+        drawSegment(index, focused, focusFill);
       }
-    }
-    const focus = selected ?? hovered;
-    if (focus !== null) {
-      drawLine(focus, color("--surface"), 5);
-      drawLine(focus, slotColor(focus.slug) ?? color("--text-primary"), 2.5);
-      const last = focus.steps[focus.steps.length - 1];
-      context.fillStyle = color("--text-primary");
-      context.font = "600 13px system-ui, sans-serif";
-      context.textAlign = "right";
-      context.textBaseline = "bottom";
-      context.fillText(focus.number, MARGIN.left + scale.plotWidth, scale.y(last.total) - 4);
-    }
-    if (crosshairX !== null) {
-      context.strokeStyle = color("--text-secondary");
-      context.lineWidth = 1;
-      context.beginPath();
-      context.moveTo(crosshairX + 0.5, MARGIN.top);
-      context.lineTo(crosshairX + 0.5, MARGIN.top + scale.plotHeight);
-      context.stroke();
-    }
+    });
   }
 
-  function showTooltip(line, date, x, y) {
+  function showTooltip(bar, segment, x, y) {
     tooltipEl.replaceChildren();
+    const line = (content) => {
+      const row = document.createElement("div");
+      row.textContent = content;
+      tooltipEl.append(row);
+    };
     const title = document.createElement("strong");
-    title.textContent = line.number;
-    const total = document.createElement("div");
-    total.textContent = `${date}: ${formatTons(tonsOn(line, date))}`;
-    tooltipEl.append(title, total);
-    const lastStep = [...line.steps].reverse().find((step) => step.date <= date);
-    if (lastStep) {
-      const last = document.createElement("div");
-      last.textContent = `Laatste schip: ${lastStep.name} (${lastStep.date})`;
-      tooltipEl.append(last);
+    title.textContent = segment === null ? "Alle boten" : segment.number;
+    tooltipEl.append(title);
+    line(periodLabel(bar.period, unit));
+    if (segment !== null) {
+      line(`Tot en met deze periode: ${formatTons(segment.to - segment.from)}`);
+      if (segment.ships.length > 0) {
+        line(`In deze periode: ${formatTons(segment.added)}`);
+        const shown = segment.ships.slice(0, MAX_TOOLTIP_SHIPS).join(", ");
+        const others = segment.ships.length - MAX_TOOLTIP_SHIPS;
+        line(others > 0 ? `${shown} en ${others} andere` : shown);
+      }
     }
+    line(`Alle boten samen: ${formatTons(bar.total)}`);
     tooltipEl.hidden = false;
     const box = canvas.getBoundingClientRect();
     const left = Math.min(x + 12, box.width - tooltipEl.offsetWidth - 4);
@@ -180,7 +180,6 @@ function main() {
 
   function hide() {
     hovered = null;
-    crosshairX = null;
     tooltipEl.hidden = true;
     draw();
   }
@@ -192,31 +191,54 @@ function main() {
     const box = canvas.getBoundingClientRect();
     const x = event.clientX - box.left;
     const y = event.clientY - box.top;
-    if (x < MARGIN.left || x > MARGIN.left + scale.plotWidth) {
+    const bar = bars[Math.floor((x - MARGIN.left) / scale.step)];
+    if (bar === undefined) {
       return null;
     }
-    const date = scale.dateAt(x);
-    return { x, y, date, line: nearestSeries(series, date, scale.tonsAt(y)) };
+    return { x, y, bar, segment: segmentAt(bar, scale.tonsAt(y)) };
   }
 
-  canvas.addEventListener("pointermove", (event) => {
+  function showAt(event) {
     const at = pointerAt(event);
-    if (at === null || at.line === null) {
+    if (at === null) {
       hide();
       return;
     }
-    hovered = at.line;
-    crosshairX = at.x;
-    draw();
-    showTooltip(selected ?? at.line, at.date, at.x, at.y);
-  });
-  canvas.addEventListener("pointerleave", hide);
-  canvas.addEventListener("click", (event) => {
-    const at = pointerAt(event);
-    if (at !== null && at.line !== null) {
-      select(selected?.slug === at.line.slug ? null : at.line);
+    const next = at.segment?.slug ?? null;
+    if (next !== hovered) {
+      hovered = next;
+      draw();
+    }
+    showTooltip(at.bar, at.segment, at.x, at.y);
+  }
+
+  canvas.addEventListener("pointermove", showAt);
+  canvas.addEventListener("pointerdown", showAt);
+  // A finger lifting is not leaving: the tooltip stays until the next tap.
+  canvas.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "touch") {
+      hide();
     }
   });
+  canvas.addEventListener("click", (event) => {
+    const at = pointerAt(event);
+    if (at !== null && at.segment !== null) {
+      const line = series.find((candidate) => candidate.slug === at.segment.slug);
+      select(selected?.slug === line.slug ? null : line);
+    }
+  });
+
+  for (const button of unitEl.querySelectorAll("button")) {
+    button.addEventListener("click", () => {
+      unit = button.dataset.unit;
+      for (const other of unitEl.querySelectorAll("button")) {
+        other.setAttribute("aria-pressed", String(other === button));
+      }
+      bars = stackedBars(series, unit);
+      tooltipEl.hidden = true;
+      draw();
+    });
+  }
 
   function select(line) {
     selected = line;
@@ -243,6 +265,15 @@ function main() {
         item.addEventListener("click", () => select(selected?.slug === line.slug ? null : line));
         legendEl.append(item);
       }
+    }
+    if (series.length > slots.size) {
+      const others = document.createElement("span");
+      others.className = "tonnage-others";
+      const swatch = document.createElement("span");
+      swatch.className = "tonnage-swatch";
+      swatch.style.background = color("--context");
+      others.append(swatch, "Overige boten");
+      legendEl.append(others);
     }
   }
 
@@ -280,6 +311,7 @@ function main() {
     onShips: (changed) => {
       ships = mergeShips(ships, changed);
       series = boatSeries(ships);
+      bars = stackedBars(series, unit);
       colorSlots(series, slots, SLOT_COUNT);
       if (selected !== null) {
         selected = series.find((line) => line.slug === selected.slug) ?? null;

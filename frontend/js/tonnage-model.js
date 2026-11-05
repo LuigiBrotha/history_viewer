@@ -1,6 +1,8 @@
 const COUNTED_OUTCOMES = new Set(["sunk", "captured"]);
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 
-function dutchNumber(value) {
+export function formatNumber(value) {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
@@ -48,28 +50,76 @@ export function colorSlots(series, slots, slotCount) {
   }
 }
 
-export function tonsOn(series, date) {
-  let tons = 0;
-  for (const step of series.steps) {
-    if (step.date > date) {
-      break;
-    }
-    tons = step.total;
-  }
-  return tons;
+function isoDay(time) {
+  return new Date(time).toISOString().slice(0, 10);
 }
 
-export function nearestSeries(series, date, tons) {
-  let best = null;
-  let bestDistance = Infinity;
-  for (const candidate of series) {
-    const distance = Math.abs(tonsOn(candidate, date) - tons);
-    if (distance < bestDistance) {
-      best = candidate;
-      bestDistance = distance;
-    }
+function periodStart(date, unit) {
+  if (unit === "month") {
+    return `${date.slice(0, 7)}-01`;
   }
-  return best;
+  if (unit === "week") {
+    const time = Date.parse(date);
+    const daysSinceMonday = (new Date(time).getUTCDay() + 6) % 7;
+    return isoDay(time - daysSinceMonday * DAY_MS);
+  }
+  return date;
+}
+
+function nextPeriod(period, unit) {
+  if (unit === "month") {
+    const start = new Date(Date.parse(period));
+    return isoDay(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  }
+  return isoDay(Date.parse(period) + (unit === "week" ? 7 : 1) * DAY_MS);
+}
+
+// One bar per day, week or month from the first ship to the last, also when nothing sank.
+// A bar stacks each boat's running total up to and including that period, biggest boat first;
+// added and ships tell what that boat sank in the period itself.
+export function stackedBars(series, unit) {
+  if (series.length === 0) {
+    return [];
+  }
+  const dates = series.flatMap(({ steps }) => [steps[0].date, steps[steps.length - 1].date]).sort();
+  const last = periodStart(dates[dates.length - 1], unit);
+  const cursors = series.map(() => 0);
+  const bars = [];
+  for (let period = periodStart(dates[0], unit); period <= last; period = nextPeriod(period, unit)) {
+    const next = nextPeriod(period, unit);
+    const segments = [];
+    let height = 0;
+    series.forEach((line, index) => {
+      const ships = [];
+      let added = 0;
+      while (cursors[index] < line.steps.length && line.steps[cursors[index]].date < next) {
+        const step = line.steps[cursors[index]];
+        ships.push(step.name);
+        added += step.tons;
+        cursors[index] += 1;
+      }
+      if (cursors[index] > 0) {
+        const to = height + line.steps[cursors[index] - 1].total;
+        segments.push({ slug: line.slug, number: line.number, from: height, to, added, ships });
+        height = to;
+      }
+    });
+    bars.push({ period, total: height, segments });
+  }
+  return bars;
+}
+
+export function segmentAt(bar, tons) {
+  return bar.segments.find((segment) => tons >= segment.from && tons < segment.to) ?? null;
+}
+
+export function periodLabel(period, unit) {
+  const [year, month, day] = period.split("-").map(Number);
+  const monthYear = `${MONTHS[month - 1]} ${year}`;
+  if (unit === "month") {
+    return monthYear;
+  }
+  return unit === "week" ? `week van ${day} ${monthYear}` : `${day} ${monthYear}`;
 }
 
 export function niceMax(value) {
@@ -89,7 +139,7 @@ export function tableRows(series) {
   return series.map(({ slug, number, total, steps }) => ({
     slug,
     boat: number,
-    tons: dutchNumber(total),
+    tons: formatNumber(total),
     ships: steps.length,
   }));
 }
@@ -113,5 +163,5 @@ export function matchSeries(series, query) {
 }
 
 export function formatTons(value) {
-  return `${dutchNumber(value)} ton`;
+  return `${formatNumber(value)} ton`;
 }

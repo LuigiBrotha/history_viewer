@@ -18,12 +18,17 @@
     </div>
   </header>
   <main id="tonnage-main">
-    <h1>Gezonken tonnage per U-boot, cumulatief</h1>
+    <h1>Gezonken tonnage, cumulatief per U-boot</h1>
     <p id="tonnage-note">Gezonken en buitgemaakte schepen; beschadigde schepen tellen niet mee. <span id="tonnage-count"></span></p>
     <input type="search" id="tonnage-search" placeholder="Zoek een boot, bijvoorbeeld U-99" aria-label="Zoek een boot" />
+    <div id="tonnage-unit" role="group" aria-label="Staaf per">
+      <button type="button" data-unit="day" aria-pressed="false">Dag</button>
+      <button type="button" data-unit="week" aria-pressed="false">Week</button>
+      <button type="button" data-unit="month" aria-pressed="true">Maand</button>
+    </div>
     <div id="tonnage-legend"></div>
     <div id="tonnage-plot">
-      <canvas id="tonnage-chart" role="img" aria-label="Cumulatief gezonken tonnage per boot over de tijd; de tabel hieronder bevat dezelfde totalen"></canvas>
+      <canvas id="tonnage-chart" role="img" aria-label="Gestapelde staven van het cumulatief gezonken tonnage per boot; de tabel hieronder bevat dezelfde totalen"></canvas>
       <div id="tonnage-tooltip" hidden></div>
     </div>
     <table id="tonnage-table">

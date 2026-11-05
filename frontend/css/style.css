@@ -1101,10 +1101,41 @@ html, body {
   cursor: pointer;
 }
 
+.tonnage-others {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 6px;
+  font-size: 13px;
+}
+
 .tonnage-swatch {
-  width: 14px;
-  height: 3px;
+  width: 12px;
+  height: 12px;
   border-radius: 2px;
+}
+
+#tonnage-unit {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+#tonnage-unit button {
+  min-width: 64px;
+  min-height: 44px;
+  border: 1px solid var(--context);
+  border-radius: 4px;
+  background: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+#tonnage-unit button[aria-pressed="true"] {
+  background: var(--text-primary);
+  color: var(--surface);
 }
 
 #tonnage-plot {
