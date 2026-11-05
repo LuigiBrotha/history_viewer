@@ -59,6 +59,7 @@ COORD = re.compile(r"\{\{\s*coord(?:inates)?\s*\|", re.IGNORECASE)
 KEEP_ARGUMENT = {"nowrap", "nobr", "circa", "c.", "ca.", "c"}
 SPACING = {"snd": " – ", "spaced ndash": " – ", "ndash": "–", "en dash": "–", "nbsp": " "}
 DATE_TEMPLATES = {"start date", "start date and age", "end date", "end date and age"}
+PARENTHESES = re.compile(r"\([^()]*\)")
 CIRCA = re.compile(r"\b(?:circa|ca\.|c\.)\s*", re.IGNORECASE)
 RANGE_SEPARATOR = re.compile(r"\s*[–—-]\s*|\s+to\s+", re.IGNORECASE)
 
@@ -164,7 +165,7 @@ def tidy(text):
 def clean_date_text(raw):
     text = REF.sub("", strip_comments(raw))
     text = BREAK.split(text, 1)[0]
-    return tidy(remove_templates(text, dates=True))
+    return tidy(PARENTHESES.sub("", remove_templates(text, dates=True)))
 
 
 def plain_text(raw):
@@ -406,15 +407,18 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     progress_path = dump.with_name(f"{output.stem}.progress.json")
-    progress = _load_json(progress_path, {"pages": 0, "skipped": {}})
+    progress = _load_json(progress_path, {"pages": 0, "skipped": {}, "review": []})
     skipped = Counter(progress["skipped"])
+    review = progress["review"]
+    review_path = dump.with_name(f"{output.stem}.skipped.txt")
     battles = {battle["title"]: battle for battle in _load_json(output, [])}
     pages = progress["pages"]
 
     def save():
         ordered = sorted(battles.values(), key=lambda b: (b["start"], b["title"]))
         _write_atomically(output, json.dumps(ordered, ensure_ascii=False, separators=(",", ":")))
-        _write_atomically(progress_path, json.dumps({"pages": pages, "skipped": skipped}))
+        _write_atomically(review_path, "".join(f"{line}\n" for line in review))
+        _write_atomically(progress_path, json.dumps({"pages": pages, "skipped": skipped, "review": review}))
 
     last_save = time.monotonic()
     last_report = pages
@@ -422,6 +426,9 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
         battle, reason = extract_battle(title, text)
         if battle is None:
             skipped[reason] += 1
+            fields = find_infobox(text)
+            if reason.startswith("date") and fields and names_world_war_ii(strip_comments(text), fields):
+                review.append(f"{title}\t{reason}\t{fields.get('date', '')[:200]}".replace("\n", " "))
         else:
             battles[title] = battle
         if time.monotonic() - last_save >= save_every_seconds:

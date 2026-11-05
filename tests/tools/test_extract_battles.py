@@ -406,4 +406,32 @@ def test_run_leaves_no_temporary_file_and_clears_progress_when_done(tmp_path):
 
     run(dump, out, save_every_seconds=0)
 
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["battles.json", "d.xml.bz2"]
+    assert sorted(p.name for p in tmp_path.iterdir() if "progress" in p.name or p.suffix == ".tmp") == []
+
+
+@pytest.mark.parametrize("raw, start, end", [
+    ("{{start and end dates|1944|01|17|1944|05|18|df=y}} (4 months and 1 day)", date(1944, 1, 17), date(1944, 5, 18)),
+    ("20 May – 1 June 1941 ({{duration in days|1941|5|20|1941|6|1}} days)", date(1941, 5, 20), date(1941, 6, 1)),
+    ("5 June 1943 (night)", date(1943, 6, 5), date(1943, 6, 5)),
+])
+def test_parse_date_ignores_notes_in_parentheses(raw, start, end):
+    parsed = parse_date(raw)
+    assert (parsed.start, parsed.end) == (start, end)
+    assert "(" not in parsed.text
+
+
+def test_run_lists_world_war_ii_articles_it_had_to_skip(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, [
+        ("Clear", 0, False, BATTLE % "5 June 1943"),
+        ("Unreadable", 0, False, BATTLE % "sometime in the spring"),
+        ("Ancient", 0, False, (BATTLE % "sometime in the spring").replace("[[World War II]]", "[[Punic Wars]]")),
+    ])
+    out = tmp_path / "battles.json"
+
+    run(dump, out, save_every_seconds=0)
+
+    listed = (tmp_path / "battles.skipped.txt").read_text(encoding="utf-8")
+    assert "Unreadable" in listed
+    assert "Ancient" not in listed
+    assert "Clear" not in listed
