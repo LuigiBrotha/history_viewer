@@ -21,7 +21,7 @@
       <div id="sidebar-body">
         <div id="live-status"></div>
         <nav id="all-routes-link"><a href="status">Alle routes</a> · <a href="heatmap">Heatmap</a></nav>
-        <div id="boat-date-label"></div>
+        <div id="boat-date-label">Routes laden…</div>
         <div id="ship-totals"></div>
         <div id="follow-status"></div>
         <ul id="ship-unknown"></ul>
@@ -30,6 +30,8 @@
         <button id="reset-follow" hidden>Terug naar volledige weergave</button>
       </div>
     </aside>
+
+    <aside id="boat-panel" tabindex="-1" aria-label="Gegevens van de boot" hidden></aside>
 
     <div id="timeline">
       <input type="range" id="date-slider" min="0" max="0" value="0" step="1" aria-label="Datum" />

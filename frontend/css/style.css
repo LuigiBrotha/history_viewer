@@ -201,6 +201,11 @@ html, body {
   #date-slider {
     flex: 1;
     width: auto;
+    min-width: 0;
+  }
+
+  #timeline-controls {
+    flex-shrink: 0;
   }
 
   #date-display {
@@ -478,4 +483,131 @@ html, body {
   gap: 8px;
   align-items: center;
   padding: 2px 0;
+}
+
+/* A bottom sheet on a phone, a side panel from 700px. */
+:root {
+  --panel-bottom: 108px;
+}
+
+.status-page {
+  --panel-bottom: 0px;
+}
+
+#boat-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--panel-bottom);
+  z-index: 1100;
+  max-height: 45vh;
+  max-height: 45dvh;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  box-sizing: border-box;
+  background: white;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+#boat-panel[hidden] {
+  display: none;
+}
+
+.boat-panel-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: #eee;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+#boat-panel h2 {
+  margin: 8px 0 2px;
+  font-size: 20px;
+}
+
+#boat-panel h3 {
+  margin: 16px 0 4px;
+  font-size: 15px;
+}
+
+#boat-panel h4 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
+#boat-panel p {
+  margin: 0 0 2px;
+}
+
+.boat-panel-summary {
+  color: #555;
+}
+
+#boat-panel dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 8px 0 0;
+}
+
+#boat-panel dt {
+  color: #555;
+}
+
+#boat-panel dd {
+  margin: 0;
+}
+
+.boat-panel-patrol {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.boat-panel-patrol button {
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 12px;
+}
+
+#boat-panel details summary {
+  min-height: 28px;
+  cursor: pointer;
+}
+
+#boat-panel ul {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+#boat-panel li {
+  padding: 3px 0;
+}
+
+@media (min-width: 700px) {
+  :root {
+    --panel-bottom: 76px;
+  }
+
+  .status-page {
+    --panel-bottom: 16px;
+  }
+
+  #boat-panel {
+    left: 56px;
+    right: auto;
+    width: 360px;
+    max-height: calc(100vh - var(--panel-bottom) - 160px);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  }
 }

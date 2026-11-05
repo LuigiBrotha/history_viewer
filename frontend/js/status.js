@@ -3,6 +3,7 @@ import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
 import { initAtlas } from "./atlas.js";
+import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createStatusMap, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
@@ -24,6 +25,11 @@ function main() {
 
   const shipLayer = createShipLayer(state.map);
   let ships = [];
+  const boatPanel = createBoatPanel({
+    rootEl: document.getElementById("boat-panel"),
+    getShips: () => ships,
+  });
+  state.onRouteClick = (patrol) => boatPanel.open(patrol.boat_slug);
 
   function renderShips() {
     shipLayer.setShips(shipsInPeriod(ships, state.from, state.to));

@@ -90,6 +90,9 @@ function fakeLeaflet() {
       this.style = style;
     },
     bindTooltip() {},
+    on(event, handler) {
+      this.handlers = { ...this.handlers, [event]: handler };
+    },
     addTo(group) {
       group.addLayer(this);
       return this;
@@ -407,4 +410,17 @@ test("the tooltip names the boat, the patrol and its period", async () => {
     "U-1 — patrol_1 — 1940-01-01 t/m 1940-02-01",
   );
   assert.equal(routeTooltip({ boat_number: "U-1", external_id: "patrol_1", points: [] }), "U-1 — patrol_1");
+});
+
+test("clicking a route reports its boat", async () => {
+  fakeLeaflet();
+  const { updateRoutes } = await import("../js/status-map.js");
+  const state = newState();
+  const clicked = [];
+  state.onRouteClick = (patrol) => clicked.push(patrol.boat_slug);
+
+  updateRoutes(state, [{ ...dated("a", "1940-01-01", "1940-02-01"), boat_slug: "u99" }]);
+  state.polylines.get("a").handlers.click();
+
+  assert.deepEqual(clicked, ["u99"]);
 });

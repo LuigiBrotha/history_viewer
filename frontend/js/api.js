@@ -88,3 +88,13 @@ export function excludePoint(externalId, sequence) {
 export function restorePoint(externalId, sequence) {
   return editPoint("DELETE", externalId, sequence, "Herstellen mislukt");
 }
+
+export async function fetchBoat(slug) {
+  const response = await fetch(`api/uboats/boten/${encodeURIComponent(slug)}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch boat: ${response.status}`);
+  }
+  return response.json();
+}

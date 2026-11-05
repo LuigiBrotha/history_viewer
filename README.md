@@ -55,6 +55,10 @@ markers and `(datum benaderd)` in the tooltip. Speed checks never use these date
   through each half-degree cell, on the same draggable period slider. A patrol counts
   once per cell, and fully if it overlaps the period at all.
 
+Click a boat on the timeline or a route on `/status` for a panel with the boat's
+details, its patrols and the ships it hit: a bottom sheet on a phone, a side panel on
+larger screens.
+
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
 last map on or before the selected date, `/status` the last map on or before the end of

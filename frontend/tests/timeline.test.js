@@ -131,3 +131,22 @@ test("the step buttons stop at both ends of the range", () => {
   forward.click();
   assert.equal(slider.value, "2");
 });
+
+test("setDate moves the slider and emits, clamped to the range", () => {
+  const dates = [];
+  const slider = { value: "0", addEventListener() {} };
+  const timeline = initTimeline({
+    sliderEl: slider,
+    playPauseEl: fakeButton(),
+    dateDisplayEl: {},
+    minDate: new Date(Date.UTC(1940, 0, 1)),
+    maxDate: new Date(Date.UTC(1940, 0, 11)),
+    onDateChange: (date) => dates.push(date.toISOString().slice(0, 10)),
+  });
+
+  timeline.setDate(new Date(Date.UTC(1940, 0, 4)));
+  assert.equal(dates.at(-1), "1940-01-04");
+
+  timeline.setDate(new Date(Date.UTC(1950, 0, 1)));
+  assert.equal(dates.at(-1), "1940-01-11");
+});

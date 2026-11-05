@@ -75,6 +75,7 @@ class BoatRepository:
                 arrival_date=p.arrival_date,
                 days_at_sea=p.days_at_sea,
                 tonnage=p.tonnage,
+                description=p.description,
             )
             for p in patrols_result.scalars().all()
         ]

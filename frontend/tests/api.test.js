@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint } from "../js/api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -194,4 +194,23 @@ test("canEdit is false unless the status says so", () => {
   assert.equal(canEdit({}), false);
   assert.equal(canEdit({ can_edit: false }), false);
   assert.equal(canEdit({ can_edit: true }), true);
+});
+
+test("fetchBoat asks for the encoded slug and returns parsed JSON", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => ({ slug: "u 1" }) };
+  };
+
+  const result = await fetchBoat("u 1");
+
+  assert.equal(calls[0], "api/uboats/boten/u%201");
+  assert.deepEqual(result, { slug: "u 1" });
+});
+
+test("fetchBoat rejects when the response is not ok", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+
+  await assert.rejects(() => fetchBoat("u1"), /Failed to fetch boat: 404/);
 });

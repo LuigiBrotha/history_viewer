@@ -151,6 +151,7 @@ function drawPatrol(state, patrol) {
     polyline = L.polyline(paths, { weight: LINE_WEIGHT, opacity: LINE_OPACITY });
   }
   polyline.bindTooltip(routeTooltip(patrol), { sticky: true });
+  polyline.on("click", () => state.onRouteClick?.(state.patrols.get(id)));
   state.polylines.set(id, polyline);
   applyColor(state, id, polyline);
   if (inPeriod(patrol, state.from, state.to)) {

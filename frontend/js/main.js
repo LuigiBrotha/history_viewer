@@ -1,6 +1,7 @@
 import { EditError, canEdit, excludePoint, fetchBoats, fetchRoutes, fetchShips, fetchStatus, restorePoint } from "./api.js";
-import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage } from "./time-model.js";
+import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage, parseDate } from "./time-model.js";
 import { initAtlas } from "./atlas.js";
+import { createBoatPanel } from "./boat-panel.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import {
   beginEdit,
@@ -158,8 +159,15 @@ function main() {
     onData([updated]);
   }
 
+  const boatPanel = createBoatPanel({
+    rootEl: document.getElementById("boat-panel"),
+    getShips: () => ships,
+    onShowPatrol: (patrol) => timeline?.setDate(parseDate(patrol.departure_date)),
+  });
+
   function onBoatSelect(slug) {
     followedSlug = slug;
+    boatPanel.open(slug);
     clearEditError(editState);
     clearDrawnRoute();
     resetButton.hidden = false;
@@ -168,6 +176,7 @@ function main() {
 
   resetButton.addEventListener("click", () => {
     followedSlug = null;
+    boatPanel.close();
     resetButton.hidden = true;
     clearEditError(editState);
     clearDrawnRoute();

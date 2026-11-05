@@ -22,6 +22,7 @@ class PatrolSummaryOut:
     arrival_date: date | None
     days_at_sea: int | None
     tonnage: int | None
+    description: str | None = None
 
 
 @dataclass(frozen=True)

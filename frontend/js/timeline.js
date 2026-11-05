@@ -81,6 +81,14 @@ export function initTimeline({ sliderEl, playPauseEl, stepBackEl, stepForwardEl,
   stepBackEl?.addEventListener("click", () => step(-1));
   stepForwardEl?.addEventListener("click", () => step(1));
 
+  function setDate(date) {
+    if (playing) {
+      stop();
+    }
+    sliderEl.value = String(Math.min(Math.max(sliderValueForDate(minDate, date), 0), totalDays));
+    emitDate();
+  }
+
   function setRange(newMin, newMax) {
     const current = dateForValue(sliderEl.value);
     minDate = newMin;
@@ -104,5 +112,5 @@ export function initTimeline({ sliderEl, playPauseEl, stepBackEl, stepForwardEl,
     console.error(error);
   }
 
-  return { stop, setRange };
+  return { stop, setRange, setDate };
 }
