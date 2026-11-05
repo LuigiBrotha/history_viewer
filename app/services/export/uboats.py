@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
+from app.services.scraping.uboat_net.types import ShipDetails
+
 
 @dataclass(frozen=True)
 class BoatSummary:
@@ -103,3 +105,10 @@ class ShipHitOut:
     lat: float | None
     lng: float | None
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class ShipDetailOut:
+    ship_external_id: str
+    details: ShipDetails | None
+    hits: list[ShipHitOut] = field(default_factory=list)

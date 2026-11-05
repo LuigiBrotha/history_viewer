@@ -71,7 +71,9 @@ class ShipHitRepository:
         )
         await self._session.commit()
 
-    async def list_hits(self, since: datetime | None = None) -> list[ShipHitOut]:
+    async def list_hits(
+        self, since: datetime | None = None, ship_external_id: str | None = None
+    ) -> list[ShipHitOut]:
         stmt = (
             select(ShipHit, Boat.number)
             .outerjoin(Boat, Boat.slug == ShipHit.boat_slug)
@@ -80,6 +82,8 @@ class ShipHitRepository:
         )
         if since is not None:
             stmt = stmt.where(ShipHit.updated_at >= since)
+        if ship_external_id is not None:
+            stmt = stmt.where(ShipHit.ship_external_id == ship_external_id)
         rows = (await self._session.execute(stmt)).all()
         return [
             ShipHitOut(
