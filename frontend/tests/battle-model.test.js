@@ -12,6 +12,7 @@ import {
   labelsToShow,
   overlaps,
   squaresToDraw,
+  withoutPosition,
 } from "../js/battle-model.js";
 
 const battle = (over = {}) => ({
@@ -205,4 +206,20 @@ test("wrapLng brings a longitude into [-180, 180]", () => {
   assert.equal(wrapLng(-190), 170);
   assert.equal(wrapLng(45), 45);
   assert.ok([180, -180].includes(wrapLng(540)));
+});
+
+test("withoutPosition keeps battles with no position, active on the date or in the period, matching the query", () => {
+  const list = [
+    battle({ title: "Placed", lat: 1, lng: 2 }),
+    battle({ title: "Lost A", lat: null, lng: null, start: "1942-01-01", end: "1942-12-31", place: "Sea" }),
+    battle({ title: "Half", lat: 5, lng: null, start: "1942-01-01", end: "1942-12-31" }),
+    battle({ title: "Lost B", lat: null, lng: null, start: "1944-01-01", end: "1944-02-01", place: "Sea" }),
+  ];
+  const titles = (rows) => rows.map((b) => b.title);
+  assert.deepEqual(titles(withoutPosition(list, "date", { date: "1942-06-01" }, "")), ["Lost A", "Half"]);
+  assert.deepEqual(titles(withoutPosition(list, "date", { date: "1944-01-15" }, "")), ["Lost B"]);
+  assert.deepEqual(titles(withoutPosition(list, "period", { from: "1942-06-01", to: "1944-01-01" }, "")), ["Lost A", "Half", "Lost B"]);
+  assert.deepEqual(titles(withoutPosition(list, "period", { from: null, to: null }, "")), ["Lost A", "Half", "Lost B"]);
+  assert.deepEqual(titles(withoutPosition(list, "period", { from: null, to: null }, "sea")), ["Lost A", "Lost B"]);
+  assert.deepEqual(titles(withoutPosition(list, "date", null, "")), ["Lost A", "Half", "Lost B"]);
 });

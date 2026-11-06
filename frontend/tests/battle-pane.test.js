@@ -261,3 +261,90 @@ test("an own battle shows its label and can have its position cleared; a click o
   assert.deepEqual(calls, ["Midway"]);
   assert.deepEqual(selected, []);
 });
+
+const NOPOS = [
+  battle({ title: "Placed", lat: 1, lng: 2, start: "1942-01-01", end: "1942-12-31" }),
+  battle({ title: "Lost early", lat: null, lng: null, start: "1940-01-01", end: "1940-02-01" }),
+  battle({ title: "Lost 1942", lat: null, lng: null, start: "1942-03-01", end: "1942-04-01" }),
+];
+
+function nopos(mode = "date") {
+  const ctx = setup(mode, NOPOS);
+  const box = ctx.rootEl.byClass("battle-nopos-filter")[0];
+  const label = ctx.rootEl.byClass("battle-nopos-text")[0];
+  const tick = (on) => {
+    box.checked = on;
+    box.dispatch("change");
+  };
+  const shown = () => ctx.rows().filter((r) => !r.hidden).map(ctx.titleOf);
+  return { ...ctx, box, label, tick, shown };
+}
+
+test("the checkbox counts battles without a position under the date, also while unticked", () => {
+  const { pane, box, label, tick, shown } = nopos("date");
+  assert.equal(box.tag, "input");
+  assert.equal(box.getAttribute("type"), "checkbox");
+  assert.equal(label.textContent, "Alleen zonder positie (2)");
+  pane.setSelection({ date: "1942-03-15" });
+  assert.equal(label.textContent, "Alleen zonder positie (1)");
+  assert.equal(shown().length, 3);
+  tick(true);
+  assert.deepEqual(shown(), ["Lost 1942"]);
+});
+
+test("ticking hides positioned and inactive rows, and a new date updates the shown rows", () => {
+  const { pane, rootEl, box, tick, shown } = nopos("date");
+  pane.setSelection({ date: "1940-01-15" });
+  tick(true);
+  assert.deepEqual(shown(), ["Lost early"]);
+  assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (1)");
+  pane.setSelection({ date: "1942-03-15" });
+  assert.deepEqual(shown(), ["Lost 1942"]);
+  pane.setSelection({ date: "1943-01-01" });
+  assert.deepEqual(shown(), []);
+  assert.equal(rootEl.byClass("battle-empty")[0].hidden, false);
+  tick(false);
+  assert.equal(shown().length, 3);
+  assert.equal(box.checked, false);
+});
+
+test("in period mode the filter follows the period, and the search text counts", () => {
+  const { pane, rootEl, label, tick, shown } = nopos("period");
+  pane.setSelection({ from: "1942-01-01", to: "1942-12-31" });
+  tick(true);
+  assert.deepEqual(shown(), ["Lost 1942"]);
+  pane.setSelection({ from: null, to: null });
+  assert.deepEqual(shown(), ["Lost early", "Lost 1942"]);
+  const search = rootEl.byClass("battle-search")[0];
+  search.value = "early";
+  search.dispatch("input");
+  assert.deepEqual(shown(), ["Lost early"]);
+  assert.equal(label.textContent, "Alleen zonder positie (1)");
+});
+
+test("reveal of a row the filter hides unticks the box and clears the search", () => {
+  const { pane, rootEl, box, tick, shown } = nopos("period");
+  pane.setSelection({ from: null, to: null });
+  tick(true);
+  pane.reveal(NOPOS[0]);
+  assert.equal(box.checked, false);
+  assert.equal(shown().length, 3);
+  assert.equal(rootEl.byClass("battle-search")[0].value, "");
+});
+
+test("reveal of a row the filter shows keeps the box ticked", () => {
+  const { pane, box, tick } = nopos("period");
+  pane.setSelection({ from: null, to: null });
+  tick(true);
+  pane.reveal(NOPOS[1]);
+  assert.equal(box.checked, true);
+});
+
+test("a battle that gets an Eigen positie drops out of the filtered list", () => {
+  const { pane, label, tick, shown } = nopos("period");
+  pane.setSelection({ from: null, to: null });
+  tick(true);
+  pane.setBattles([NOPOS[0], NOPOS[1], { ...NOPOS[2], lat: 3, lng: 4, own: true }]);
+  assert.deepEqual(shown(), ["Lost early"]);
+  assert.equal(label.textContent, "Alleen zonder positie (1)");
+});

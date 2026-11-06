@@ -50,6 +50,17 @@ export function filterBattles(battles, query) {
   );
 }
 
+// The battles with no position at all (neither Wikipedia nor Eigen positie, so after
+// applyPositions), active on the date (mode "date") or overlapping the period (mode
+// "period"), matching the query. Without a selection, every date counts.
+export function withoutPosition(battles, mode, selection, query) {
+  let unplaced = battles.filter((battle) => battle.lat == null || battle.lng == null);
+  if (selection) {
+    unplaced = mode === "date" ? activeOn(unplaced, selection.date) : unplaced.filter((battle) => overlaps(battle, selection.from, selection.to));
+  }
+  return filterBattles(unplaced, query);
+}
+
 // Left and width as percentages of an axis from bounds.min to bounds.max (ISO dates).
 export function barPosition(battle, bounds) {
   const first = dayNumber(bounds.min);

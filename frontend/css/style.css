@@ -868,6 +868,23 @@ html, body {
   font-size: 16px;
 }
 
+.battle-nopos-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.battle-nopos-filter {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+}
+
 .battle-axis {
   position: relative;
   flex: 0 0 18px;

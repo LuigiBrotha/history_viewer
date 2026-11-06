@@ -7,6 +7,7 @@ import {
   durationText,
   filterBattles,
   overlaps,
+  withoutPosition,
   yearMarks,
 } from "./battle-model.js";
 
@@ -45,6 +46,12 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   search.setAttribute("autocomplete", "off");
   const head = element("div", "battle-pane-head");
   head.append(title, search);
+  const noposBox = element("input", "battle-nopos-filter");
+  noposBox.setAttribute("type", "checkbox");
+  noposBox.checked = false;
+  const noposText = element("span", "battle-nopos-text");
+  const noposRow = element("label", "battle-nopos-row");
+  noposRow.append(noposBox, noposText);
 
   const axis = element("div", "battle-axis");
   for (const { year, fraction } of yearMarks(AXIS_BOUNDS)) {
@@ -66,7 +73,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   scroll.append(empty, track);
   const source = element("p", "battle-source", SOURCE);
 
-  rootEl.replaceChildren(head, axis, scroll, source);
+  rootEl.replaceChildren(head, noposRow, axis, scroll, source);
 
   function buildRow(battle, index) {
     const row = element("li", "battle-row");
@@ -127,7 +134,10 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   });
 
   function applyFilter() {
-    const shown = new Set(filterBattles(rows.map((r) => r.battle), search.value));
+    const battles = rows.map((r) => r.battle);
+    const unplaced = withoutPosition(battles, mode, selection, search.value);
+    noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
+    const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
     for (const row of rows) {
       row.el.hidden = !shown.has(row.battle);
     }
@@ -136,6 +146,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   }
 
   search.addEventListener("input", applyFilter);
+  noposBox.addEventListener("change", applyFilter);
 
   function applySelection() {
     if (selection === null) return;
@@ -181,6 +192,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
     // { date } in mode "date", { from, to } in mode "period" (null for an open end).
     setSelection(next) {
       selection = next;
+      applyFilter();
       applySelection();
     },
     reveal(battle) {
@@ -188,6 +200,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
       if (!row) return;
       if (row.el.hidden) {
         search.value = "";
+        noposBox.checked = false;
         applyFilter();
       }
       if (revealed !== null) revealed.el.classList.toggle("selected", false);
