@@ -24,11 +24,29 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200 } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {} } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
+  const controls = [];
   globalThis.L = {
+    control: (options) => {
+      const control = {
+        options,
+        onAdd: null,
+        removed: false,
+        addTo() {
+          control.el = control.onAdd();
+          controls.push(control);
+          return control;
+        },
+        remove() {
+          control.removed = true;
+        },
+      };
+      return control;
+    },
+    DomEvent: { disableClickPropagation() {} },
     divIcon: (options) => ({ ...options }),
     marker: (latlng, options) => {
       const marker = {
@@ -39,6 +57,8 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
           marker.events[type] = fn;
           return marker;
         },
+        dragging: { enable() {}, disable() {} },
+        getLatLng: () => ({ lat: marker.latlng[0], lng: marker.latlng[1] }),
         bindTooltip() {
           return marker;
         },
@@ -55,6 +75,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     invalidateSize() { this.invalidations += 1; },
     on() {},
     getZoom: () => 4,
+    getCenter: () => ({ lat: 10, lng: 20 }),
     getBounds: () => ({ getSouth: () => -90, getWest: () => -180, getNorth: () => 90, getEast: () => 180 }),
     panTo: (latlng) => pans.push(latlng),
   };
@@ -63,15 +84,22 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     elements[id] = new Element(id === "battle-pane" ? "aside" : "div");
   }
   elements["battle-split"].rect = { left: 0, top: 0, right: width, bottom: 800, width, height: 800 };
-  const doc = { getElementById: (id) => elements[id] };
+  const keyHandlers = new Set();
+  const doc = {
+    getElementById: (id) => elements[id],
+    createElement: (tag) => new Element(tag),
+    addEventListener: (type, fn) => keyHandlers.add(fn),
+    removeEventListener: (type, fn) => keyHandlers.delete(fn),
+  };
+  const press = (key) => [...keyHandlers].forEach((fn) => fn({ key }));
   const win = { innerWidth: width, innerHeight: 800, addEventListener() {}, requestAnimationFrame: (fn) => fn(), localStorage: fakeStorage() };
   const picked = [];
-  const controller = initBattles({ map, mode, onPickDate: (iso) => picked.push(iso), doc, win, load, loadPositions });
+  const controller = initBattles({ map, mode, onPickDate: (iso) => picked.push(iso), doc, win, load, loadPositions, savePosition, clearPosition });
   const squares = () => [...layers].filter((m) => m.options.icon.className.includes("battle-square")).map((m) => m.options.battleTitle).sort();
   const rows = () => elements["battle-pane"].byClass("battle-row");
   const titleOf = (row) => row.byClass("battle-row-title")[0].textContent;
   const ready = () => new Promise((resolve) => setImmediate(resolve));
-  return { controller, elements, squares, rows, titleOf, picked, pans, map, ready, layers };
+  return { controller, elements, squares, rows, titleOf, picked, pans, map, ready, layers, controls, press };
 }
 
 test("on the timeline page the squares are the battles active on the date", async () => {
@@ -204,4 +232,151 @@ test("when the positions cannot be loaded the squares from the file are still dr
   controller.setPeriod(null, null);
   assert.deepEqual(squares(), ["Battle of Kursk", "Midway"]);
   assert.equal(errors.length, 1);
+});
+
+// Editing
+
+async function startEditing(over = {}, title = "Midway") {
+  const env = setup({ mode: "period", ...over });
+  await env.ready();
+  env.controller.setPeriod(null, null);
+  env.controller.setEditable(true);
+  const rowOf = () => env.rows().find((r) => env.titleOf(r) === title);
+  rowOf().byClass("battle-row-title")[0].dispatch("click");
+  rowOf().byClass("battle-row-edit")[0].dispatch("click");
+  const squareOf = () => [...env.layers].find((m) => m.options.battleTitle === title);
+  const bar = env.controls[0].el;
+  const button = (name) => bar.byClass(name)[0];
+  const drag = (lat, lng) => {
+    const square = squareOf();
+    square.latlng = [lat, lng];
+    square.events.dragend();
+  };
+  return { ...env, rowOf, squareOf, bar, button, drag };
+}
+
+test("the edit bar names the battle as text and offers Bewaar and Annuleer", async () => {
+  const { bar, controls } = await startEditing();
+  assert.equal(controls[0].options.position, "topleft");
+  assert.ok(bar.classes.has("battle-edit-bar"));
+  assert.equal(bar.byClass("battle-edit-title")[0].textContent, "Midway");
+  assert.equal(bar.byClass("battle-edit-save")[0].textContent, "Bewaar");
+  assert.equal(bar.byClass("battle-edit-cancel")[0].textContent, "Annuleer");
+});
+
+test("Bewaar sends the dragged position and the square becomes an own one", async () => {
+  const saved = [];
+  const { button, controls, squareOf, rowOf, drag, ready } = await startEditing({ savePosition: async (...args) => saved.push(args) });
+  drag(1, 2);
+  button("battle-edit-save").dispatch("click");
+  await ready();
+  assert.deepEqual(saved, [["Midway", 1, 2]]);
+  assert.equal(controls[0].removed, true);
+  assert.deepEqual(squareOf().latlng, [1, 2]);
+  assert.ok(squareOf().options.icon.className.includes("own"));
+  assert.equal(rowOf().byClass("battle-ownpos")[0].textContent, "eigen positie");
+  assert.equal(rowOf().classes.has("selected"), true);
+});
+
+test("a battle without a position is saved where it was dropped", async () => {
+  const saved = [];
+  const { button, ready } = await startEditing({ savePosition: async (...args) => saved.push(args) }, "Atlantic");
+  button("battle-edit-save").dispatch("click");
+  await ready();
+  assert.deepEqual(saved, [["Atlantic", 10, 20]]);
+});
+
+test("a failed save says so, keeps the edit and keeps the dragged place", async () => {
+  const { button, bar, controls, squareOf, drag, ready } = await startEditing({
+    savePosition: async () => {
+      throw new Error("403");
+    },
+  });
+  const original = console.error;
+  console.error = () => {};
+  drag(1, 2);
+  button("battle-edit-save").dispatch("click");
+  assert.equal(button("battle-edit-save").disabled, true);
+  await ready();
+  console.error = original;
+  const message = bar.byClass("battle-edit-error")[0];
+  assert.equal(message.hidden, false);
+  assert.equal(message.textContent, "Bewaren mislukt.");
+  assert.equal(button("battle-edit-save").disabled, false);
+  assert.equal(button("battle-edit-cancel").disabled, false);
+  assert.equal(controls[0].removed, false);
+  assert.deepEqual(squareOf().latlng, [1, 2]);
+});
+
+test("Annuleer and Esc restore the old place", async () => {
+  for (const cancel of ["button", "esc"]) {
+    const saved = [];
+    const { button, controls, squareOf, drag, press } = await startEditing({ savePosition: async (...args) => saved.push(args) });
+    drag(1, 2);
+    if (cancel === "button") button("battle-edit-cancel").dispatch("click");
+    else press("Escape");
+    assert.equal(controls[0].removed, true);
+    assert.deepEqual(squareOf().latlng, [30, -178]);
+    assert.deepEqual(saved, []);
+  }
+});
+
+test("other keys do not cancel the edit", async () => {
+  const { controls, press } = await startEditing();
+  press("a");
+  assert.equal(controls[0].removed, false);
+});
+
+test("clearing an Eigen positie restores the Wikipedia position", async () => {
+  const cleared = [];
+  const { controller, layers, rows, titleOf, ready } = setup({
+    mode: "period",
+    loadPositions: async () => [{ title: "Midway", lat: 5, lng: 6 }],
+    clearPosition: async (title) => cleared.push(title),
+  });
+  await ready();
+  controller.setPeriod(null, null);
+  controller.setEditable(true);
+  const row = () => rows().find((r) => titleOf(r) === "Midway");
+  row().byClass("battle-row-title")[0].dispatch("click");
+  row().byClass("battle-row-clear")[0].dispatch("click");
+  await ready();
+  assert.deepEqual(cleared, ["Midway"]);
+  const square = [...layers].find((m) => m.options.battleTitle === "Midway");
+  assert.deepEqual(square.latlng, [30, -178]);
+  assert.equal(square.options.icon.className.includes("own"), false);
+  assert.equal(row().byClass("battle-ownpos").length, 0);
+  assert.equal(row().byClass("battle-row-clear").length, 0);
+});
+
+test("setEditable(false) cancels the edit and hides the buttons", async () => {
+  const { controller, controls, squareOf, rowOf, drag } = await startEditing();
+  drag(1, 2);
+  controller.setEditable(false);
+  assert.equal(controls[0].removed, true);
+  assert.deepEqual(squareOf().latlng, [30, -178]);
+  assert.equal(rowOf().byClass("battle-row-actions").length, 0);
+});
+
+test("selecting another battle cancels the edit", async () => {
+  const { controls, rows, titleOf } = await startEditing();
+  rows().find((r) => titleOf(r) === "Battle of Kursk").byClass("battle-row-title")[0].dispatch("click");
+  assert.equal(controls[0].removed, true);
+});
+
+test("the buttons are not offered before the positions have loaded or when they failed to load", async () => {
+  const original = console.error;
+  console.error = () => {};
+  const { controller, rows, titleOf, ready } = setup({
+    mode: "period",
+    loadPositions: async () => {
+      throw new Error("offline");
+    },
+  });
+  await ready();
+  console.error = original;
+  controller.setPeriod(null, null);
+  controller.setEditable(true);
+  rows().find((r) => titleOf(r) === "Midway").byClass("battle-row-title")[0].dispatch("click");
+  assert.equal(rows().flatMap((r) => r.byClass("battle-row-edit")).length, 0);
 });

@@ -1,4 +1,4 @@
-import { fetchShips, fetchStatus } from "./api.js";
+import { canEdit, fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
@@ -129,6 +129,7 @@ function main() {
     onStatus: (status) => {
       loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
+      battles.setEditable(canEdit(status));
       renderStatusLine();
       loadShips(status.revision);
       setLastPatrol(state, status.last_patrol ? status.last_patrol.external_id : null);

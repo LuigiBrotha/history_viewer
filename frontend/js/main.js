@@ -56,7 +56,7 @@ function main() {
   let followedSlug = null;
   let currentDate = null;
   let atlas = { setDate() {} };
-  let battles = { setDate() {} };
+  let battles = { setDate() {}, setEditable() {} };
   let ships = [];
   let shipLayer = null;
   let editable = false;
@@ -245,6 +245,7 @@ function main() {
         mapState = createMap("map");
         shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
         battles = initBattles({ map: mapState.map, mode: "date", onPickDate: (iso) => timeline?.setDate(parseDate(iso)) });
+        battles.setEditable(editable);
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));
@@ -289,6 +290,7 @@ function main() {
       lastStatus = status;
       const wasEditable = editable;
       editable = canEdit(status);
+      battles.setEditable(editable);
       if (editable !== wasEditable && currentDate !== null) {
         render(currentDate, false);
       }

@@ -212,3 +212,52 @@ test("when the battles cannot be loaded the pane says so", () => {
   assert.match(rootEl.allText(), /Veldslagen konden niet worden geladen\./);
   assert.equal(rootEl.byClass("battle-row").length, 0);
 });
+
+function editSetup(battles = LIST) {
+  installDom();
+  const rootEl = new Element("aside");
+  const calls = [];
+  const pane = createBattlePane({ rootEl, mode: "date", onEdit: (b) => calls.push(["edit", b.title]), onClear: (b) => calls.push(["clear", b.title]) });
+  pane.setBattles(battles);
+  const rows = () => rootEl.byClass("battle-row");
+  const titleOf = (row) => row.byClass("battle-row-title")[0].textContent;
+  const rowOf = (title) => rows().find((r) => titleOf(r) === title);
+  return { pane, rootEl, calls, rowOf };
+}
+
+test("the edit buttons show only when editable and only on the selected row", () => {
+  const { pane, rootEl, rowOf, calls } = editSetup();
+  pane.reveal(rowOf("Midway").battle ?? LIST[2]);
+  assert.equal(rootEl.byClass("battle-row-edit").length, 0);
+  pane.setEditable(true);
+  assert.equal(rootEl.byClass("battle-row-edit").length, 1);
+  assert.equal(rowOf("Midway").byClass("battle-row-edit")[0].textContent, "Positie aanpassen");
+  assert.equal(rowOf("Midway").byClass("battle-row-clear").length, 0);
+  rowOf("Midway").byClass("battle-row-edit")[0].dispatch("click");
+  assert.deepEqual(calls, [["edit", "Midway"]]);
+  pane.reveal(LIST[0]);
+  assert.equal(rowOf("Midway").byClass("battle-row-edit").length, 0);
+  assert.equal(rowOf("Battle of Kursk").byClass("battle-row-edit").length, 1);
+  pane.setEditable(false);
+  assert.equal(rootEl.byClass("battle-row-edit").length, 0);
+});
+
+test("an own battle shows its label and can have its position cleared; a click on a button does not select", () => {
+  const own = battle({ title: "Midway", own: true });
+  const selected = [];
+  installDom();
+  const rootEl = new Element("aside");
+  const calls = [];
+  const pane = createBattlePane({ rootEl, mode: "date", onSelect: (b) => selected.push(b), onClear: (b) => calls.push(b.title) });
+  pane.setBattles([own]);
+  pane.setEditable(true);
+  pane.reveal(own);
+  const row = rootEl.byClass("battle-row")[0];
+  assert.equal(row.byClass("battle-ownpos")[0].textContent, "eigen positie");
+  assert.equal(row.byClass("battle-nopos").length, 0);
+  const clear = row.byClass("battle-row-clear")[0];
+  assert.equal(clear.textContent, "Eigen positie wissen");
+  clear.dispatch("click");
+  assert.deepEqual(calls, ["Midway"]);
+  assert.deepEqual(selected, []);
+});

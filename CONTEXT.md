@@ -39,3 +39,7 @@ _Avoid_: Gevolgde patrouille
 **Scheepstreffer**:
 Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum. Hetzelfde schip kan meerdere treffers hebben. De positie komt van de pagina van het schip en ontbreekt soms: dan telt de treffer mee in de totalen maar staat er geen punt op de kaart.
 _Avoid_: Succes, slachtoffer
+
+**Eigen positie**:
+Een positie die de gebruiker zelf aan een Veldslag heeft gegeven. Gaat voor op de positie uit Wikipedia en kan weer worden gewist.
+_Avoid_: handmatige locatie, override

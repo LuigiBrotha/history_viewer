@@ -69,6 +69,11 @@ export class Element {
     }
   }
 
+  remove() {
+    if (this.parent) this.parent.children = this.parent.children.filter((child) => child !== this);
+    this.parent = null;
+  }
+
   replaceChildren(...nodes) {
     this.children = [];
     this.append(...nodes);

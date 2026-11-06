@@ -61,6 +61,7 @@ export function createBattleLayer(map, { onBattleClick }) {
     marker.bindTooltip(tooltipContent(battle), { direction: "top", offset: [0, -SQUARE_SIZE / 2] });
     marker.on("click", () => onBattleClick?.(battle));
     group.addLayer(marker);
+    marker.drawnFor = battle;
     squares.set(battle.title, marker);
     return marker;
   }
@@ -71,10 +72,13 @@ export function createBattleLayer(map, { onBattleClick }) {
     const drawn = squaresToDraw(battles, view).filter((battle) => battle.title !== editing?.battle.title);
     // The square being edited is always drawn, wherever it is.
     const wanted = editing ? [...drawn, editing.battle] : drawn;
-    const wantedTitles = new Set(wanted.map((battle) => battle.title));
+    const wantedByTitle = new Map(wanted.map((battle) => [battle.title, battle]));
 
+    // A square is also redrawn when its battle has moved or changed hands since it was drawn.
+    const stale = (marker, battle) => marker.drawnFor.lat !== battle.lat || marker.drawnFor.lng !== battle.lng || marker.drawnFor.own !== battle.own;
     for (const [title, marker] of squares) {
-      if (!wantedTitles.has(title)) {
+      const battle = wantedByTitle.get(title);
+      if (!battle || stale(marker, battle)) {
         group.removeLayer(marker);
         squares.delete(title);
       }

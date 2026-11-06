@@ -73,6 +73,12 @@ on `/` also sets the date to its start. The data is in `frontend/battles/battles
 built by `tools/extract_battles.py` from the Wikipedia dump (see
 `frontend/battles/README.md`); dates and coordinates are parsed automatically.
 
+On this machine a battle's position can be corrected: select its row (or square), press
+`Positie aanpassen`, drag the square and press `Bewaar` (`Annuleer` or Esc cancels). Such an
+*Eigen positie* is stored by the battle's title, so it survives a new extraction, goes before
+the Wikipedia position, is drawn dashed, and can be removed again with `Eigen positie wissen`.
+A battle without a position can be given one this way too.
+
 Maps open on a background of ocean depth (Esri Ocean). A layer button switches to the
 street map; the choice is remembered in the browser.
 

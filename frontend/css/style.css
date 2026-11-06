@@ -928,7 +928,7 @@ html, body {
 .battle-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  grid-template-areas: "title link" "meta meta" "bar bar";
+  grid-template-areas: "title link" "meta meta" "actions actions" "bar bar";
   align-items: center;
   column-gap: 8px;
   padding: 2px 12px 8px;
@@ -1201,4 +1201,62 @@ html, body {
   font-weight: 700;
   outline: 2px solid var(--series-1);
   outline-offset: -2px;
+}
+
+.battle-ownpos {
+  color: #8a5a00;
+}
+
+.battle-row-actions {
+  grid-area: actions;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.battle-row-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.battle-edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: min(90vw, 420px);
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+}
+
+.battle-edit-title {
+  font-weight: 600;
+}
+
+.battle-edit-bar button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #999;
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.battle-edit-bar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.battle-edit-error {
+  color: #b00020;
 }

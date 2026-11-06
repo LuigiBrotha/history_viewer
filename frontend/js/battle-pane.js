@@ -30,8 +30,10 @@ function percent(value) {
 // Rows are built once; a new date or period only changes the classes of the rows whose
 // state changed. In mode "date" the rows active on the date are highlighted; in mode
 // "period" the rows overlapping the period are, and the others are dimmed.
-export function createBattlePane({ rootEl, mode, onSelect }) {
+export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   let rows = [];
+  let editable = false;
+  let actionsEl = null;
   let selection = null;
   let revealed = null;
 
@@ -74,7 +76,9 @@ export function createBattlePane({ rootEl, mode, onSelect }) {
     name.setAttribute("type", "button");
     const meta = element("div", "battle-row-meta");
     meta.append(element("span", "battle-row-dates", battle.date_text), element("span", "battle-row-duration", durationText(battle)));
-    if (battle.lat == null || battle.lng == null) {
+    if (battle.own) {
+      meta.appendChild(element("span", "battle-ownpos", "eigen positie"));
+    } else if (battle.lat == null || battle.lng == null) {
       meta.appendChild(element("span", "battle-nopos", "geen positie"));
     }
     const bar = element("div", "battle-bar");
@@ -95,8 +99,29 @@ export function createBattlePane({ rootEl, mode, onSelect }) {
     return { battle, el: row, active: false, dimmed: false };
   }
 
+  // The buttons of the selected row, only while editing is offered.
+  function refreshActions() {
+    actionsEl?.remove();
+    actionsEl = null;
+    if (!editable || revealed === null) return;
+    const { battle } = revealed;
+    const actions = element("div", "battle-row-actions");
+    const edit = element("button", "battle-row-edit", "Positie aanpassen");
+    edit.setAttribute("type", "button");
+    edit.addEventListener("click", () => onEdit?.(battle));
+    actions.appendChild(edit);
+    if (battle.own) {
+      const clear = element("button", "battle-row-clear", "Eigen positie wissen");
+      clear.setAttribute("type", "button");
+      clear.addEventListener("click", () => onClear?.(battle));
+      actions.appendChild(clear);
+    }
+    actionsEl = actions;
+    revealed.el.appendChild(actions);
+  }
+
   list.addEventListener("click", (event) => {
-    if (event.target.closest("a")) return;
+    if (event.target.closest("a") || event.target.closest(".battle-row-actions")) return;
     const row = event.target.closest(".battle-row");
     if (row) onSelect?.(rows[Number(row.getAttribute("data-index"))].battle);
   });
@@ -149,6 +174,7 @@ export function createBattlePane({ rootEl, mode, onSelect }) {
       rows = sorted.map(buildRow);
       list.replaceChildren(...rows.map((r) => r.el));
       revealed = null;
+      actionsEl = null;
       applyFilter();
       applySelection();
     },
@@ -167,7 +193,12 @@ export function createBattlePane({ rootEl, mode, onSelect }) {
       if (revealed !== null) revealed.el.classList.toggle("selected", false);
       revealed = row;
       row.el.classList.toggle("selected", true);
+      refreshActions();
       row.el.scrollIntoView?.({ block: "center" });
+    },
+    setEditable(next) {
+      editable = next;
+      refreshActions();
     },
     showError() {
       rootEl.replaceChildren(element("p", "battle-error", LOAD_FAILED), source);

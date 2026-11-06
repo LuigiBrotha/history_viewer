@@ -1,5 +1,5 @@
 import { addBaseMaps } from "./base-maps.js";
-import { fetchStatus } from "./api.js";
+import { canEdit, fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
@@ -168,6 +168,7 @@ function main() {
     onStatus: (status) => {
       loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
+      battles.setEditable(canEdit(status));
       renderStatusLine();
     },
     onError: (error) => {
