@@ -1,6 +1,5 @@
 import { durationText, labelsToShow, squaresToDraw } from "./battle-model.js";
 
-const MAX_SQUARES = 300;
 const SQUARE_SIZE = 10;
 const LABEL_OFFSET_PX = 12;
 
@@ -51,7 +50,7 @@ export function createBattleLayer(map, { onBattleClick }) {
   function redraw() {
     const bounds = map.getBounds();
     const view = { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
-    const wanted = squaresToDraw(battles, view, MAX_SQUARES);
+    const wanted = squaresToDraw(battles, view);
     const wantedTitles = new Set(wanted.map((battle) => battle.title));
 
     for (const [title, marker] of squares) {

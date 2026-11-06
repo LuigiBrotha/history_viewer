@@ -123,18 +123,17 @@ test("squaresToDraw keeps battles with a position in view, longest first", () =>
     battle({ title: "nowhere", lat: null, lng: null }),
     battle({ title: "east", lng: 41 }),
   ];
-  assert.deepEqual(squaresToDraw(list, view, 10).map((b) => b.title), ["long", "short"]);
+  assert.deepEqual(squaresToDraw(list, view).map((b) => b.title), ["long", "short"]);
 });
 
-test("squaresToDraw caps the count and keeps the longest", () => {
-  const list = ["a", "b", "c", "d"].map((title, i) => battle({ title, start: "1940-01-01", end: `1940-01-0${i + 1}` }));
-  assert.deepEqual(squaresToDraw(list, view, 2).map((b) => b.title), ["d", "c"]);
-  assert.deepEqual(squaresToDraw(list, view, 0), []);
+test("squaresToDraw draws every battle in view, however many there are", () => {
+  const list = Array.from({ length: 1000 }, (_, i) => battle({ title: `battle ${i}` }));
+  assert.equal(squaresToDraw(list, view).length, 1000);
 });
 
 test("squaresToDraw breaks ties on the title so the set is stable", () => {
   const list = [battle({ title: "b" }), battle({ title: "a" })];
-  assert.deepEqual(squaresToDraw(list, view, 5).map((b) => b.title), ["a", "b"]);
+  assert.deepEqual(squaresToDraw(list, view).map((b) => b.title), ["a", "b"]);
 });
 
 test("labelsToShow names few squares at any zoom and many only when zoomed in", () => {

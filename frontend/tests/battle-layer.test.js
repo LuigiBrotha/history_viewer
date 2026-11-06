@@ -134,12 +134,11 @@ test("only battles in view are drawn and the map redraws when it moves or zooms"
   assert.equal(squares().length, 2);
 });
 
-test("no more than 300 squares are drawn, the longest first", () => {
+test("every battle in view gets a square, also when there are many", () => {
   const { layer, squares } = setup();
-  const many = Array.from({ length: 305 }, (_, i) => battle({ title: `b${i}`, end: i < 5 ? "1943-07-05" : "1943-08-23" }));
+  const many = Array.from({ length: 900 }, (_, i) => battle({ title: `b${i}` }));
   layer.setBattles(many);
-  assert.equal(squares().length, 300);
-  assert.ok(!squares().some((m) => ["b0", "b1", "b2", "b3", "b4"].includes(m.options.battleTitle)));
+  assert.equal(squares().length, 900);
 });
 
 test("names show next to few squares, or when zoomed in", () => {

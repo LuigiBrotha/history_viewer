@@ -61,8 +61,9 @@ export function barPosition(battle, bounds) {
   return { left: Math.max(0, left), width };
 }
 
-// viewBounds is { south, west, north, east }. The longest battles stay when the cap bites.
-export function squaresToDraw(battles, viewBounds, max) {
+// viewBounds is { south, west, north, east }. Every battle in view is drawn, the longest
+// first, so that shorter ones lie on top and stay clickable.
+export function squaresToDraw(battles, viewBounds) {
   const inView = battles.filter(
     (battle) =>
       battle.lat != null &&
@@ -73,7 +74,7 @@ export function squaresToDraw(battles, viewBounds, max) {
       battle.lng <= viewBounds.east,
   );
   inView.sort((a, b) => durationDays(b) - durationDays(a) || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
-  return inView.slice(0, max);
+  return inView;
 }
 
 // Names next to the squares are only readable when there are few or the map is zoomed in.
