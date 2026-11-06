@@ -58,6 +58,19 @@ Two parts, built in this order. Each can go to `master` on its own.
 | Links between pages | The links to the other map pages carry `veldslag`, `boot` and `kaart`, not the date or period. The link to `/grafiek` carries nothing. |
 | Pinning | A bookmark or copied URL. No button and no pin list in the app. |
 
+## Part 3: Winnaar in `battles.json` (extraction only)
+
+Added during the run, so the dump is read only once. The map colouring comes later on its
+own branch; this part only stores the data.
+
+| Topic | Decision |
+|---|---|
+| Field | Each record in `battles.json` gets `winner`: a list of 0, 1 or 2 Kampen. `[]` = unknown; one Kamp = that side won; two Kampen = undecided (inconclusive, stalemate, draw), one per side. |
+| Kampen | `as`, `westers`, `sovjet`, `overig`. Same split as the atlas legend, plus a fourth for everything outside the three (China, partisans, …). |
+| Country → Kamp | A fixed table in the tool, keyed by the country names the flag templates and links use (`Nazi Germany`, `Empire of Japan`, `Soviet Union`, `United Kingdom`, …). Axis: Germany, Italy, Japan and their allies (Hungary, Romania, Bulgaria, Slovakia, Croatia, Finland, Thailand, Vichy France, Manchukuo). Western: UK, USA, France, the Commonwealth dominions, the governments in exile, Brazil. Soviet: USSR, Mongolia. Anything else known: `overig`. Not in the table: unknown. |
+| Side of a column | The Kamp of the first country in `combatant1` / `combatant2` that is in the table. |
+| Reading `result` | Strategic before tactical: if the text names a strategic result, only that part counts. "`<X>` victory" where X is a demonym or `Allied`/`Axis`/`Soviet` → that Kamp. "`<X>` defeat" or "`<X>` … failure" → the other column's Kamp. Inconclusive / stalemate / indecisive / draw / ceasefire → both columns' Kampen. Anything else (e.g. "See aftermath", empty) → `[]`. |
+
 ## Testing
 
 - Renderer: fixture articles from `tests/fixtures/wikipedia/` (a few real WWII articles), with

@@ -358,3 +358,35 @@
   - that the extract run fills the articles;
   - the image cache folder.
 - [ ] **Step 7: Commit:** `Keep the period pages' view in their URL`.
+
+---
+
+## Part 3: Winnaar in `battles.json`
+
+### Task 11: Store each Veldslag's Winnaar while extracting
+
+**Files:**
+- Create: `tools/battle_winner.py` (country table, `result` parsing)
+- Modify: `tools/extract_battles.py` (`extract_battle` adds `winner`), `frontend/battles/README.md`
+- Test: `tests/tools/test_battle_winner.py`, `tests/tools/test_extract_battles.py`
+
+**Interfaces:**
+- Produces:
+  - `KAMPEN = ("as", "westers", "sovjet", "overig")`
+  - `side_kamp(field: str) -> str | None`: the Kamp of the first known country in a combatant field. Countries come from `flag`/`flagcountry`/`flagicon`/`navy`/`army`/`air force` templates (first argument; a `name=` argument does not change the country) and from `[[links]]`.
+  - `winner(fields: Mapping[str, str]) -> list[str]`: from `result`, `combatant1`, `combatant2`, following the spec's Part 3 rules.
+  - Each battle record gets `"winner": [...]`. The frontend ignores the field for now.
+
+- [ ] **Step 1: Write the failing tests** (`test_battle_winner.py`), using these fields from the fixture infoboxes:
+  - Kursk `"Soviet victory"` → `["sovjet"]`; Midway `"American victory"` → `["westers"]`; Convoy HX 79 `"German victory"` with `{{navy|Nazi Germany}}` → `["as"]`; Atlantic `"Allied victory"` → `["westers"]`; Pearl Harbor `"Japanese victory"` → `["as"]`.
+  - `"Axis strategic failure"` with combatant1 Nazi Germany and combatant2 Soviet Union → `["sovjet"]`.
+  - `"Tactical Japanese victory, strategic Allied victory"` → `["westers"]`.
+  - `"Inconclusive"` with Nazi Germany against United Kingdom → `["as", "westers"]`.
+  - `"See aftermath"` → `[]`; empty → `[]`.
+  - `"Chinese victory"` → `["overig"]`.
+  - `side_kamp("{{ubl|{{flagcountry|Nazi Germany}}|{{flagcountry|Kingdom of Italy}}}}") == "as"`; `side_kamp("[[French Third Republic|France]]") == "westers"`; `side_kamp("{{flag|Nazi Germany|name=German Reich}}") == "as"`.
+  - In `test_extract_battles.py`: the extracted Kursk record has `"winner": ["sovjet"]`.
+- [ ] **Step 2: Run** `poetry run pytest tests/tools -v`. Expected: the new tests FAIL.
+- [ ] **Step 3: Implement.** Demonyms map to countries in the same table, for example `German` → Nazi Germany and `American` → United States. Match case-insensitively on whole words.
+- [ ] **Step 4: Run** `poetry run pytest`. Expected: PASS.
+- [ ] **Step 5:** Add a line about `winner` to `frontend/battles/README.md`. **Commit:** `Store the winning Kamp of each battle while extracting`.

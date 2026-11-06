@@ -59,3 +59,11 @@ _Avoid_: Bookmark, favoriet
 **Eigen positie**:
 Een positie die de gebruiker zelf aan een Veldslag heeft gegeven. Gaat voor op de positie uit Wikipedia en kan weer worden gewist.
 _Avoid_: handmatige locatie, override
+
+**Kamp**:
+Een van de vier groepen waarin de strijdende landen zijn ingedeeld: As, Westerse geallieerden, Sovjet-Unie en overig. Gelijk aan de indeling van de historische kaart, met een vierde groep voor de rest.
+_Avoid_: Partij, zijde (als de groep wordt bedoeld)
+
+**Winnaar**:
+Het Kamp dat een Veldslag won, volgens de strategische uitkomst. Een onbesliste Veldslag heeft twee Kampen, een onbekende uitkomst geen.
+_Avoid_: Overwinnaar
