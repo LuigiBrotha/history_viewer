@@ -1,4 +1,5 @@
 import bz2
+import html
 import json
 from datetime import date
 from pathlib import Path
@@ -279,11 +280,17 @@ BATTLE = (
 
 
 def make_dump(path, pages):
+    def redirect_tag(redirect):
+        if not redirect:
+            return ""
+        target = redirect if isinstance(redirect, str) else "Elsewhere"
+        return '<redirect title="%s" />' % html.escape(target, quote=True)
+
     body = "".join(
         PAGE.format(
             title=title,
             ns=ns,
-            redirect='<redirect title="%s" />' % (redirect if isinstance(redirect, str) else "Elsewhere") if redirect else "",
+            redirect=redirect_tag(redirect),
             text=text.replace("&", "&amp;").replace("<", "&lt;"),
         )
         for title, ns, redirect, text in pages
@@ -491,8 +498,9 @@ def test_run_keeps_redirects_to_battles_before_and_after_target(tmp_path, pages)
     }
 
 
-def test_run_drops_redirect_scratch_table(tmp_path, pages):
+def test_run_deletes_the_redirect_scratch_file_and_leaves_no_scratch_table(tmp_path, pages):
     database = run_articles(tmp_path, pages)
+    assert not list(tmp_path.glob("*.redirects.sqlite"))
     assert rows(database, "SELECT name FROM sqlite_master WHERE name = 'battle_redirects_scratch'") == []
 
 
@@ -501,3 +509,45 @@ def test_rerun_replaces_rows(tmp_path, pages):
     run_articles(tmp_path, pages)
     assert rows(database, "SELECT count(*) FROM battle_articles") == [(2,)]
     assert rows(database, "SELECT count(*) FROM battle_redirects") == [(2,)]
+
+
+def test_run_removes_articles_that_are_no_longer_battles(tmp_path, pages):
+    database = run_articles(tmp_path, pages)
+    engine = create_engine(f"sqlite:///{database}")
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO battle_articles VALUES ('Gone', 'x', 'old', '2020-01-01 00:00:00')"))
+        connection.execute(text("INSERT INTO battle_redirects VALUES ('Gone alias', 'Gone')"))
+    engine.dispose()
+    run_articles(tmp_path, pages)
+    assert {t for (t,) in rows(database, "SELECT title FROM battle_articles")} == {"Battle of Kursk", "Battle of Midway"}
+    assert "Gone alias" not in {a for (a,) in rows(database, "SELECT alias FROM battle_redirects")}
+
+
+def test_run_resumes_redirects_and_articles_after_a_stop(tmp_path, pages, monkeypatch):
+    dump = tmp_path / "d.xml.bz2"
+    article_dump(dump, pages)
+    database = tmp_path / "test.db"
+    url = f"sqlite:///{database}"
+    out = tmp_path / "battles.json"
+    real = tools_extract.iter_candidate_pages
+
+    def crashing(path, skip_pages=0):
+        for count, page in enumerate(real(path, skip_pages)):
+            if count == 3:
+                raise OSError("interrupted")
+            yield page
+
+    monkeypatch.setattr(tools_extract, "iter_candidate_pages", crashing)
+    with pytest.raises(OSError):
+        run(dump, out, save_every_seconds=0, database_url=url)
+    assert list(tmp_path.glob("*.redirects.sqlite"))
+
+    monkeypatch.setattr(tools_extract, "iter_candidate_pages", real)
+    run(dump, out, save_every_seconds=0, database_url=url)
+
+    assert rows(database, "SELECT count(*) FROM battle_articles") == [(2,)]
+    assert dict(rows(database, "SELECT alias, title FROM battle_redirects")) == {
+        "Operation Citadel": "Battle of Kursk",
+        "Midway": "Battle of Midway",
+    }
+    assert not list(tmp_path.glob("*.redirects.sqlite"))

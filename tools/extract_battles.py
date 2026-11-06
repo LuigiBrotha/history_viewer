@@ -14,6 +14,7 @@ import html
 import json
 import os
 import re
+import sqlite3
 import sys
 import time
 import xml.etree.ElementTree as ET
@@ -22,7 +23,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
-from sqlalchemy import create_engine, delete, select, text
+from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import BattleArticle, BattleRedirect
@@ -416,18 +417,26 @@ def _load_json(path, fallback):
         return fallback
 
 
-def _finish_redirects(session, battles):
-    """Drop articles that are no longer battles, then keep the redirects to the remaining ones."""
-    stale = set(session.scalars(select(BattleArticle.title))) - set(battles)
-    for title in stale:
-        session.execute(delete(BattleArticle).where(BattleArticle.title == title))
-    session.execute(delete(BattleRedirect).where(BattleRedirect.title.not_in(select(BattleArticle.title))))
-    session.execute(text(
-        "INSERT OR REPLACE INTO battle_redirects (alias, title) SELECT alias, target FROM battle_redirects_scratch "
-        "WHERE target IN (SELECT title FROM battle_articles)"
-    ))
-    session.execute(text("DROP TABLE battle_redirects_scratch"))
-    session.commit()
+def _finish_redirects(engine, scratch_path, battles):
+    """Make the stored redirects mirror this dump's, in one short transaction.
+
+    Articles that are no longer battles go first (their redirects before them, for the foreign
+    key), then every redirect in the scratch file that points at a stored article is copied in."""
+    with engine.connect() as connection:
+        connection.exec_driver_sql("ATTACH DATABASE ? AS scratch", (str(scratch_path),))
+        try:
+            stale = set(connection.scalars(select(BattleArticle.title))) - set(battles)
+            connection.execute(delete(BattleRedirect))
+            for title in stale:
+                connection.execute(delete(BattleArticle).where(BattleArticle.title == title))
+            connection.exec_driver_sql(
+                "INSERT INTO battle_redirects (alias, title) SELECT alias, target FROM scratch.redirects "
+                "WHERE target IN (SELECT title FROM battle_articles)"
+            )
+            connection.commit()
+        finally:
+            connection.rollback()
+            connection.exec_driver_sql("DETACH DATABASE scratch")
 
 
 def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAULT_DATABASE):
@@ -449,10 +458,16 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
     BattleArticle.__table__.create(engine, checkfirst=True)
     BattleRedirect.__table__.create(engine, checkfirst=True)
     session = Session(engine)
-    session.execute(text("CREATE TABLE IF NOT EXISTS battle_redirects_scratch (alias TEXT PRIMARY KEY, target TEXT)"))
-    session.commit()
+    # Every redirect in the dump goes to a file of its own, so that the database is not locked for the whole run.
+    scratch_path = dump.with_name(f"{output.stem}.redirects.sqlite")
+    scratch = sqlite3.connect(scratch_path)
+    scratch.execute("CREATE TABLE IF NOT EXISTS redirects (alias TEXT PRIMARY KEY, target TEXT)")
+    redirects = []
 
     def save():
+        scratch.executemany("INSERT OR REPLACE INTO redirects (alias, target) VALUES (?, ?)", redirects)
+        scratch.commit()
+        redirects.clear()
         session.commit()
         ordered = sorted(battles.values(), key=lambda b: (b["start"], b["title"]))
         _write_atomically(output, json.dumps(ordered, ensure_ascii=False, separators=(",", ":")))
@@ -463,21 +478,18 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
     last_report = pages
     for pages, title, wikitext, target in iter_candidate_pages(dump, skip_pages=pages):
         if target is not None:
-            session.execute(
-                text("INSERT OR REPLACE INTO battle_redirects_scratch (alias, target) VALUES (:alias, :target)"),
-                {"alias": title, "target": target},
-            )
-            continue
-        battle, reason = extract_battle(title, wikitext)
-        if battle is None:
-            skipped[reason] += 1
-            fields = find_infobox(wikitext)
-            if reason.startswith("date") and fields and names_world_war_ii(strip_comments(wikitext), fields):
-                review.append(f"{title}\t{reason}\t{fields.get('date', '')[:200]}".replace("\n", " "))
+            redirects.append((title, target))
         else:
-            battles[title] = battle
-            session.merge(BattleArticle(title=title, wikitext=wikitext, dump_name=dump.name,
-                                        extracted_at=datetime.now(timezone.utc)))
+            battle, reason = extract_battle(title, wikitext)
+            if battle is None:
+                skipped[reason] += 1
+                fields = find_infobox(wikitext)
+                if reason.startswith("date") and fields and names_world_war_ii(strip_comments(wikitext), fields):
+                    review.append(f"{title}\t{reason}\t{fields.get('date', '')[:200]}".replace("\n", " "))
+            else:
+                battles[title] = battle
+                session.merge(BattleArticle(title=title, wikitext=wikitext, dump_name=dump.name,
+                                            extracted_at=datetime.now(timezone.utc)))
         if time.monotonic() - last_save >= save_every_seconds:
             save()
             last_save = time.monotonic()
@@ -485,9 +497,11 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
             last_report = pages
             print(f"{pages} pages read, {len(battles)} battles so far", file=sys.stderr, flush=True)
     save()
-    _finish_redirects(session, battles)
+    scratch.close()
     session.close()
+    _finish_redirects(engine, scratch_path, battles)
     engine.dispose()
+    scratch_path.unlink()
     progress_path.unlink()
     print(f"{len(battles)} battles written to {output}")
     for reason, count in skipped.most_common():
@@ -498,7 +512,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("dump", nargs="?", default=DEFAULT_DUMP, help="the .xml.bz2 dump, or the directory holding it")
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="where to write battles.json")
-    parser.add_argument("--database", default=DEFAULT_DATABASE, help="database that receives the wikitext of the battles")
+    parser.add_argument("--database", default=DEFAULT_DATABASE, help="database that receives the wikitext of the battles (an SQLite URL)")
     arguments = parser.parse_args(argv)
     run(arguments.dump, arguments.output, database_url=arguments.database)
 
