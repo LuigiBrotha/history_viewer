@@ -40,6 +40,22 @@ _Avoid_: Gevolgde patrouille
 Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum. Hetzelfde schip kan meerdere treffers hebben. De positie komt van de pagina van het schip en ontbreekt soms: dan telt de treffer mee in de totalen maar staat er geen punt op de kaart.
 _Avoid_: Succes, slachtoffer
 
+**Veldslag**:
+Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen Engels Wikipedia-artikel, met een begin- en einddatum en soms een positie.
+_Avoid_: Operatie, gevecht
+
+**Artikel**:
+De tekst van het Wikipedia-artikel van een Veldslag, zoals de app die zelf weergeeft naast de lijst met Veldslagen.
+_Avoid_: Wikipedia-pagina (als de weergave in de app wordt bedoeld)
+
+**Kaartuitsnede**:
+Het deel van de kaart dat in beeld is: middelpunt en zoomniveau.
+_Avoid_: Viewport, view
+
+**Pin**:
+Een link waarin het hele beeld vastligt (datum of periode, geselecteerde Veldslag, Gevolgde boot, Kaartuitsnede), zodat precies dat moment later terug te halen is.
+_Avoid_: Bookmark, favoriet
+
 **Eigen positie**:
 Een positie die de gebruiker zelf aan een Veldslag heeft gegeven. Gaat voor op de positie uit Wikipedia en kan weer worden gewist.
 _Avoid_: handmatige locatie, override
