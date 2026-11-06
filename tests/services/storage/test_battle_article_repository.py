@@ -61,3 +61,23 @@ async def test_battle_index_maps_titles_and_aliases_to_real_title(tmp_path):
         "Second Happy Time": "Second Happy Time",
         "Operation Drumbeat": "Second Happy Time",
     }
+
+
+async def test_get_follows_only_one_redirect_hop(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        await _seed(session)
+        # "A" -> "B" is a redirect, not an article; "B" -> real article. Two hops must not resolve.
+        session.add(BattleRedirect(alias="A", title="B"))
+        session.add(BattleRedirect(alias="B", title="Second Happy Time"))
+        await session.commit()
+        assert await BattleArticleRepository(session).get("A") is None
+
+
+async def test_get_terminates_on_redirect_cycle(tmp_path):
+    factory = await _session_factory(tmp_path)
+    async with factory() as session:
+        session.add(BattleRedirect(alias="X", title="Y"))
+        session.add(BattleRedirect(alias="Y", title="X"))
+        await session.commit()
+        assert await BattleArticleRepository(session).get("X") is None
