@@ -168,3 +168,14 @@ class ShipDetail(Base):
     history: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class BattlePosition(Base):
+    """Where the user hand-placed a Veldslag on the map, keyed on its title in battles.json."""
+
+    __tablename__ = "battle_positions"
+
+    title: Mapped[str] = mapped_column(String, primary_key=True)
+    lat: Mapped[float] = mapped_column(Float, nullable=False)
+    lng: Mapped[float] = mapped_column(Float, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
