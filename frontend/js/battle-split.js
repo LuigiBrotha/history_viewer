@@ -4,6 +4,7 @@ const OPEN_BY_DEFAULT_MIN_WIDTH = 900;
 const MIN_WIDTH = 240;
 const MAX_WIDTH_SHARE = 0.8;
 const MIN_HEIGHT = 120;
+const MIN_MAP_WIDTH = 320;
 const MAX_HEIGHT_SHARE = 0.75;
 const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT_SHARE = 0.4;
@@ -15,9 +16,11 @@ export function isPhone(windowWidth) {
 }
 
 // available is the window width beside the map, or the height of the split under it.
-export function clampSize(size, available, phone) {
+// reserved is the width of the other pane beside the map; the map keeps MIN_MAP_WIDTH of it.
+export function clampSize(size, available, phone, reserved = 0) {
   const min = phone ? MIN_HEIGHT : MIN_WIDTH;
-  const max = available * (phone ? MAX_HEIGHT_SHARE : MAX_WIDTH_SHARE);
+  let max = available * (phone ? MAX_HEIGHT_SHARE : MAX_WIDTH_SHARE);
+  if (!phone && reserved > 0) max = Math.min(max, available - reserved - MIN_MAP_WIDTH);
   return Math.round(Math.max(min, Math.min(size, max)));
 }
 
@@ -64,7 +67,8 @@ export function keySize(key, size, phone, shift) {
 
 // Binds the pure logic above to the split: the pane, its divider and the button that
 // shows it (toggleEl may be null when something else opens it). The map is told about
-// every change of size, as it keeps its own pixel size. With persistOpen false the pane
+// every change of size, as it keeps its own pixel size. reserved() gives the pixels the
+// other pane takes beside the map, so the map keeps a minimum width. With persistOpen false the pane
 // always starts closed and its open state is neither read nor stored; only its size is.
 export function initBattleSplit({
   splitEl,
@@ -77,6 +81,7 @@ export function initBattleSplit({
   storageKey = DEFAULT_STORAGE_KEY,
   defaultWidth = DEFAULT_WIDTH,
   persistOpen = true,
+  reserved = () => 0,
 }) {
   const state = loadState(storage, storageKey);
   if (!persistOpen) delete state.open;
@@ -85,11 +90,12 @@ export function initBattleSplit({
   let frame = false;
 
   const phone = () => isPhone(win.innerWidth);
+  const taken = () => (phone() ? 0 : reserved());
   const available = () => (phone() ? splitEl.getBoundingClientRect().height : win.innerWidth);
 
   function size() {
     const stored = phone() ? state.height : state.width;
-    return clampSize(typeof stored === "number" ? stored : defaultSize(phone(), available(), defaultWidth), available(), phone());
+    return clampSize(typeof stored === "number" ? stored : defaultSize(phone(), available(), defaultWidth), available(), phone(), taken());
   }
 
   let current = size();
@@ -105,8 +111,8 @@ export function initBattleSplit({
     paneEl.style.setProperty("--battle-pane-size", `${current}px`);
     dividerEl.setAttribute("aria-orientation", isPhoneLayout ? "horizontal" : "vertical");
     dividerEl.setAttribute("aria-valuenow", String(current));
-    dividerEl.setAttribute("aria-valuemin", String(clampSize(0, room, isPhoneLayout)));
-    dividerEl.setAttribute("aria-valuemax", String(clampSize(Infinity, room, isPhoneLayout)));
+    dividerEl.setAttribute("aria-valuemin", String(clampSize(0, room, isPhoneLayout, taken())));
+    dividerEl.setAttribute("aria-valuemax", String(clampSize(Infinity, room, isPhoneLayout, taken())));
     toggleEl?.setAttribute("aria-expanded", String(open));
   }
 
@@ -117,7 +123,7 @@ export function initBattleSplit({
   }
 
   function setSize(next) {
-    current = clampSize(next, available(), phone());
+    current = clampSize(next, available(), phone(), taken());
     apply();
   }
 

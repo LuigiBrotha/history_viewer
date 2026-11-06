@@ -21,3 +21,11 @@ test("marker icons keep Leaflet's absolute position, or each one is pushed down 
     }
   }
 });
+
+test("the article column is sized by the custom property that initBattleSplit sets", () => {
+  const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const split = readFileSync(new URL("../js/battle-split.js", import.meta.url), "utf8");
+  const property = /setProperty\("(--[\w-]+)"/.exec(split)[1];
+  const bodies = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.trim() === "#article-pane").map(([, , body]) => body);
+  assert.ok(bodies.some((body) => body.includes(`var(${property},`)));
+});

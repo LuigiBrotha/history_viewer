@@ -212,3 +212,19 @@ test("the article split without a stored width uses its default and works withou
   split.open();
   assert.equal("open" in JSON.parse(storage.data["uboats.articlePane"] ?? "{}"), false);
 });
+
+test("with another pane beside the map, the size leaves the map at least 320px", () => {
+  assert.equal(clampSize(800, 1500, false, 600), 580);
+  assert.equal(clampSize(300, 1500, false, 600), 300);
+  assert.equal(clampSize(800, 1500, false, 0), 800);
+  assert.equal(clampSize(800, 500, true, 600), 375);
+  assert.equal(clampSize(800, 700, false, 600), 240);
+});
+
+test("initBattleSplit clamps the pane by what reserved() returns", () => {
+  const { dividerEl, paneEl } = setup({ options: { reserved: () => 600 } });
+  dividerEl.dispatch("pointerdown", { pointerId: 1, clientX: 0, clientY: 0 });
+  dividerEl.dispatch("pointermove", { pointerId: 1, clientX: 0, clientY: 0 });
+  assert.equal(paneEl.styleProps["--battle-pane-size"], "280px");
+  assert.equal(dividerEl.getAttribute("aria-valuemax"), "280");
+});
