@@ -482,3 +482,15 @@ test("each split leaves the map 320px beside the other", async () => {
   const size = (id) => Number(ctx.elements[id].styleProps["--battle-pane-size"].replace("px", ""));
   assert.ok(size("battle-pane") + size("article-pane") <= 1000 - 320);
 });
+
+test("onResolved hears whether a deferred selection found its title", async () => {
+  const known = setup({ mode: "period" });
+  const unknown = setup({ mode: "period" });
+  const answers = [];
+  known.controller.selectBattle("Midway", { onResolved: (found) => answers.push(["Midway", found]) });
+  unknown.controller.selectBattle("Nope", { onResolved: (found) => answers.push(["Nope", found]) });
+  assert.deepEqual(answers, []);
+  await known.ready();
+  await unknown.ready();
+  assert.deepEqual(answers, [["Midway", true], ["Nope", false]]);
+});

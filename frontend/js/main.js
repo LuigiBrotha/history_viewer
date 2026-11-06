@@ -215,6 +215,13 @@ function main() {
     }
   }
 
+  // The deferred selection has an answer: an unknown title leaves the URL, and the pin ends.
+  function endPinnedBattle(found) {
+    if (!found) urlSync.update({ battle: null });
+    pinnedBattle = null;
+    pinnedMap = null;
+  }
+
   function applyPinnedMap() {
     const { lat, lng, zoom } = pinnedMap;
     pinnedMap = null;
@@ -234,7 +241,9 @@ function main() {
       if (initialView.battle !== undefined) {
         pinnedBattle = initialView.battle;
         pinnedMap = initialView.map ?? null;
-        battles.selectBattle(initialView.battle);
+        // Kept in the URL until the battles have loaded and know the title.
+        urlSync.update({ battle: initialView.battle });
+        battles.selectBattle(initialView.battle, { onResolved: endPinnedBattle });
       }
     } finally {
       restoring = false;

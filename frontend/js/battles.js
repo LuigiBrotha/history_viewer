@@ -217,13 +217,17 @@ export function initBattles({
 
   // pickDate is for the list and the articles: on the timeline page it sets the date to the
   // battle's start. A request made before the file has loaded is applied when it arrives.
-  function selectBattle(title, { pickDate = false } = {}) {
+  // onResolved(found) hears whether the title is known, once the answer exists.
+  function selectBattle(title, { pickDate = false, onResolved = null } = {}) {
     if (!loaded) {
-      requested = { title, pickDate };
+      requested = { title, pickDate, onResolved };
       return true;
     }
     const battle = battles.find((b) => b.title === title);
-    if (battle === undefined) return false;
+    if (battle === undefined) {
+      onResolved?.(false);
+      return false;
+    }
     // Selecting another battle ends an edit; a click on the square being edited does not.
     if (editing?.battle.title !== title) cancelEdit();
     if (pickDate && mode === "date") {
@@ -237,6 +241,7 @@ export function initBattles({
     articleSplit.open();
     articlePane.show(battle);
     onBattleChange(battle.title);
+    onResolved?.(true);
     return true;
   }
 
@@ -273,9 +278,9 @@ export function initBattles({
       layer.setBattles(shown());
       applyEditable();
       if (requested !== null) {
-        const { title, pickDate } = requested;
+        const { title, pickDate, onResolved } = requested;
         requested = null;
-        selectBattle(title, { pickDate });
+        selectBattle(title, { pickDate, onResolved });
       }
     },
     (error) => {
