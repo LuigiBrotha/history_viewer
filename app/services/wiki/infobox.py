@@ -5,6 +5,9 @@ from collections.abc import Callable, Mapping
 
 TAG = re.compile(r"<[^>]*>")
 FILE_PREFIX = re.compile(r"^\s*(?:file|image)\s*:", re.IGNORECASE)
+COMMENT = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
+MULTIPLE_IMAGE = re.compile(r"^\{\{\s*multiple[\s_]+image\b", re.IGNORECASE)
+FIRST_OF_MULTIPLE = re.compile(r"\|\s*image1\s*=\s*([^|}]*)", re.IGNORECASE)
 
 # (label, field names); one field is a single row, two are side 1 and side 2 next to each other.
 ROWS = [
@@ -25,7 +28,10 @@ def _is_empty(html: str) -> bool:
 
 def _image_wikitext(fields: Mapping[str, str]) -> str:
     """The infobox image as a file link, so it renders like any other figure."""
-    image = fields.get("image", "").strip()
+    image = COMMENT.sub("", fields.get("image", "")).strip()
+    if MULTIPLE_IMAGE.match(image):
+        first = FIRST_OF_MULTIPLE.search(image)
+        image = first.group(1).strip() if first else ""
     if not image:
         return ""
     if image.startswith("[["):

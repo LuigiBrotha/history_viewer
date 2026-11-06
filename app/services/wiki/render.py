@@ -1,6 +1,7 @@
 """A Veldslag's Artikel as HTML, rendered from the dump's raw wikitext without template expansion."""
 
 import html
+import logging
 import re
 from collections.abc import Callable, Iterable, Mapping
 from urllib.parse import quote
@@ -13,6 +14,8 @@ from app.services.wiki.infobox import render_infobox
 from app.services.wiki.sanitize import sanitize
 from app.services.wiki.titles import normalize_title
 
+LOG = logging.getLogger(__name__)
+
 WIKI_URL = "https://en.wikipedia.org/wiki/"
 IMAGE_WIDTH = 330
 INFOBOXES = {"infobox military conflict", "infobox military operation", "infobox battle"}
@@ -21,12 +24,24 @@ DROPPED_SECTIONS = {
     "footnotes",
 }
 DATE_TEMPLATES = {"start date", "end date", "start date and age", "end date and age"}
-FIRST_ARGUMENT = {"nowrap", "small", "flag", "flagcountry"}
+FIRST_ARGUMENT = {"nowrap", "small", "flag", "flagcountry", "navy", "army", "air force", "center"}
+SECOND_ARGUMENT = {"lang", "langx"}
+CONVERT = {"convert", "cvt"}
+LIST_TEMPLATES = {
+    "ubl", "unbulleted list", "plainlist", "plain list", "indented plainlist", "flatlist", "collapsible list",
+    "tree list", "bulleted list",
+}
+SHIP_TEMPLATES = {"hms", "uss", "gs", "uscgc", "hmnzs", "ss", "hmcs", "hmas", "fs", "hnlms", "ors"}
+RENDERED_TEMPLATES = (
+    DATE_TEMPLATES | FIRST_ARGUMENT | SECOND_ARGUMENT | CONVERT | LIST_TEMPLATES | SHIP_TEMPLATES
+    | {"start and end dates", "kia"}
+)
 LIST_MARKERS = {"*", "#"}
-KEPT_TAGS = {"b", "i", "strong", "em", "sup", "sub", "blockquote"}
+KEPT_TAGS = {"b", "i", "strong", "em", "sup", "sub", "blockquote", "ul", "ol", "li"}
+LIST_ITEM_TAGS = {"li", "dt", "dd"}
 DROPPED_TAGS = {
     "ref", "references", "script", "style", "gallery", "math", "timeline", "score", "templatestyles", "imagemap",
-    "li", "dt", "dd", "hr", "caption",
+    "hr", "caption",
 }
 VERBATIM_TAGS = {"nowiki", "pre"}
 INTERLANGUAGE = re.compile(r"[a-z]{2,3}(?:-[a-z]+)*")
@@ -38,6 +53,8 @@ IMAGE_OPTION = re.compile(
 )
 PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n\s*")
 TAG = re.compile(r"<[^>]*>")
+COMMENT = re.compile(r"<!--.*?(?:-->|$)", re.DOTALL)
+UNUSABLE_FILE_NAME = re.compile(r"\{\{|<|\|")
 
 
 def escape(text: str) -> str:
@@ -104,6 +121,9 @@ class _Renderer:
         return f'<a href="{escape(href)}" data-title="{escape(title)}"{battle_attribute}>{label}</a>'
 
     def figure(self, name: str, text_nodes) -> str:
+        name = COMMENT.sub("", name).strip()
+        if not name or UNUSABLE_FILE_NAME.search(name):
+            return ""
         parts = [[]]
         for node in text_nodes:
             if isinstance(node, Text):
@@ -136,21 +156,62 @@ class _Renderer:
 
     def template(self, node: Template) -> str:
         name = template_name(node)
-        arguments = [self.inline(param.value.nodes).strip() for param in node.params if not param.showkey]
+        if name not in RENDERED_TEMPLATES:
+            return ""  # never touch the arguments of a dropped template
+        values = [param.value for param in node.params if not param.showkey]
+
+        def argument(index: int) -> str:
+            return self.inline(values[index].nodes).strip() if index < len(values) else ""
+
         if name in FIRST_ARGUMENT:
-            return arguments[0] if arguments else ""
-        if name == "lang":
-            return arguments[1] if len(arguments) > 1 else ""
-        if name == "convert":
-            return " ".join(arguments[:2])
-        if name in DATE_TEMPLATES:
-            numbers = [plain_text(argument) for argument in arguments]
-            return escape(render_date([number for number in numbers if number.isdigit()][:3]))
-        return ""
+            return argument(0)
+        if name in SECOND_ARGUMENT:
+            return argument(1)
+        if name in CONVERT:
+            return " ".join(part for part in (argument(0), argument(1)) if part)
+        if name == "kia":
+            return "†"
+        if name in SHIP_TEMPLATES:
+            return self.ship(name, argument(0))
+        if name in LIST_TEMPLATES:
+            return "<br>".join(item for value in values for item in self.list_items(value.nodes))
+        numbers = [number for number in (plain_text(argument(i)) for i in range(len(values))) if number.isdigit()]
+        if name == "start and end dates":
+            if len(numbers) < 6:
+                return escape(render_date(numbers[:3]))
+            return escape(f"{render_date(numbers[:3])} – {render_date(numbers[3:6])}")
+        return escape(render_date(numbers[:3]))
+
+    @staticmethod
+    def ship(name: str, ship_name: str) -> str:
+        if not ship_name:
+            return ""
+        if name == "gs":
+            prefix = "German submarine" if plain_text(ship_name).startswith("U-") else "German ship"
+        elif name == "ss":
+            prefix = "SS"
+        else:
+            prefix = name.upper()
+        return f"{prefix} {ship_name}"
+
+    def list_items(self, nodes) -> list[str]:
+        """The rendered items of a list argument: one per `*`/`#` item or per line."""
+        items = [[]]
+        for node in nodes:
+            if isinstance(node, Tag) and node.wiki_markup in LIST_MARKERS:
+                items.append([])
+            elif isinstance(node, Text):
+                first, *lines = str(node).split("\n")
+                items[-1].append(Text(first))
+                items.extend([Text(line)] for line in lines)
+            else:
+                items[-1].append(node)
+        rendered = (self.inline(item).strip() for item in items)
+        return [item for item in rendered if plain_text(item) or "<img" in item]
 
     def tag(self, node: Tag) -> str:
         name = str(node.tag).strip().lower()
-        if name in DROPPED_TAGS:
+        if name in DROPPED_TAGS or (name in LIST_ITEM_TAGS and node.wiki_markup):
             return ""
         if name == "br":
             return "<br>"
@@ -315,7 +376,8 @@ def _fallback(kind: str, payload) -> str:
             source = "".join(str(node) for node in payload)
         text = mwparserfromhell.parse(source).strip_code().strip()
         return f"<p>{escape(text)}</p>" if text else ""
-    except Exception:
+    except Exception as error:
+        LOG.warning("A %s block is left out: %r", kind, error, exc_info=error)
         return ""
 
 
@@ -331,11 +393,12 @@ def render_article(
         nodes.remove(infobox)
         try:
             parts.append(renderer.infobox(infobox))
-        except Exception:
-            pass
+        except Exception as error:
+            LOG.warning("Infobox could not be rendered and is left out: %r", error, exc_info=error)
     for kind, payload in _blocks(_without_dropped_sections(nodes)):
         try:
             parts.append(renderer.block(kind, payload))
-        except Exception:
+        except Exception as error:
+            LOG.warning("A %s block fell back to plain text: %r", kind, error, exc_info=error)
             parts.append(_fallback(kind, payload))
     return sanitize("".join(parts))

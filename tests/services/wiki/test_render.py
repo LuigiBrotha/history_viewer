@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from app.services.wiki.infobox import render_infobox
+from app.services.wiki import render as render_module
 from app.services.wiki.render import render_article
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "wikipedia" / "battle_pages.json"
@@ -210,3 +211,93 @@ def test_renders_convoy_hx_79_fixture():
     assert "{{" not in result
     assert "<ref" not in result
     assert "References" not in result
+
+
+def test_list_templates_join_their_items_with_line_breaks():
+    assert render("{{ubl|Alpha|[[Beta]]}}") == (
+        '<p>Alpha<br><a href="https://en.wikipedia.org/wiki/Beta" data-title="Beta">Beta</a></p>'
+    )
+    assert render("{{plainlist|\n* Alpha\n* Beta\n}}") == "<p>Alpha<br>Beta</p>"
+    assert render("{{Flatlist|\n* Alpha\n* Beta}}") == "<p>Alpha<br>Beta</p>"
+    assert render("{{collapsible list|title=Ships|Alpha|Beta}}") == "<p>Alpha<br>Beta</p>"
+
+
+def test_military_and_layout_templates_show_their_first_argument():
+    assert render("{{navy|Nazi Germany}}, {{army|Japan}}, {{air force|USA}}, {{center|Map}}") == (
+        "<p>Nazi Germany, Japan, USA, Map</p>"
+    )
+
+
+def test_ship_templates_show_prefix_and_name_without_pennant():
+    assert render("{{HMS|Ajax|22}} and {{USS|Wasp|CV-7|6}}") == "<p>HMS Ajax and USS Wasp</p>"
+    assert render("{{GS|U-29||2}} and {{GS|Bismarck}}") == "<p>German submarine U-29 and German ship Bismarck</p>"
+    assert render("{{SS|Athenia}}") == "<p>SS Athenia</p>"
+
+
+def test_more_text_templates_keep_their_text():
+    assert render("{{langx|de|Kriegsmarine}} {{cvt|3|nmi}} {{KIA}}") == "<p>Kriegsmarine 3 nmi †</p>"
+    assert render("{{start and end dates|1939|12|13|1939|12|17}}") == "<p>13 December 1939 – 17 December 1939</p>"
+
+
+def test_river_plate_style_text_and_list_commanders_survive():
+    wikitext = (
+        "{{Infobox military conflict\n|commander1={{ubl|[[Karl Dönitz]]|[[Erich Raeder]]}}\n}}\n"
+        "The cruiser {{HMS|Ajax|22}} engaged the ''Graf Spee''."
+    )
+
+    result = render(wikitext)
+
+    assert '<th colspan="2">Bevelhebbers</th>' in result
+    assert 'data-title="Karl Dönitz">Karl Dönitz</a><br><a href' in result
+    assert 'data-title="Erich Raeder">Erich Raeder</a>' in result
+    assert "<p>The cruiser HMS Ajax engaged the <i>Graf Spee</i>.</p>" in result
+
+
+def test_unusable_file_names_give_no_figure():
+    for wikitext in ("[[File:{{x}}.jpg|thumb|cap]]", "[[File:A<b>.jpg|thumb|cap]]", "[[File:<!-- c -->|thumb|cap]]"):
+        assert "<figure" not in render(wikitext)
+
+
+def test_comments_are_stripped_from_file_names():
+    assert 'src="/api/battles/images/330/A.jpg"' in render("[[File:A.jpg<!-- old: B.jpg -->|thumb|cap]]")
+
+
+def test_infobox_multiple_image_uses_the_first_image():
+    wikitext = (
+        "{{Infobox military conflict\n|image={{multiple image|image1=First.jpg|image2=Second.jpg}}\n"
+        "|date=1940\n}}"
+    )
+
+    result = render(wikitext)
+
+    assert 'src="/api/battles/images/330/First.jpg"' in result
+    assert "Second.jpg" not in result
+
+
+def test_dropped_templates_never_render_their_arguments(monkeypatch, caplog):
+    def broken(self, node):
+        raise RuntimeError("link rendering failed")
+
+    monkeypatch.setattr(render_module._Renderer, "wikilink", broken)
+
+    assert render("'''Fact'''{{sfn|[[Rohwer]]|2005}}{{efn|[[X]]}} stays.") == "<p><b>Fact</b> stays.</p>"
+    assert not caplog.records
+
+
+def test_block_fallback_and_infobox_failure_are_logged(monkeypatch, caplog):
+    def broken(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(render_module._Renderer, "wikilink", broken)
+    monkeypatch.setattr(render_module, "render_infobox", broken)
+
+    result = render("{{Infobox battle|date=1940}}\n'''Bold''' [[Link]] text")
+
+    assert result == "<p>Bold Link text</p>"
+    messages = [record.getMessage() for record in caplog.records if record.levelname == "WARNING"]
+    assert any("Infobox" in message and "boom" in message for message in messages)
+    assert any("paragraph" in message and "boom" in message for message in messages)
+
+
+def test_html_list_items_keep_their_text():
+    assert "alpha" in render("<ul><li>alpha</li></ul>")
