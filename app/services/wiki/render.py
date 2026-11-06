@@ -1,0 +1,341 @@
+"""A Veldslag's Artikel as HTML, rendered from the dump's raw wikitext without template expansion."""
+
+import html
+import re
+from collections.abc import Callable, Iterable, Mapping
+from urllib.parse import quote
+
+import mwparserfromhell
+from mwparserfromhell.nodes import ExternalLink, Heading, HTMLEntity, Tag, Template, Text, Wikilink
+
+from app.services.wiki.dates import render_date
+from app.services.wiki.infobox import render_infobox
+from app.services.wiki.sanitize import sanitize
+from app.services.wiki.titles import normalize_title
+
+WIKI_URL = "https://en.wikipedia.org/wiki/"
+IMAGE_WIDTH = 330
+INFOBOXES = {"infobox military conflict", "infobox military operation", "infobox battle"}
+DROPPED_SECTIONS = {
+    "references", "notes", "citations", "bibliography", "sources", "further reading", "external links", "see also",
+    "footnotes",
+}
+DATE_TEMPLATES = {"start date", "end date", "start date and age", "end date and age"}
+FIRST_ARGUMENT = {"nowrap", "small", "flag", "flagcountry"}
+LIST_MARKERS = {"*", "#"}
+KEPT_TAGS = {"b", "i", "strong", "em", "sup", "sub", "blockquote"}
+DROPPED_TAGS = {
+    "ref", "references", "script", "style", "gallery", "math", "timeline", "score", "templatestyles", "imagemap",
+    "li", "dt", "dd", "hr", "caption",
+}
+VERBATIM_TAGS = {"nowiki", "pre"}
+INTERLANGUAGE = re.compile(r"[a-z]{2,3}(?:-[a-z]+)*")
+IMAGE_OPTION = re.compile(
+    r"(?:thumb|thumbnail|frame|framed|frameless|border|left|right|center|centre|none|baseline|middle|sub|super"
+    r"|text-top|text-bottom|top|bottom|upright|\d*(?:x\d+)?\s*px|(?:alt|link|page|class|lang|upright|thumb"
+    r"|thumbnail)\s*=.*)",
+    re.IGNORECASE | re.DOTALL,
+)
+PARAGRAPH_BREAK = re.compile(r"\n[ \t]*\n\s*")
+TAG = re.compile(r"<[^>]*>")
+
+
+def escape(text: str) -> str:
+    return html.escape(text, quote=True)
+
+
+def template_name(template: Template) -> str:
+    return re.sub(r"[\s_]+", " ", str(template.name).strip().lower())
+
+
+def plain_text(rendered: str) -> str:
+    return html.unescape(TAG.sub("", rendered)).strip()
+
+
+class _Renderer:
+    def __init__(self, battle_index: Mapping[str, str], image_src: Callable[[str, int], str]):
+        self.battle_index = battle_index
+        self.image_src = image_src
+
+    def inline(self, nodes: Iterable) -> str:
+        return "".join(self.node(node) for node in nodes)
+
+    def inline_text(self, wikitext: str) -> str:
+        return self.inline(mwparserfromhell.parse(wikitext).nodes)
+
+    def node(self, node) -> str:
+        if isinstance(node, Text):
+            return escape(str(node))
+        if isinstance(node, HTMLEntity):
+            return escape(node.normalize())
+        if isinstance(node, Wikilink):
+            return self.wikilink(node)
+        if isinstance(node, ExternalLink):
+            return self.external_link(node)
+        if isinstance(node, Template):
+            return self.template(node)
+        if isinstance(node, Tag):
+            return self.tag(node)
+        if isinstance(node, Heading):
+            return self.inline(node.title.nodes)
+        return ""  # comments, template arguments
+
+    def wikilink(self, node: Wikilink) -> str:
+        target = str(node.title).strip()
+        if target.startswith(":"):
+            target = target[1:].strip()
+        else:
+            prefix, colon, rest = target.partition(":")
+            namespace = prefix.strip().lower()
+            if colon and namespace in ("file", "image"):
+                return self.figure(rest.strip(), node.text.nodes if node.text is not None else [])
+            if colon and (namespace == "category" or INTERLANGUAGE.fullmatch(prefix.strip())):
+                return ""
+        label = self.inline(node.text.nodes) if node.text is not None else escape(target)
+        title = normalize_title(target)
+        if not title:
+            return label
+        fragment = target.partition("#")[2].strip()
+        href = WIKI_URL + quote(title.replace(" ", "_"), safe="/:(),'")
+        if fragment:
+            href += "#" + quote(fragment.replace(" ", "_"))
+        battle = self.battle_index.get(title)
+        battle_attribute = f' data-battle="{escape(battle)}"' if battle else ""
+        return f'<a href="{escape(href)}" data-title="{escape(title)}"{battle_attribute}>{label}</a>'
+
+    def figure(self, name: str, text_nodes) -> str:
+        parts = [[]]
+        for node in text_nodes:
+            if isinstance(node, Text):
+                first, *others = str(node).split("|")
+                parts[-1].append(Text(first))
+                parts.extend([Text(other)] for other in others)
+            else:
+                parts[-1].append(node)
+        caption, alt = "", None
+        for part in parts:
+            source = "".join(str(node) for node in part).strip()
+            if not source:
+                continue
+            if IMAGE_OPTION.fullmatch(source):
+                key, equals, value = source.partition("=")
+                if equals and key.strip().lower() == "alt":
+                    alt = plain_text(self.inline_text(value))
+            else:
+                caption = self.inline(part).strip()
+        if alt is None:
+            alt = plain_text(caption)
+        src = self.image_src(name, IMAGE_WIDTH)
+        figcaption = f"<figcaption>{caption}</figcaption>" if caption else ""
+        return f'<figure><img src="{escape(src)}" alt="{escape(alt)}" loading="lazy">{figcaption}</figure>'
+
+    def external_link(self, node: ExternalLink) -> str:
+        url = str(node.url).strip()
+        label = self.inline(node.title.nodes).strip() if node.title is not None else ""
+        return f'<a href="{escape(url)}">{label or escape(url)}</a>'
+
+    def template(self, node: Template) -> str:
+        name = template_name(node)
+        arguments = [self.inline(param.value.nodes).strip() for param in node.params if not param.showkey]
+        if name in FIRST_ARGUMENT:
+            return arguments[0] if arguments else ""
+        if name == "lang":
+            return arguments[1] if len(arguments) > 1 else ""
+        if name == "convert":
+            return " ".join(arguments[:2])
+        if name in DATE_TEMPLATES:
+            numbers = [plain_text(argument) for argument in arguments]
+            return escape(render_date([number for number in numbers if number.isdigit()][:3]))
+        return ""
+
+    def tag(self, node: Tag) -> str:
+        name = str(node.tag).strip().lower()
+        if name in DROPPED_TAGS:
+            return ""
+        if name == "br":
+            return "<br>"
+        if name == "table":
+            return self.table(node)
+        if name in VERBATIM_TAGS:
+            return escape(str(node.contents or ""))
+        inner = self.inline(node.contents.nodes) if node.contents is not None else ""
+        if name in KEPT_TAGS:
+            return f"<{name}>{inner}</{name}>"
+        return inner
+
+    def table(self, node: Tag) -> str:
+        rows, loose_cells = [], []
+        for child in node.contents.nodes:
+            if not isinstance(child, Tag):
+                continue
+            kind = str(child.tag).strip().lower()
+            if kind in ("td", "th") and not str(child).startswith("|+"):
+                loose_cells.append(self.cell(child))
+            elif kind == "tr":
+                if loose_cells:
+                    rows.append(loose_cells)
+                    loose_cells = []
+                rows.append([self.cell(cell) for cell in child.contents.nodes
+                             if isinstance(cell, Tag) and str(cell.tag).strip().lower() in ("td", "th")])
+        if loose_cells:
+            rows.append(loose_cells)
+        body = "".join(f"<tr>{''.join(cells)}</tr>" for cells in rows if cells)
+        return f'<table class="article-table"><tbody>{body}</tbody></table>'
+
+    def cell(self, node: Tag) -> str:
+        kind = str(node.tag).strip().lower()
+        return f"<{kind}>{self.inline(node.contents.nodes).strip()}</{kind}>"
+
+    def heading(self, node: Heading) -> str:
+        level = "h3" if node.level <= 2 else "h4"
+        return f"<{level}>{self.inline(node.title.nodes).strip()}</{level}>"
+
+    def infobox(self, node: Template) -> str:
+        fields = {str(param.name).strip().lower(): str(param.value).strip() for param in node.params}
+        return render_infobox(fields, self.inline_text)
+
+    def block(self, kind: str, payload) -> str:
+        if kind == "heading":
+            return self.heading(payload)
+        if kind == "standalone":
+            return self.node(payload)
+        if kind == "list":
+            return self.list(payload)
+        content = self.inline(payload).strip()
+        return f"<p>{content}</p>" if plain_text(content) or "<img" in content else ""
+
+    def list(self, items) -> str:
+        """Nested <ul>/<ol> from items whose markers (like "*#") give their depth and kind."""
+        out, open_lists = [], []
+        for markers, nodes in items:
+            common = 0
+            while common < min(len(open_lists), len(markers)) and open_lists[common] == markers[common]:
+                common += 1
+            while len(open_lists) > common:
+                out.append(f"</li></{_list_tag(open_lists.pop())}>")
+            if len(markers) == len(open_lists):
+                out.append("</li>")
+            for depth, marker in enumerate(markers[common:], common + 1):
+                out.append(f"<{_list_tag(marker)}>" + ("" if depth == len(markers) else "<li>"))
+                open_lists.append(marker)
+            out.append(f"<li>{self.inline(nodes).strip()}")
+        while open_lists:
+            out.append(f"</li></{_list_tag(open_lists.pop())}>")
+        return "".join(out)
+
+
+def _list_tag(marker: str) -> str:
+    return "ul" if marker == "*" else "ol"
+
+
+def _is_infobox(node) -> bool:
+    return isinstance(node, Template) and template_name(node) in INFOBOXES
+
+
+def _is_standalone(node) -> bool:
+    if isinstance(node, Tag):
+        return str(node.tag).strip().lower() in ("table", "blockquote")
+    if isinstance(node, Wikilink):
+        return re.match(r"\s*(?:file|image)\s*:", str(node.title), re.IGNORECASE) is not None
+    return False
+
+
+def _without_dropped_sections(nodes):
+    dropped_level = None
+    for node in nodes:
+        if isinstance(node, Heading):
+            if dropped_level is not None and node.level <= dropped_level:
+                dropped_level = None
+            if dropped_level is None and node.title.strip_code().strip().lower() in DROPPED_SECTIONS:
+                dropped_level = node.level
+        if dropped_level is None:
+            yield node
+
+
+def _blocks(nodes):
+    """(kind, payload) pairs: headings, paragraphs, lists and standalone figures, tables and quotes."""
+    paragraph, items, item_open = [], None, False
+    for node in nodes:
+        is_marker = isinstance(node, Tag) and node.wiki_markup in LIST_MARKERS
+        if items is not None and not is_marker and not (item_open or isinstance(node, Text)):
+            yield "list", items
+            items = None
+        if isinstance(node, Heading) or _is_standalone(node) or is_marker:
+            if paragraph:
+                yield "paragraph", paragraph
+                paragraph = []
+        if isinstance(node, Heading) or _is_standalone(node):
+            if items is not None:
+                yield "list", items
+                items = None
+            yield ("heading" if isinstance(node, Heading) else "standalone"), node
+            item_open = False
+        elif is_marker:
+            items = items or []
+            if item_open and not items[-1][1]:
+                items[-1][0] += node.wiki_markup
+            else:
+                items.append([node.wiki_markup, []])
+            item_open = True
+        elif isinstance(node, Text):
+            text = str(node)
+            if items is not None:
+                if item_open:
+                    head, newline, text = text.partition("\n")
+                    items[-1][1].append(Text(head))
+                    item_open = not newline
+                if not text.strip() and "\n" not in text:
+                    continue
+                yield "list", items
+                items = None
+                text = text.lstrip("\n")
+            first, *others = PARAGRAPH_BREAK.split(text)
+            paragraph.append(Text(first))
+            for other in others:
+                yield "paragraph", paragraph
+                paragraph = [Text(other)]
+        elif items is not None:
+            items[-1][1].append(node)
+        else:
+            paragraph.append(node)
+    if items is not None:
+        yield "list", items
+    if paragraph:
+        yield "paragraph", paragraph
+
+
+def _fallback(kind: str, payload) -> str:
+    """The block's escaped plain text, for when rendering it failed."""
+    try:
+        if kind == "list":
+            source = "\n".join("".join(str(node) for node in nodes) for _, nodes in payload)
+        elif kind in ("heading", "standalone"):
+            source = str(payload)
+        else:
+            source = "".join(str(node) for node in payload)
+        text = mwparserfromhell.parse(source).strip_code().strip()
+        return f"<p>{escape(text)}</p>" if text else ""
+    except Exception:
+        return ""
+
+
+def render_article(
+    wikitext: str, *, battle_index: Mapping[str, str], image_src: Callable[[str, int], str]
+) -> str:
+    """Sanitised HTML for an Artikel: its own infobox first, then the body without reference sections."""
+    renderer = _Renderer(battle_index, image_src)
+    nodes = list(mwparserfromhell.parse(wikitext).nodes)
+    parts = []
+    infobox = next((node for node in nodes if _is_infobox(node)), None)
+    if infobox is not None:
+        nodes.remove(infobox)
+        try:
+            parts.append(renderer.infobox(infobox))
+        except Exception:
+            pass
+    for kind, payload in _blocks(_without_dropped_sections(nodes)):
+        try:
+            parts.append(renderer.block(kind, payload))
+        except Exception:
+            parts.append(_fallback(kind, payload))
+    return sanitize("".join(parts))

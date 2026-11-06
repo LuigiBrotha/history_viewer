@@ -27,6 +27,7 @@ from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import BattleArticle, BattleRedirect
+from app.services.wiki.dates import MONTH_NAMES, MONTHS, render_date
 
 DEFAULT_DUMP = Path("~/.cache/uboats/wikipedia/")
 DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "frontend" / "battles" / "battles.json"
@@ -40,9 +41,6 @@ CANDIDATE = re.compile(rb"infobox[ _]+(?:military[ _]+conflict|military[ _]+oper
 MAX_PLACE = 160
 WIKI_URL = "https://en.wikipedia.org/wiki/"
 
-MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
-          "november", "december"]
-MONTH_NAMES = [name.capitalize() for name in MONTHS]
 MONTH_PATTERN = re.compile(
     r"\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?"
     r"|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?",
@@ -124,15 +122,6 @@ def find_infobox(text):
         if equals and name.strip():
             fields[name.strip().lower()] = value.strip()
     return fields
-
-
-def render_date(numbers):
-    """Year, month and day from a date template as text; a lone year stays a bare year."""
-    if len(numbers) == 3 and 1 <= int(numbers[1]) <= 12:
-        return f"{int(numbers[2])} {MONTH_NAMES[int(numbers[1]) - 1]} {int(numbers[0])}"
-    if len(numbers) == 2 and 1 <= int(numbers[1]) <= 12:
-        return f"{MONTH_NAMES[int(numbers[1]) - 1]} {int(numbers[0])}"
-    return numbers[0] if len(numbers) == 1 else ""
 
 
 def expand_template(body, dates):

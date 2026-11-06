@@ -18,6 +18,8 @@ aiosqlite = "^0.22.1"
 shapely = "^2.2.0"
 numpy = "^2.5.4"
 scipy = "^1.18.1"
+mwparserfromhell = "^0.6.6"
+nh3 = "^0.2.21"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
