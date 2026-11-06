@@ -41,6 +41,11 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
           marker.options = { ...marker.options, icon };
         },
         getLatLng: () => marker.dragged ?? { lat: marker.latlng[0], lng: marker.latlng[1] },
+        setLatLng(latlng) {
+          marker.latlng = latlng;
+          marker.dragged = { lat: latlng[0], lng: latlng[1] };
+          return marker;
+        },
         dragging: {
           on: false,
           enable() {
@@ -284,4 +289,15 @@ test("a square carries the classes of its Winnaar, also when selected and own", 
   assert.equal(classes["Battle of Kursk"], "battle-square win1-sovjet selected");
   assert.equal(classes.draw, "battle-square win1-as win2-westers own");
   assert.equal(classes.unknown, "battle-square");
+});
+
+test("moveTo sets the square and position(), wrapped, and pans to it", () => {
+  const { layer, squares, pans } = setup();
+  const kursk = battle();
+  layer.setBattles([kursk]);
+  const edit = layer.startEdit(kursk, { onMove() {} });
+  edit.moveTo(10, 200);
+  assert.deepEqual(edit.position(), { lat: 10, lng: -160 });
+  assert.deepEqual(squares()[0].latlng, [10, 200]);
+  assert.deepEqual(pans, [[10, 200]]);
 });

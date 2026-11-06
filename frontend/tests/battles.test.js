@@ -58,6 +58,10 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
           return marker;
         },
         dragging: { enable() {}, disable() {} },
+        setLatLng(latlng) {
+          marker.latlng = latlng;
+          return marker;
+        },
         getLatLng: () => ({ lat: marker.latlng[0], lng: marker.latlng[1] }),
         bindTooltip() {
           return marker;
@@ -184,6 +188,36 @@ test("a click on a row without a position changes nothing on the map", async () 
   await ready();
   rows().find((r) => titleOf(r) === "Atlantic").byClass("battle-row-title")[0].dispatch("click");
   assert.deepEqual(pans, []);
+});
+
+test("selectBattle selects like a row click, without picking the date", async () => {
+  const { controller, elements, rows, titleOf, picked, pans, ready } = setup({ mode: "date", width: 800 });
+  await ready();
+  assert.equal(controller.selectBattle("Midway"), true);
+  assert.deepEqual(picked, []);
+  assert.deepEqual(pans, [[30, -178]]);
+  assert.equal(elements["battle-split"].classes.has("pane-hidden"), false);
+  const row = rows().find((r) => titleOf(r) === "Midway");
+  assert.equal(row.classes.has("selected"), true);
+  assert.equal(row.scrolled, 1);
+});
+
+test("selectBattle returns false for an unknown title and changes nothing", async () => {
+  const { controller, rows, titleOf, pans, ready } = setup({ mode: "period" });
+  await ready();
+  assert.equal(controller.selectBattle("Nope"), false);
+  assert.deepEqual(pans, []);
+  assert.equal(rows().some((r) => r.classes.has("selected")), false);
+  assert.equal(titleOf(rows()[0]).length > 0, true);
+});
+
+test("allBattles gives the battles with their Eigen posities", async () => {
+  const { controller, ready } = setup({ loadPositions: async () => [{ title: "Midway", lat: 1, lng: 2 }] });
+  assert.deepEqual(controller.allBattles(), []);
+  await ready();
+  const all = controller.allBattles();
+  assert.equal(all.length, 3);
+  assert.equal(all.find((b) => b.title === "Midway").lat, 1);
 });
 
 test("a click on a square opens a hidden pane and scrolls to the row", async () => {
@@ -494,4 +528,32 @@ test("onResolved hears whether a deferred selection found its title", async () =
   await known.ready();
   await unknown.ready();
   assert.deepEqual(answers, [["Midway", true], ["Nope", false]]);
+});
+
+test("moveEditTo moves the square being placed and Bewaar saves that place", async () => {
+  const saved = [];
+  const { controller, button, squareOf, pans, ready } = await startEditing({ savePosition: async (...args) => saved.push(args) });
+  assert.equal(controller.moveEditTo(68.4, 17.4), true);
+  assert.deepEqual(squareOf().latlng, [68.4, 17.4]);
+  assert.deepEqual(pans.at(-1), [68.4, 17.4]);
+  button("battle-edit-save").dispatch("click");
+  await ready();
+  assert.deepEqual(saved, [["Midway", 68.4, 17.4]]);
+});
+
+test("moveEditTo without an edit does nothing and returns false", async () => {
+  const { controller, pans, ready } = setup({ mode: "period" });
+  await ready();
+  assert.equal(controller.moveEditTo(1, 2), false);
+  assert.deepEqual(pans, []);
+});
+
+test("moveEditTo then Annuleer saves nothing and keeps the old place", async () => {
+  const saved = [];
+  const { controller, button, squareOf } = await startEditing({ savePosition: async (...args) => saved.push(args) });
+  controller.moveEditTo(68.4, 17.4);
+  button("battle-edit-cancel").dispatch("click");
+  assert.deepEqual(saved, []);
+  assert.deepEqual(squareOf().latlng, [30, -178]);
+  assert.equal(controller.moveEditTo(1, 2), false);
 });

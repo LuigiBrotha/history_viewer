@@ -152,6 +152,13 @@ export function createBattleLayer(map, { onBattleClick }) {
       redraw();
       return {
         position: () => session.position,
+        // Puts the square at a place found elsewhere, such as a search result, and pans to it.
+        moveTo(lat, lng) {
+          if (editing !== session) return;
+          session.marker.setLatLng([lat, lng]);
+          session.position = { lat, lng: wrapLng(lng) };
+          map.panTo([lat, lng]);
+        },
         stop() {
           if (editing === session) stopEditing();
         },

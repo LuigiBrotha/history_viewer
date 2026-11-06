@@ -60,6 +60,8 @@ export function initBattles({
       setOnlyWithoutPosition() {},
       selectBattle: () => false,
       selectedBattle: () => null,
+      allBattles: () => [],
+      moveEditTo: () => false,
     };
   }
   const storage = safeStorage(win);
@@ -91,6 +93,7 @@ export function initBattles({
   let battles = [];
   let selection = null;
   let editing = null;
+  let editHandle = null;
   let editable = false;
   let positionsLoaded = false;
   let selected = null;
@@ -143,6 +146,7 @@ export function initBattles({
     if (!editing) return;
     const session = editing;
     editing = null;
+    editHandle = null;
     session.stop();
   }
 
@@ -190,6 +194,7 @@ export function initBattles({
       },
     };
     editing = session;
+    editHandle = handle;
 
     save.addEventListener("click", async () => {
       const { lat, lng } = handle.position();
@@ -207,6 +212,7 @@ export function initBattles({
       }
       if (editing === session) {
         editing = null;
+        editHandle = null;
         session.stop();
       }
       updateBattle(battle.title, { lat, lng, own: true });
@@ -309,5 +315,12 @@ export function initBattles({
     setOnlyWithoutPosition: (on) => pane.setOnlyWithoutPosition(on),
     selectBattle,
     selectedBattle: () => selected,
+    allBattles: () => battles,
+    // Moves the square being placed; the position is only stored by Bewaar.
+    moveEditTo(lat, lng) {
+      if (!editing) return false;
+      editHandle.moveTo(lat, lng);
+      return true;
+    },
   };
 }
