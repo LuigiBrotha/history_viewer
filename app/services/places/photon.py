@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import time
 from typing import Annotated
 from urllib.parse import urlencode
@@ -20,7 +21,11 @@ class PhotonError(Exception):
 
 
 def _number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _valid_point(lat, lng) -> bool:
+    return _number(lat) and _number(lng) and abs(lat) <= 90 and abs(lng) <= 180
 
 
 def parse_photon(payload: dict) -> list[dict]:
@@ -37,13 +42,14 @@ def parse_photon(payload: dict) -> list[dict]:
         coordinates = geometry.get("coordinates") if isinstance(geometry, dict) else None
         if not isinstance(name, str) or not name:
             continue
-        if not (isinstance(coordinates, list) and len(coordinates) == 2 and all(_number(c) for c in coordinates)):
+        if not (isinstance(coordinates, list) and len(coordinates) == 2 and _valid_point(coordinates[1], coordinates[0])):
             continue
         extent = props.get("extent")
         bbox = None
-        if isinstance(extent, list) and len(extent) == 4 and all(_number(c) for c in extent):
+        if isinstance(extent, list) and len(extent) == 4:
             west, north, east, south = extent
-            bbox = [south, north, west, east]
+            if _valid_point(north, west) and _valid_point(south, east):
+                bbox = [south, north, west, east]
         sub = ", ".join(props[key] for key in ("city", "county", "state", "country")
                         if isinstance(props.get(key), str) and props[key])
         results.append({"name": name, "sub": sub, "lat": coordinates[1], "lng": coordinates[0], "bbox": bbox})

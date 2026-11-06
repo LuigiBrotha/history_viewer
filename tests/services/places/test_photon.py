@@ -1,7 +1,11 @@
 import asyncio
 import json
 
-from app.services.places.photon import PhotonClient, parse_photon
+import pytest
+import requests
+
+from app.services.places import photon
+from app.services.places.photon import PhotonClient, PhotonError, parse_photon
 from app.services.scraping.uboat_net.http_client import build_user_agent
 
 NARVIK = {"type": "FeatureCollection", "features": [
@@ -82,3 +86,44 @@ async def test_client_sends_user_agent():
     result = await client.search("Narvik")
     assert fakes.headers["User-Agent"] == build_user_agent("me@example.org")
     assert len(result) == 2
+
+
+def test_parse_skips_non_finite_and_out_of_range_points():
+    payload = {"features": [
+        feature("Nan", coordinates=(float("nan"), 1.0)),
+        feature("Inf", coordinates=(1.0, float("inf"))),
+        feature("LatHigh", coordinates=(1.0, 90.5)),
+        feature("LngHigh", coordinates=(180.5, 1.0)),
+        feature("Ok", coordinates=(180.0, -90.0)),
+    ]}
+    assert [r["name"] for r in parse_photon(payload)] == ["Ok"]
+
+
+def test_parse_nulls_bbox_with_invalid_extent():
+    for extent in ([float("nan"), 2, 3, 4], [1, 2, float("inf"), 4], [1, 91, 3, 4], [181, 2, 3, 4]):
+        result = parse_photon({"features": [feature("A", extent=extent)]})
+        assert result[0]["bbox"] is None
+
+
+def make_failing(status, body):
+    async def fetch(url, headers):
+        return status, body
+    return PhotonClient("", fetch=fetch)
+
+
+async def test_client_raises_on_non_200():
+    with pytest.raises(PhotonError):
+        await make_failing(500, "").search("a")
+
+
+async def test_client_raises_on_bad_json():
+    with pytest.raises(PhotonError):
+        await make_failing(200, "not json").search("a")
+
+
+async def test_default_fetch_maps_request_exception(monkeypatch):
+    def boom(*args, **kwargs):
+        raise requests.Timeout("slow")
+    monkeypatch.setattr(photon.requests, "get", boom)
+    with pytest.raises(PhotonError):
+        await photon._default_fetch("http://x", {})
