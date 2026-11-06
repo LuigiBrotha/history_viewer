@@ -4,7 +4,7 @@ from urllib.parse import quote
 import pytest
 
 from app.services.wiki import image_cache
-from app.services.wiki.image_cache import ImageCache, image_url_for, snap_width, thumbnail_urls
+from app.services.wiki.image_cache import ImageCache, TransientFetchError, image_url_for, snap_width, thumbnail_urls
 
 
 def _md5(name):
@@ -76,23 +76,81 @@ async def test_commons_404_falls_back_to_en(tmp_path):
     assert path.read_bytes() == b"endata"
 
 
-@pytest.mark.parametrize("failure", [None, TimeoutError("slow")])
-async def test_failure_is_remembered_for_an_hour_and_writes_nothing(tmp_path, monkeypatch, failure):
-    fetch = FakeFetch({url: failure for url in thumbnail_urls("Gone.jpg", 330)})
+def _clock(monkeypatch):
+    now = [image_cache.time.monotonic()]
+    monkeypatch.setattr(image_cache.time, "monotonic", lambda: now[0])
+    return now
+
+
+async def test_gone_image_is_remembered_for_an_hour_and_writes_nothing(tmp_path, monkeypatch):
+    now = _clock(monkeypatch)
+    fetch = FakeFetch({})
     cache = ImageCache(fetch, tmp_path)
     assert await cache.get("Gone.jpg", 330) is None
     assert len(fetch.urls) == 2
+    now[0] += 3599
     assert await cache.get("Gone.jpg", 330) is None
     assert len(fetch.urls) == 2
     assert list(tmp_path.rglob("*")) == []
-
-    now = image_cache.time.monotonic()
-    monkeypatch.setattr(image_cache.time, "monotonic", lambda: now + 3601)
+    now[0] += 2
     assert await cache.get("Gone.jpg", 330) is None
     assert len(fetch.urls) == 4
 
 
-@pytest.mark.parametrize("name", ["../../etc/passwd", "x.html", "a/b.jpg", "..\\b.jpg"])
+@pytest.mark.parametrize("failure", [TimeoutError("slow"), TransientFetchError("HTTP 429")])
+async def test_transient_failure_is_retried_after_a_minute(tmp_path, monkeypatch, failure):
+    now = _clock(monkeypatch)
+    commons, en = thumbnail_urls("Busy.jpg", 330)
+    fetch = FakeFetch({commons: failure})  # en answers 404: a mix counts as transient
+    cache = ImageCache(fetch, tmp_path)
+    assert await cache.get("Busy.jpg", 330) is None
+    assert await cache.get("Busy.jpg", 330) is None
+    assert len(fetch.urls) == 2
+    now[0] += 61
+    fetch.responses[commons] = b"data"
+    assert (await cache.get("Busy.jpg", 330)).read_bytes() == b"data"
+    assert len(fetch.urls) == 3
+
+
+async def test_retry_after_is_honoured_and_capped(tmp_path, monkeypatch):
+    now = _clock(monkeypatch)
+    commons, _ = thumbnail_urls("Busy.jpg", 330)
+    fetch = FakeFetch({commons: TransientFetchError("HTTP 429", retry_after=300)})
+    cache = ImageCache(fetch, tmp_path)
+    await cache.get("Busy.jpg", 330)
+    now[0] += 299
+    await cache.get("Busy.jpg", 330)
+    assert len(fetch.urls) == 2
+    now[0] += 2
+    await cache.get("Busy.jpg", 330)
+    assert len(fetch.urls) == 4
+
+    fetch.responses[commons] = TransientFetchError("HTTP 429", retry_after=999999)
+    now[0] += 301
+    await cache.get("Busy.jpg", 330)
+    assert len(fetch.urls) == 6
+    now[0] += 3599
+    await cache.get("Busy.jpg", 330)
+    assert len(fetch.urls) == 6
+    now[0] += 2
+    await cache.get("Busy.jpg", 330)
+    assert len(fetch.urls) == 8
+
+
+async def test_remembered_failures_are_pruned_and_bounded(tmp_path, monkeypatch):
+    now = _clock(monkeypatch)
+    monkeypatch.setattr(image_cache, "MAX_REMEMBERED_FAILURES", 3)
+    cache = ImageCache(FakeFetch({}), tmp_path)
+    for n in range(5):
+        await cache.get(f"F{n}.jpg", 330)
+    assert len(cache._retry_at) == 3
+    assert ("F4.jpg", 330) in cache._retry_at and ("F0.jpg", 330) not in cache._retry_at
+    now[0] += 3601
+    await cache.get("New.jpg", 330)
+    assert list(cache._retry_at) == [("New.jpg", 330)]
+
+
+@pytest.mark.parametrize("name", ["../../etc/passwd", "x.html", "a/b.jpg", "..\\b.jpg", "x" * 300 + ".jpg"])
 async def test_unsafe_names_are_not_fetched(tmp_path, name):
     fetch = FakeFetch({})
     assert await ImageCache(fetch, tmp_path).get(name, 330) is None

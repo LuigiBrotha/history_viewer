@@ -28,7 +28,7 @@ def handler(tmp_path, fetch):
     return RequestHandler(ImageCache(fetch, tmp_path))
 
 
-@pytest.mark.parametrize("name", ["../../etc/passwd", "x.html", "a/../b.jpg"])
+@pytest.mark.parametrize("name", ["../../etc/passwd", "x.html", "a/../b.jpg", "x" * 300 + ".jpg"])
 async def test_unsafe_or_non_image_names_are_404_without_a_fetch(handler, fetch, name):
     with pytest.raises(HTTPException) as caught:
         await handler.handle_request(name)

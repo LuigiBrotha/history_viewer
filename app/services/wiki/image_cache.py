@@ -16,10 +16,20 @@ ALLOWED_WIDTHS = (330, 500, 960)
 ALLOWED_SUFFIXES = (".jpg", ".jpeg", ".png", ".gif", ".svg", ".tif", ".tiff", ".webp")
 FETCH_TIMEOUT_SECONDS = 20
 FAILURE_MEMORY_SECONDS = 3600
+TRANSIENT_BACKOFF_SECONDS = 60
+MAX_REMEMBERED_FAILURES = 10_000
+MAX_NAME_BYTES = 200
 REPOSITORIES = ("commons", "en")
 
 # Fetches one URL: the image bytes, or None when the server has no such image.
+# A throttled or failing server raises TransientFetchError; any other exception is transient too.
 Fetch = Callable[[str], bytes | None]
+
+
+class TransientFetchError(Exception):
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 def snap_width(width: int) -> int:
@@ -38,7 +48,7 @@ def normalise_name(file_name: str) -> str:
 def is_servable_name(file_name: str) -> bool:
     """Only plain image file names; a path or control character never reaches the disk or the network."""
     name = normalise_name(file_name)
-    if not name.lower().endswith(ALLOWED_SUFFIXES):
+    if len(name.encode()) > MAX_NAME_BYTES or not name.lower().endswith(ALLOWED_SUFFIXES):
         return False
     return not any(c in name for c in "/\\") and name.isprintable() and not name.startswith(".")
 
@@ -66,6 +76,11 @@ def _session_fetch() -> Fetch:
         response = session.get(url, timeout=FETCH_TIMEOUT_SECONDS)
         if response.status_code == 404:
             return None
+        if response.status_code == 429 or response.status_code >= 500:
+            retry_after = response.headers.get("Retry-After", "")
+            raise TransientFetchError(
+                f"HTTP {response.status_code}", float(retry_after) if retry_after.isdigit() else None
+            )
         response.raise_for_status()
         return response.content
 
@@ -80,7 +95,7 @@ class ImageCache:
         self._fetch = fetch or _session_fetch()
         self._directory = directory or Path(settings.WIKI_IMAGE_DIR).expanduser()
         self._lock = asyncio.Lock()
-        self._failed_at: dict[tuple[str, int], float] = {}
+        self._retry_at: dict[tuple[str, int], float] = {}
 
     async def get(self, file_name: str, width: int) -> Path | None:
         if not is_servable_name(file_name):
@@ -95,26 +110,38 @@ class ImageCache:
         async with self._lock:
             if path.is_file():
                 return path
-            failed_at = self._failed_at.get(key)
-            if failed_at is not None and time.monotonic() - failed_at < FAILURE_MEMORY_SECONDS:
+            retry_at = self._retry_at.get(key)
+            if retry_at is not None and time.monotonic() < retry_at:
                 return None
-            data = await asyncio.to_thread(self._download, name, width)
-            if data is None:
-                self._failed_at[key] = time.monotonic()
-                return None
-            self._failed_at.pop(key, None)
-            await asyncio.to_thread(_write_atomically, path, data)
-            return path
+            outcome = await asyncio.to_thread(self._download, name, width)
+            if isinstance(outcome, bytes):
+                self._retry_at.pop(key, None)
+                await asyncio.to_thread(_write_atomically, path, outcome)
+                return path
+            self._remember_failure(key, outcome)
+            return None
 
-    def _download(self, name: str, width: int) -> bytes | None:
+    def _remember_failure(self, key: tuple[str, int], seconds: float) -> None:
+        now = time.monotonic()
+        self._retry_at = {k: t for k, t in self._retry_at.items() if t > now}
+        while len(self._retry_at) >= MAX_REMEMBERED_FAILURES:
+            del self._retry_at[next(iter(self._retry_at))]
+        self._retry_at[key] = now + seconds
+
+    def _download(self, name: str, width: int) -> bytes | float:
+        """The image bytes, or else how many seconds to remember that there are none."""
+        backoff = None
         for url in thumbnail_urls(name, width):
             try:
                 data = self._fetch(url)
-            except Exception:  # noqa: BLE001 - a timeout or network error counts as a miss
+            except Exception as error:  # noqa: BLE001 - a timeout or network error is transient
+                retry_after = getattr(error, "retry_after", None)
+                wait = min(retry_after or TRANSIENT_BACKOFF_SECONDS, FAILURE_MEMORY_SECONDS)
+                backoff = max(backoff or 0, wait)
                 continue
             if data:
                 return data
-        return None
+        return FAILURE_MEMORY_SECONDS if backoff is None else backoff
 
 
 def _write_atomically(path: Path, data: bytes) -> None:
