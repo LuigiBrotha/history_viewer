@@ -910,6 +910,97 @@ html, body {
   font-size: 16px;
 }
 
+/* Leaflet stacks top-left controls; a row puts the search field beside the zoom buttons and wraps on a phone. */
+.leaflet-top.leaflet-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  max-width: 100vw;
+}
+
+.leaflet-top.leaflet-left .leaflet-control {
+  float: none;
+}
+
+/* Map search control: sits beside the zoom buttons (topleft) and its list floats over the map. */
+.map-search {
+  --search-bg: #fff;
+  --search-text: #0b0b0b;
+  --search-muted: #52514e;
+  --search-line: #999;
+  --search-active: #e3eefb;
+  width: min(320px, calc(100vw - 80px));
+  color: var(--search-text);
+}
+
+@media (prefers-color-scheme: dark) {
+  .map-search {
+    --search-bg: #1a1a19;
+    --search-text: #f0efec;
+    --search-muted: #c3c2b7;
+    --search-line: #5a5a56;
+    --search-active: #2b3a4d;
+  }
+}
+
+.map-search-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: var(--search-bg);
+  color: var(--search-text);
+  font: inherit;
+  font-size: 16px;
+}
+
+.map-search-list {
+  margin-top: 4px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 4px;
+  background: var(--search-bg);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+}
+
+.map-search-group {
+  padding: 6px 10px 2px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--search-muted);
+}
+
+.map-search-row {
+  display: flex;
+  flex-direction: column;
+  min-height: 44px;
+  padding: 4px 10px;
+  box-sizing: border-box;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.map-search-row:hover,
+.map-search-row.is-active {
+  background: var(--search-active);
+}
+
+.map-search-sub {
+  font-size: 13px;
+  color: var(--search-muted);
+}
+
+.map-search-note {
+  padding: 8px 10px;
+  color: var(--search-muted);
+}
+
 .battle-nopos-row {
   display: flex;
   align-items: center;

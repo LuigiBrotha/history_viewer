@@ -172,3 +172,15 @@ export async function fetchArticle(title) {
   }
   return response.json();
 }
+
+// Places come from Photon through the backend. The caller's signal cancels a stale lookup.
+export async function fetchPlaces(query, { signal } = {}) {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const response = await fetch(`api/places?q=${encodeURIComponent(query)}`, {
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch places: ${response.status}`);
+  }
+  return response.json();
+}

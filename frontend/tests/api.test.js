@@ -320,3 +320,27 @@ test("fetchArticle returns the article, null on 404 and rejects on other errors"
   globalThis.fetch = async () => ({ ok: false, status: 502 });
   await assert.rejects(fetchArticle("Down"), /502/);
 });
+
+test("fetchPlaces encodes the query, passes the signal and returns the places", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options.signal]);
+    return { ok: true, json: async () => [{ name: "Narvik" }] };
+  };
+  const { fetchPlaces } = await import("../js/api.js");
+  const controller = new AbortController();
+
+  const result = await fetchPlaces("Nar vik&", { signal: controller.signal });
+
+  assert.equal(calls[0][0], "api/places?q=Nar%20vik%26");
+  assert.ok(calls[0][1] instanceof AbortSignal);
+  assert.deepEqual(result, [{ name: "Narvik" }]);
+  controller.abort();
+  assert.ok(calls[0][1].aborted);
+});
+
+test("fetchPlaces throws on a status other than 200", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  const { fetchPlaces } = await import("../js/api.js");
+  await assert.rejects(fetchPlaces("nar", {}), /503/);
+});

@@ -120,6 +120,22 @@ export class Element {
 
   setPointerCapture() {}
 
+  focus() {
+    this.focused = true;
+  }
+
+  blur() {
+    this.focused = false;
+  }
+
+  select() {
+    this.selected = true;
+  }
+
+  removeEventListener(type, handler) {
+    this.listeners[type] = (this.listeners[type] ?? []).filter((fn) => fn !== handler);
+  }
+
   scrollIntoView(options) {
     this.scrolled += 1;
     this.scrollOptions = options;
