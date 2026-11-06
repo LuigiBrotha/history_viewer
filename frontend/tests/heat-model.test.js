@@ -9,7 +9,7 @@ import {
   densityGrid,
   smooth,
   heatColor,
-  scaleMax,
+  gridMax,
 } from "../js/heat-model.js";
 
 const leg = (path, status = "ok") => ({ status, path });
@@ -90,30 +90,39 @@ test("heatColor is transparent at nothing and strongest at the maximum", () => {
   assert.ok(low[3] > 0);
 });
 
-test("heatColor uses the Turbo ramp's highest colour at the maximum", () => {
-  const [red, green, blue] = heatColor(10, 10);
+test("heatColor uses the Turbo ramp's highest colour only at the maximum", () => {
+  const [red, green, blue] = heatColor(687, 687);
   assert.ok(red > 100 && green < 30 && blue < 30);
+  assert.notDeepEqual(heatColor(600, 687), heatColor(687, 687));
+});
+
+test("heatColor is logarithmic: every tenfold is an equal step", () => {
+  // log(1 + 9) / log(1 + 999) = 1/3 of the way, 99 is 2/3 of the way.
+  assert.equal(heatColor(9, 999)[3], Math.round(60 + 160 / 3));
+  assert.equal(heatColor(99, 999)[3], Math.round(60 + (160 * 2) / 3));
+});
+
+test("heatColor keeps a value above the maximum at the top colour", () => {
+  assert.deepEqual(heatColor(2000, 687), heatColor(687, 687));
 });
 
 test("heatColor with an empty grid is transparent", () => {
   assert.equal(heatColor(0, 0)[3], 0);
 });
 
-test("scaleMax ignores a few extreme cells, so busy ports do not wash out the sea", () => {
+test("gridMax is the busiest cell, also beside many quiet ones", () => {
   const grid = new Float64Array(1000);
   for (let i = 0; i < 995; i++) {
     grid[i] = 10;
   }
-  grid[999] = 500;
-  assert.equal(scaleMax(grid), 10);
+  grid[999] = 687;
+  assert.equal(gridMax(grid), 687);
 });
 
-test("scaleMax uses the only values there are in a small selection", () => {
-  const grid = new Float64Array(100);
-  grid[3] = 4;
-  assert.equal(scaleMax(grid), 4);
+test("gridMax compares numbers, not text", () => {
+  assert.equal(gridMax(Float64Array.from([9, 80, 100])), 100);
 });
 
-test("scaleMax of an empty grid is zero", () => {
-  assert.equal(scaleMax(new Float64Array(10)), 0);
+test("gridMax of an empty grid is zero", () => {
+  assert.equal(gridMax(new Float64Array(10)), 0);
 });

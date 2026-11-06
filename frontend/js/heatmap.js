@@ -4,7 +4,7 @@ import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
 import { rampGradient } from "./color-ramp.js";
-import { CELL_DEGREES, COLUMNS, densityGrid, heatColor, patrolCells, ROWS, scaleMax, smooth } from "./heat-model.js";
+import { CELL_DEGREES, COLUMNS, densityGrid, gridMax, heatColor, patrolCells, ROWS, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { historyRange } from "./status-map.js";
@@ -56,6 +56,7 @@ function main() {
 
   const countEl = document.getElementById("route-count");
   const maxEl = document.getElementById("heat-max");
+  const topEl = document.getElementById("heat-top");
   document.getElementById("heat-ramp").style.background = rampGradient();
 
   const entries = new Map();
@@ -64,6 +65,8 @@ function main() {
   let history = null;
   let period = { from: null, to: null };
   let fitted = false;
+  // The colour scale: the busiest area over the whole war, whatever period is shown.
+  let scale = { smoothed: 0, raw: 0 };
   let atlas = { setDate() {} };
 
   function renderStatusLine() {
@@ -79,11 +82,16 @@ function main() {
     }
   }
 
+  function updateScale() {
+    const { grid } = densityGrid(entries.values(), null, null);
+    scale = { smoothed: gridMax(smooth(grid)), raw: gridMax(grid) };
+    topEl.textContent = String(scale.raw);
+  }
+
   function renderHeat() {
     const { grid, patrols } = densityGrid(entries.values(), period.from, period.to);
     const smoothed = smooth(grid);
-    const max = scaleMax(smoothed);
-    const rawMax = grid.reduce((highest, value) => Math.max(highest, value), 0);
+    const rawMax = gridMax(grid);
 
     const image = context.createImageData(COLUMNS, height);
     for (let y = 0; y < height; y++) {
@@ -91,7 +99,7 @@ function main() {
       for (let x = 0; x < COLUMNS; x++) {
         const value = smoothed[rowStart + x];
         if (value > 0) {
-          image.data.set(heatColor(value, max), (y * COLUMNS + x) * 4);
+          image.data.set(heatColor(value, scale.smoothed), (y * COLUMNS + x) * 4);
         }
       }
     }
@@ -145,6 +153,7 @@ function main() {
           slider.setBounds(history);
         }
         renderStatusLine();
+        updateScale();
         renderHeat();
         renderAtlas();
         const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));

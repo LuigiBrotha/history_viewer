@@ -8,7 +8,6 @@ export const ROWS = 360;
 const STEP_DEGREES = CELL_DEGREES / 2;
 const KERNEL = [[-1, -1, 1], [0, -1, 2], [1, -1, 1], [-1, 0, 2], [0, 0, 4], [1, 0, 2], [-1, 1, 1], [0, 1, 2], [1, 1, 1]];
 const KERNEL_TOTAL = 16;
-const SCALE_PERCENTILE = 0.99;
 const MIN_ALPHA = 60;
 const MAX_ALPHA = 220;
 
@@ -77,14 +76,15 @@ export function smooth(grid) {
   return smoothed;
 }
 
-// The value that gets the ramp's top colour. Bases see nearly every patrol pass, and
-// measuring against them would leave the whole ocean in one low colour.
-export function scaleMax(grid) {
-  const values = grid.filter((value) => value > 0).sort();
-  if (values.length === 0) {
-    return 0;
+// The busiest cell of a grid.
+export function gridMax(grid) {
+  let max = 0;
+  for (const value of grid) {
+    if (value > max) {
+      max = value;
+    }
   }
-  return values[Math.min(values.length - 1, Math.floor(values.length * SCALE_PERCENTILE))];
+  return max;
 }
 
 const RAMP = Array.from({ length: 256 }, (_, i) => {
@@ -92,12 +92,13 @@ const RAMP = Array.from({ length: 256 }, (_, i) => {
   return [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
 });
 
-// A square root keeps quieter areas visible beside the few very busy ones.
+// Logarithmic, so every tenfold is an equal step: quiet areas stay visible beside the
+// busiest one, and only the maximum itself gets the top colour.
 export function heatColor(value, max) {
   if (value <= 0 || max <= 0) {
     return [0, 0, 0, 0];
   }
-  const strength = Math.sqrt(Math.min(1, value / max));
+  const strength = Math.min(1, Math.log1p(value) / Math.log1p(max));
   const [red, green, blue] = RAMP[Math.round(strength * 255)];
   return [red, green, blue, Math.round(MIN_ALPHA + (MAX_ALPHA - MIN_ALPHA) * strength)];
 }
