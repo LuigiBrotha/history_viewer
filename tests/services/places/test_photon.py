@@ -127,3 +127,15 @@ async def test_default_fetch_maps_request_exception(monkeypatch):
     monkeypatch.setattr(photon.requests, "get", boom)
     with pytest.raises(PhotonError):
         await photon._default_fetch("http://x", {})
+
+
+def test_parse_skips_huge_integer_coordinates():
+    huge = int("1" * 400)
+    payload = {"features": [
+        feature("HugeLat", coordinates=(1.0, huge)),
+        feature("HugeLng", coordinates=(huge, 1.0)),
+        feature("HugeExtent", extent=[huge, 2, 3, 4]),
+    ]}
+    result = parse_photon(payload)
+    assert [r["name"] for r in result] == ["HugeExtent"]
+    assert result[0]["bbox"] is None
