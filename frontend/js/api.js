@@ -160,3 +160,15 @@ export async function clearBattlePosition(title) {
     throw new Error(`Failed to clear battle position: ${response.status}`);
   }
 }
+
+// The sanitised article of a battle, or null when there is none.
+export async function fetchArticle(title) {
+  const response = await fetch(`api/battles/articles/${encodeURIComponent(title)}`, {
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to fetch article: ${response.status}`);
+  }
+  return response.json();
+}

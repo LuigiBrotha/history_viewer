@@ -105,7 +105,17 @@ export class Element {
 
   matches(selector) {
     if (selector.startsWith(".")) return this.classes.has(selector.slice(1));
+    const withAttribute = /^(\w+)\[([\w-]+)\]$/.exec(selector);
+    if (withAttribute) return this.tag === withAttribute[1] && this.getAttribute(withAttribute[2]) !== null;
     return this.tag === selector;
+  }
+
+  querySelectorAll(selector) {
+    return this.all((node) => node.matches(selector));
+  }
+
+  focus() {
+    this.focused = true;
   }
 
   setPointerCapture() {}
@@ -141,8 +151,26 @@ export class Element {
   }
 }
 
+// A <template> whose innerHTML only understands <a ...>text</a>, which is all the tests need.
+class Template extends Element {
+  constructor() {
+    super("template");
+    this.content = new Element("#fragment");
+  }
+
+  set innerHTML(html) {
+    this.content = new Element("#fragment");
+    for (const [, attributes, text] of html.matchAll(/<a([^>]*)>([^<]*)<\/a>/g)) {
+      const anchor = new Element("a");
+      anchor.textContent = text;
+      for (const [, name, value] of attributes.matchAll(/([\w-]+)="([^"]*)"/g)) anchor.setAttribute(name, value);
+      this.content.appendChild(anchor);
+    }
+  }
+}
+
 export function installDom() {
-  globalThis.document = { createElement: (tag) => new Element(tag) };
+  globalThis.document = { createElement: (tag) => (tag === "template" ? new Template() : new Element(tag)) };
 }
 
 export function fakeStorage(initial = {}) {

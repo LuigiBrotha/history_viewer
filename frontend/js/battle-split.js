@@ -1,4 +1,4 @@
-const STORAGE_KEY = "uboats.battlePane";
+const DEFAULT_STORAGE_KEY = "uboats.battlePane";
 const PHONE_MAX_WIDTH = 699;
 const OPEN_BY_DEFAULT_MIN_WIDTH = 900;
 const MIN_WIDTH = 240;
@@ -21,8 +21,8 @@ export function clampSize(size, available, phone) {
   return Math.round(Math.max(min, Math.min(size, max)));
 }
 
-export function defaultSize(phone, available) {
-  return clampSize(phone ? available * DEFAULT_HEIGHT_SHARE : DEFAULT_WIDTH, available, phone);
+export function defaultSize(phone, available, defaultWidth = DEFAULT_WIDTH) {
+  return clampSize(phone ? available * DEFAULT_HEIGHT_SHARE : defaultWidth, available, phone);
 }
 
 // Without a choice of the user the pane starts hidden on a narrow window, which is mostly map.
@@ -30,18 +30,18 @@ export function startsOpen(windowWidth, state) {
   return typeof state.open === "boolean" ? state.open : windowWidth >= OPEN_BY_DEFAULT_MIN_WIDTH;
 }
 
-export function loadState(storage) {
+export function loadState(storage, key = DEFAULT_STORAGE_KEY) {
   try {
-    const state = JSON.parse(storage.getItem(STORAGE_KEY));
+    const state = JSON.parse(storage.getItem(key));
     return state !== null && typeof state === "object" && !Array.isArray(state) ? state : {};
   } catch {
     return {};
   }
 }
 
-export function saveState(storage, state) {
+export function saveState(storage, state, key = DEFAULT_STORAGE_KEY) {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storage.setItem(key, JSON.stringify(state));
   } catch {
     // Without storage the pane just starts in its default state next time.
   }
@@ -63,10 +63,24 @@ export function keySize(key, size, phone, shift) {
 }
 
 // Binds the pure logic above to the split: the pane, its divider and the button that
-// shows it. The map is told about every change of size, as it keeps its own pixel size.
-export function initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, storage, win = window }) {
-  const state = loadState(storage);
-  let open = startsOpen(win.innerWidth, state);
+// shows it (toggleEl may be null when something else opens it). The map is told about
+// every change of size, as it keeps its own pixel size. With persistOpen false the pane
+// always starts closed and its open state is neither read nor stored; only its size is.
+export function initBattleSplit({
+  splitEl,
+  paneEl,
+  dividerEl,
+  toggleEl,
+  map,
+  storage,
+  win = window,
+  storageKey = DEFAULT_STORAGE_KEY,
+  defaultWidth = DEFAULT_WIDTH,
+  persistOpen = true,
+}) {
+  const state = loadState(storage, storageKey);
+  if (!persistOpen) delete state.open;
+  let open = persistOpen ? startsOpen(win.innerWidth, state) : false;
   let dragging = null;
   let frame = false;
 
@@ -75,7 +89,7 @@ export function initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, sto
 
   function size() {
     const stored = phone() ? state.height : state.width;
-    return clampSize(typeof stored === "number" ? stored : defaultSize(phone(), available()), available(), phone());
+    return clampSize(typeof stored === "number" ? stored : defaultSize(phone(), available(), defaultWidth), available(), phone());
   }
 
   let current = size();
@@ -93,13 +107,13 @@ export function initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, sto
     dividerEl.setAttribute("aria-valuenow", String(current));
     dividerEl.setAttribute("aria-valuemin", String(clampSize(0, room, isPhoneLayout)));
     dividerEl.setAttribute("aria-valuemax", String(clampSize(Infinity, room, isPhoneLayout)));
-    toggleEl.setAttribute("aria-expanded", String(open));
+    toggleEl?.setAttribute("aria-expanded", String(open));
   }
 
   function remember() {
-    state.open = open;
+    if (persistOpen) state.open = open;
     state[phone() ? "height" : "width"] = current;
-    saveState(storage, state);
+    saveState(storage, state, storageKey);
   }
 
   function setSize(next) {
@@ -124,7 +138,7 @@ export function initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, sto
     resizeMap();
   }
 
-  toggleEl.addEventListener("click", () => setOpen(!open));
+  toggleEl?.addEventListener("click", () => setOpen(!open));
 
   dividerEl.addEventListener("pointerdown", (event) => {
     dragging = event.pointerId;

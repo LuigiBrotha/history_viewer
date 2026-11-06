@@ -303,3 +303,20 @@ test("the battle position helpers reject when the response is not ok", async () 
   await assert.rejects(() => saveBattlePosition("A", 1, 2), /403/);
   await assert.rejects(() => clearBattlePosition("A"), /403/);
 });
+
+test("fetchArticle returns the article, null on 404 and rejects on other errors", async () => {
+  const { fetchArticle } = await import("../js/api.js");
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, status: 200, json: async () => ({ title: "A & B", html: "<p>x</p>", url: "u" }) };
+  };
+  assert.deepEqual(await fetchArticle("A & B"), { title: "A & B", html: "<p>x</p>", url: "u" });
+  assert.deepEqual(calls, ["api/battles/articles/A%20%26%20B"]);
+
+  globalThis.fetch = async () => ({ ok: false, status: 404 });
+  assert.equal(await fetchArticle("Nope"), null);
+
+  globalThis.fetch = async () => ({ ok: false, status: 502 });
+  await assert.rejects(fetchArticle("Down"), /502/);
+});

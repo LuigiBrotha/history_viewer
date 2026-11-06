@@ -70,7 +70,7 @@ test("arrow keys move the divider: left or up widens the pane", () => {
   assert.equal(keySize("a", 300, false, false), null);
 });
 
-function setup({ width = 1200, height = 800, stored = {} } = {}) {
+function setup({ width = 1200, height = 800, stored = {}, options = {} } = {}) {
   const win = {
     innerWidth: width,
     innerHeight: height,
@@ -87,7 +87,7 @@ function setup({ width = 1200, height = 800, stored = {} } = {}) {
   const toggleEl = new Element("button");
   const map = { sizes: 0, invalidateSize() { this.sizes += 1; } };
   const storage = fakeStorage(stored.raw ?? {});
-  const split = initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, storage, win });
+  const split = initBattleSplit({ splitEl, paneEl, dividerEl, toggleEl, map, storage, win, ...options });
   return { win, splitEl, paneEl, dividerEl, toggleEl, map, storage, split };
 }
 
@@ -188,4 +188,27 @@ test("open, close and isOpen are available to other modules", () => {
   assert.equal(split.isOpen(), true);
   split.close();
   assert.equal(split.isOpen(), false);
+});
+
+test("the article split keeps its own width, never stores open and starts closed", () => {
+  const raw = { "uboats.articlePane": JSON.stringify({ open: true, width: 600 }), "uboats.battlePane": JSON.stringify({ width: 400 }) };
+  const options = { storageKey: "uboats.articlePane", defaultWidth: 520, persistOpen: false };
+  const { split, splitEl, paneEl, dividerEl, storage } = setup({ stored: { raw }, options });
+  assert.equal(split.isOpen(), false);
+  assert.equal(splitEl.classes.has("pane-hidden"), true);
+  assert.equal(paneEl.styleProps["--battle-pane-size"], "600px");
+  split.open();
+  dividerEl.dispatch("keydown", { key: "ArrowLeft" });
+  const saved = JSON.parse(storage.data["uboats.articlePane"]);
+  assert.equal(saved.width, 600 + KEY_STEP_PX);
+  assert.equal("open" in saved, false);
+  assert.equal(storage.data["uboats.battlePane"], raw["uboats.battlePane"]);
+});
+
+test("the article split without a stored width uses its default and works without a toggle", () => {
+  const options = { storageKey: "uboats.articlePane", defaultWidth: 520, persistOpen: false, toggleEl: null };
+  const { split, paneEl, storage } = setup({ options });
+  assert.equal(paneEl.styleProps["--battle-pane-size"], "520px");
+  split.open();
+  assert.equal("open" in JSON.parse(storage.data["uboats.articlePane"] ?? "{}"), false);
 });
