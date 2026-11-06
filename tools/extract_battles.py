@@ -18,14 +18,20 @@ import sys
 import time
 import xml.etree.ElementTree as ET
 from collections import Counter
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
+
+from sqlalchemy import create_engine, delete, select, text
+from sqlalchemy.orm import Session
+
+from app.services.storage.models import BattleArticle, BattleRedirect
 
 DEFAULT_DUMP = Path("~/.cache/uboats/wikipedia/")
 DEFAULT_OUTPUT = Path(__file__).resolve().parent.parent / "frontend" / "battles" / "battles.json"
 WAR_START = date(1939, 9, 1)
 WAR_END = date(1945, 9, 2)
+DEFAULT_DATABASE = "sqlite:///./uboats.db"
 PROGRESS_EVERY = 100_000
 READ_SIZE = 1 << 20
 SAVE_EVERY_SECONDS = 60
@@ -363,18 +369,28 @@ def iter_raw_pages(path):
 
 
 def iter_candidate_pages(path, skip_pages=0):
-    """(page number, title, wikitext) of articles with a conflict infobox, streamed from the dump.
+    """(page number, title, wikitext, redirect target) of the pages worth looking at.
 
-    Nearly every page in the dump has no such infobox, so a byte search rules those out
-    before any XML is parsed. Page numbers count every page, so that a run can resume.
+    A page is a candidate when it has a conflict infobox (target None) or is a redirect in the
+    article namespace (empty wikitext). Nearly every page in the dump is neither, so a byte
+    search rules those out before any XML is parsed. Page numbers count every page, so that a
+    run can resume.
     """
     for number, raw in enumerate(iter_raw_pages(path), 1):
-        if number <= skip_pages or CANDIDATE.search(raw) is None:
+        if number <= skip_pages:
+            continue
+        if b"<redirect" not in raw and CANDIDATE.search(raw) is None:
             continue
         start = raw.rfind(b"<page>")
         page = ET.fromstring(raw[start:] + b"</page>")
-        if page.findtext("ns") == "0" and page.find("redirect") is None and page.findtext("title"):
-            yield number, page.findtext("title"), page.findtext("revision/text") or ""
+        title = page.findtext("title")
+        if page.findtext("ns") != "0" or not title:
+            continue
+        redirect = page.find("redirect")
+        if redirect is None:
+            yield number, title, page.findtext("revision/text") or "", None
+        elif redirect.get("title"):
+            yield number, title, "", redirect.get("title")
 
 
 def resolve_dump(path):
@@ -400,9 +416,24 @@ def _load_json(path, fallback):
         return fallback
 
 
-def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
+def _finish_redirects(session, battles):
+    """Drop articles that are no longer battles, then keep the redirects to the remaining ones."""
+    stale = set(session.scalars(select(BattleArticle.title))) - set(battles)
+    for title in stale:
+        session.execute(delete(BattleArticle).where(BattleArticle.title == title))
+    session.execute(delete(BattleRedirect).where(BattleRedirect.title.not_in(select(BattleArticle.title))))
+    session.execute(text(
+        "INSERT OR REPLACE INTO battle_redirects (alias, title) SELECT alias, target FROM battle_redirects_scratch "
+        "WHERE target IN (SELECT title FROM battle_articles)"
+    ))
+    session.execute(text("DROP TABLE battle_redirects_scratch"))
+    session.commit()
+
+
+def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAULT_DATABASE):
     """Add the dump's battles to `output`, saving along the way so that a page can show them
-    during the run and a stopped run can continue where it was."""
+    during the run and a stopped run can continue where it was. The wikitext of each battle and
+    the redirects to it go to the database."""
     dump = resolve_dump(dump)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -414,7 +445,15 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
     battles = {battle["title"]: battle for battle in _load_json(output, [])}
     pages = progress["pages"]
 
+    engine = create_engine(database_url)
+    BattleArticle.__table__.create(engine, checkfirst=True)
+    BattleRedirect.__table__.create(engine, checkfirst=True)
+    session = Session(engine)
+    session.execute(text("CREATE TABLE IF NOT EXISTS battle_redirects_scratch (alias TEXT PRIMARY KEY, target TEXT)"))
+    session.commit()
+
     def save():
+        session.commit()
         ordered = sorted(battles.values(), key=lambda b: (b["start"], b["title"]))
         _write_atomically(output, json.dumps(ordered, ensure_ascii=False, separators=(",", ":")))
         _write_atomically(review_path, "".join(f"{line}\n" for line in review))
@@ -422,15 +461,23 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
 
     last_save = time.monotonic()
     last_report = pages
-    for pages, title, text in iter_candidate_pages(dump, skip_pages=pages):
-        battle, reason = extract_battle(title, text)
+    for pages, title, wikitext, target in iter_candidate_pages(dump, skip_pages=pages):
+        if target is not None:
+            session.execute(
+                text("INSERT OR REPLACE INTO battle_redirects_scratch (alias, target) VALUES (:alias, :target)"),
+                {"alias": title, "target": target},
+            )
+            continue
+        battle, reason = extract_battle(title, wikitext)
         if battle is None:
             skipped[reason] += 1
-            fields = find_infobox(text)
-            if reason.startswith("date") and fields and names_world_war_ii(strip_comments(text), fields):
+            fields = find_infobox(wikitext)
+            if reason.startswith("date") and fields and names_world_war_ii(strip_comments(wikitext), fields):
                 review.append(f"{title}\t{reason}\t{fields.get('date', '')[:200]}".replace("\n", " "))
         else:
             battles[title] = battle
+            session.merge(BattleArticle(title=title, wikitext=wikitext, dump_name=dump.name,
+                                        extracted_at=datetime.now(timezone.utc)))
         if time.monotonic() - last_save >= save_every_seconds:
             save()
             last_save = time.monotonic()
@@ -438,6 +485,9 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS):
             last_report = pages
             print(f"{pages} pages read, {len(battles)} battles so far", file=sys.stderr, flush=True)
     save()
+    _finish_redirects(session, battles)
+    session.close()
+    engine.dispose()
     progress_path.unlink()
     print(f"{len(battles)} battles written to {output}")
     for reason, count in skipped.most_common():
@@ -448,8 +498,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("dump", nargs="?", default=DEFAULT_DUMP, help="the .xml.bz2 dump, or the directory holding it")
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="where to write battles.json")
+    parser.add_argument("--database", default=DEFAULT_DATABASE, help="database that receives the wikitext of the battles")
     arguments = parser.parse_args(argv)
-    run(arguments.dump, arguments.output)
+    run(arguments.dump, arguments.output, database_url=arguments.database)
 
 
 if __name__ == "__main__":

@@ -23,5 +23,9 @@ poetry run python -m tools.extract_battles [dump.xml.bz2 | directory] [--output 
 The dump is streamed once, which takes a while. The command prints progress to stderr and
 a count per reason for the articles it skipped.
 
+The same run also fills the tables `battle_articles` (the wikitext of each battle) and
+`battle_redirects` (the redirects to those battles) in `uboats.db`; pass `--database URL` to
+choose another database.
+
 The `battles.json` in the repository was first built from the twelve sample articles in
 `tests/fixtures/wikipedia/battle_pages.json`, so that the pages work before the full run.

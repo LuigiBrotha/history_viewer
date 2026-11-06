@@ -4,6 +4,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import create_engine, text
 
 import tools.extract_battles as tools_extract
 from tools.extract_battles import (
@@ -16,6 +17,12 @@ from tools.extract_battles import (
 )
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "wikipedia" / "battle_pages.json"
+
+
+@pytest.fixture(autouse=True)
+def database_in_tmp_path(tmp_path, monkeypatch):
+    """run() defaults to ./uboats.db; keep the tests away from the real one."""
+    monkeypatch.chdir(tmp_path)
 
 
 @pytest.fixture(scope="module")
@@ -276,7 +283,7 @@ def make_dump(path, pages):
         PAGE.format(
             title=title,
             ns=ns,
-            redirect='<redirect title="Elsewhere" />' if redirect else "",
+            redirect='<redirect title="%s" />' % (redirect if isinstance(redirect, str) else "Elsewhere") if redirect else "",
             text=text.replace("&", "&amp;").replace("<", "&lt;"),
         )
         for title, ns, redirect, text in pages
@@ -331,9 +338,8 @@ def test_run_accepts_a_directory_holding_the_dump(tmp_path):
 def test_candidate_pages_keep_only_pages_with_a_conflict_infobox(tmp_path):
     dump = tmp_path / "d.xml.bz2"
     make_dump(dump, DUMP_PAGES)
-    titles = [title for _, title, _ in tools_extract.iter_candidate_pages(dump)]
+    titles = [title for _, title, _, target in tools_extract.iter_candidate_pages(dump) if target is None]
     assert "Plain article" not in titles
-    assert "Old redirect" not in titles
     assert "Talk:Battle A" not in titles
     assert {"Battle A", "Battle B", "Early battle"} <= set(titles)
 
@@ -341,13 +347,13 @@ def test_candidate_pages_keep_only_pages_with_a_conflict_infobox(tmp_path):
 def test_candidate_pages_can_skip_pages_already_read(tmp_path):
     dump = tmp_path / "d.xml.bz2"
     make_dump(dump, DUMP_PAGES)
-    assert [t for _, t, _ in tools_extract.iter_candidate_pages(dump, skip_pages=2)][0] == "Early battle"
+    assert [t for _, t, _, _ in tools_extract.iter_candidate_pages(dump, skip_pages=2)][0] == "Early battle"
 
 
 def test_candidate_pages_report_the_number_of_each_page(tmp_path):
     dump = tmp_path / "d.xml.bz2"
     make_dump(dump, DUMP_PAGES)
-    numbers = {t: n for n, t, _ in tools_extract.iter_candidate_pages(dump)}
+    numbers = {t: n for n, t, _, _ in tools_extract.iter_candidate_pages(dump)}
     assert numbers["Battle B"] == 1
     assert numbers["Early battle"] == 3
 
@@ -435,3 +441,63 @@ def test_run_lists_world_war_ii_articles_it_had_to_skip(tmp_path):
     assert "Unreadable" in listed
     assert "Ancient" not in listed
     assert "Clear" not in listed
+
+
+def test_candidate_pages_yield_redirects_without_an_infobox_with_their_target(tmp_path):
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, [("Alias", 0, "Target", "#REDIRECT [[Target]]"), ("Talk:Alias", 1, "Target", "x"),
+                     ("Plain", 0, False, "words")])
+    assert [(t, target) for _, t, _, target in tools_extract.iter_candidate_pages(dump)] == [("Alias", "Target")]
+
+
+def article_dump(path, pages):
+    make_dump(path, [
+        ("Operation Citadel", 0, "Battle of Kursk", "#REDIRECT [[Battle of Kursk]]"),
+        ("Battle of Kursk", 0, False, pages["Battle of Kursk"]),
+        ("Plain article", 0, False, "Just words."),
+        ("Battle of Midway", 0, False, pages["Battle of Midway"]),
+        ("Midway", 0, "Battle of Midway", "#REDIRECT [[Battle of Midway]]"),
+        ("Some redirect", 0, "Paris", "#REDIRECT [[Paris]]"),
+    ])
+
+
+def rows(database, sql):
+    engine = create_engine(f"sqlite:///{database}")
+    with engine.connect() as connection:
+        result = connection.execute(text(sql)).all()
+    engine.dispose()
+    return result
+
+
+def run_articles(tmp_path, pages):
+    dump = tmp_path / "d.xml.bz2"
+    article_dump(dump, pages)
+    database = tmp_path / "test.db"
+    run(dump, tmp_path / "battles.json", database_url=f"sqlite:///{database}")
+    return database
+
+
+def test_run_stores_wikitext_of_each_battle(tmp_path, pages):
+    database = run_articles(tmp_path, pages)
+    stored = dict(rows(database, "SELECT title, wikitext FROM battle_articles"))
+    assert stored == {t: pages[t] for t in ("Battle of Kursk", "Battle of Midway")}
+
+
+def test_run_keeps_redirects_to_battles_before_and_after_target(tmp_path, pages):
+    database = run_articles(tmp_path, pages)
+    assert dict(rows(database, "SELECT alias, title FROM battle_redirects")) == {
+        "Operation Citadel": "Battle of Kursk",
+        "Midway": "Battle of Midway",
+    }
+
+
+def test_run_drops_redirect_scratch_table(tmp_path, pages):
+    database = run_articles(tmp_path, pages)
+    assert rows(database, "SELECT name FROM sqlite_master WHERE name = 'battle_redirects_scratch'") == []
+
+
+def test_rerun_replaces_rows(tmp_path, pages):
+    database = run_articles(tmp_path, pages)
+    run_articles(tmp_path, pages)
+    assert rows(database, "SELECT count(*) FROM battle_articles") == [(2,)]
+    assert rows(database, "SELECT count(*) FROM battle_redirects") == [(2,)]

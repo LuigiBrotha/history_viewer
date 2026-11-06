@@ -179,3 +179,23 @@ class BattlePosition(Base):
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lng: Mapped[float] = mapped_column(Float, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class BattleArticle(Base):
+    """The wikitext of a World War II battle article, exactly as in the Wikipedia dump."""
+
+    __tablename__ = "battle_articles"
+
+    title: Mapped[str] = mapped_column(String, primary_key=True)
+    wikitext: Mapped[str] = mapped_column(Text, nullable=False)
+    dump_name: Mapped[str] = mapped_column(String, nullable=False)
+    extracted_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class BattleRedirect(Base):
+    """A Wikipedia redirect whose target is a stored battle article."""
+
+    __tablename__ = "battle_redirects"
+
+    alias: Mapped[str] = mapped_column(String, primary_key=True)
+    title: Mapped[str] = mapped_column(String, ForeignKey("battle_articles.title"), nullable=False)
