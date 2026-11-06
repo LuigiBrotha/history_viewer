@@ -1,11 +1,11 @@
 from collections import OrderedDict
 from dataclasses import dataclass
-from urllib.parse import quote
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from wireup import injectable
 
 from app.services.storage.battle_article_repository import BattleArticleRepository
+from app.services.wiki.image_cache import image_url_for
 from app.services.wiki.render import render_article
 from app.services.wiki.titles import wiki_url
 
@@ -17,11 +17,6 @@ class ArticleOut:
     title: str
     html: str
     url: str
-
-
-def _image_url(file_name: str, width: int) -> str:
-    # Replaced by the cached image endpoint's helper once that exists.
-    return f"/api/battles/images/{quote(file_name)}?width={width}"
 
 
 @injectable
@@ -46,7 +41,7 @@ class ArticleService:
                 return cached
             if not self._battle_index:
                 self._battle_index = await repository.battle_index()
-        html = render_article(wikitext, battle_index=self._battle_index, image_src=_image_url)
+        html = render_article(wikitext, battle_index=self._battle_index, image_src=image_url_for)
         article = ArticleOut(real_title, html, wiki_url(real_title))
         self._cache[real_title] = article
         while len(self._cache) > CACHE_SIZE:

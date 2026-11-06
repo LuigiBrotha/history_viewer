@@ -26,7 +26,10 @@ class RevalidateMiddleware:
     async def __call__(self, scope, receive, send):
         async def send_with_header(message):
             if message["type"] == "http.response.start":
-                message.setdefault("headers", []).append((b"cache-control", b"no-cache"))
+                headers = message.setdefault("headers", [])
+                # A route that sets its own policy (the immutable image cache) keeps it.
+                if not any(name.lower() == b"cache-control" for name, _ in headers):
+                    headers.append((b"cache-control", b"no-cache"))
             await send(message)
 
         if scope["type"] == "http":

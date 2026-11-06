@@ -24,5 +24,7 @@ class Settings(BaseSettings):
     CRAWLER_CONTACT: str = ""
     CRAWL_DELAY_SECONDS: float = 10.0
 
+    WIKI_IMAGE_DIR: str = "~/.cache/uboats/wikipedia/images"
+
 
 settings = Settings()
