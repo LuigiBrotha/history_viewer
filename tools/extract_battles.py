@@ -21,12 +21,12 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 from datetime import date, datetime, timezone
 from pathlib import Path
-from urllib.parse import quote
 
 from sqlalchemy import create_engine, delete, select
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import BattleArticle, BattleRedirect
+from app.services.wiki.titles import wiki_url
 from app.services.wiki.dates import MONTH_NAMES, MONTHS, render_date
 
 DEFAULT_DUMP = Path("~/.cache/uboats/wikipedia/")
@@ -39,7 +39,6 @@ READ_SIZE = 1 << 20
 SAVE_EVERY_SECONDS = 60
 CANDIDATE = re.compile(rb"infobox[ _]+(?:military[ _]+conflict|military[ _]+operation|battle)", re.IGNORECASE)
 MAX_PLACE = 160
-WIKI_URL = "https://en.wikipedia.org/wiki/"
 
 MONTH_PATTERN = re.compile(
     r"\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?"
@@ -311,10 +310,6 @@ def short_place(place):
         return place
     cut = place[:MAX_PLACE].rpartition(",")[0] or place[:MAX_PLACE]
     return cut.rstrip(" ,") + "…"
-
-
-def wiki_url(title):
-    return WIKI_URL + quote(title.replace(" ", "_"), safe="_(),:'!*;@$&=+~-./")
 
 
 def extract_battle(title, text):

@@ -12,11 +12,10 @@ from mwparserfromhell.nodes import ExternalLink, Heading, HTMLEntity, Tag, Templ
 from app.services.wiki.dates import render_date
 from app.services.wiki.infobox import render_infobox
 from app.services.wiki.sanitize import sanitize
-from app.services.wiki.titles import normalize_title
+from app.services.wiki.titles import normalize_title, wiki_url
 
 LOG = logging.getLogger(__name__)
 
-WIKI_URL = "https://en.wikipedia.org/wiki/"
 IMAGE_WIDTH = 330
 INFOBOXES = {"infobox military conflict", "infobox military operation", "infobox battle"}
 DROPPED_SECTIONS = {
@@ -113,7 +112,7 @@ class _Renderer:
         if not title:
             return label
         fragment = target.partition("#")[2].strip()
-        href = WIKI_URL + quote(title.replace(" ", "_"), safe="/:(),'")
+        href = wiki_url(title)
         if fragment:
             href += "#" + quote(fragment.replace(" ", "_"))
         battle = self.battle_index.get(title)
