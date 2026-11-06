@@ -1,4 +1,5 @@
-import { activeOn, overlaps } from "./battle-model.js";
+import { fetchBattlePositions } from "./api.js";
+import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -30,7 +31,7 @@ function safeStorage(win) {
 // date, which shows the battles active on it; mode "period" is for a page with a period,
 // which shows those overlapping it. The page tells the selection through setDate or
 // setPeriod and the rest follows. The page keeps working if the file cannot be loaded.
-export function initBattles({ map, mode, onPickDate = null, doc = document, win = window, load = loadBattles }) {
+export function initBattles({ map, mode, onPickDate = null, doc = document, win = window, load = loadBattles, loadPositions = fetchBattlePositions }) {
   const splitEl = doc.getElementById("battle-split");
   const paneEl = doc.getElementById("battle-pane");
   if (splitEl === null || paneEl === null) {
@@ -80,9 +81,16 @@ export function initBattles({ map, mode, onPickDate = null, doc = document, win 
     layer.setBattles(shown());
   }
 
+  // The Eigen posities are optional: without them the battles stay where the file puts them.
+  // Fetched alongside the file rather than after it.
+  const positions = loadPositions().catch((error) => {
+    console.error(error);
+    return [];
+  });
+
   load().then(
-    (loaded) => {
-      battles = loaded;
+    async (loaded) => {
+      battles = applyPositions(loaded, await positions);
       pane.setBattles(battles);
       layer.setBattles(shown());
     },

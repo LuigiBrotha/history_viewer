@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   activeOn,
+  applyPositions,
+  wrapLng,
   barPosition,
   durationDays,
   durationText,
@@ -172,4 +174,35 @@ test("yearMarks gives the first year at the start and each new year at its Janua
   assert.equal(marks[0].fraction, 0);
   assert.ok(Math.abs(marks[1].fraction - 122 / 2194) < 0.001);
   assert.ok(marks.every((m, i) => i === 0 || m.fraction > marks[i - 1].fraction));
+});
+
+const posBattle = (title, lat = null, lng = null) => ({ title, start: "1940-01-01", end: "1940-01-02", lat, lng });
+
+test("applyPositions gives a battle without a file position its Eigen positie", () => {
+  const [result] = applyPositions([posBattle("A")], [{ title: "A", lat: 1, lng: 2 }]);
+  assert.deepEqual([result.lat, result.lng, result.own, result.wikiLat, result.wikiLng], [1, 2, true, null, null]);
+});
+
+test("applyPositions overrides a file position and keeps it as wikiLat/wikiLng", () => {
+  const [result] = applyPositions([posBattle("A", 10, 20)], [{ title: "A", lat: 1, lng: 2 }]);
+  assert.deepEqual([result.lat, result.lng, result.own, result.wikiLat, result.wikiLng], [1, 2, true, 10, 20]);
+});
+
+test("applyPositions leaves other battles alone and ignores unknown titles", () => {
+  const [result] = applyPositions([posBattle("A", 10, 20)], [{ title: "Z", lat: 1, lng: 2 }]);
+  assert.deepEqual([result.lat, result.lng, result.wikiLat, result.wikiLng], [10, 20, 10, 20]);
+  assert.equal(result.own, undefined);
+});
+
+test("applyPositions does not mutate its input", () => {
+  const input = [posBattle("A", 10, 20)];
+  applyPositions(input, [{ title: "A", lat: 1, lng: 2 }]);
+  assert.deepEqual(input, [posBattle("A", 10, 20)]);
+});
+
+test("wrapLng brings a longitude into [-180, 180]", () => {
+  assert.equal(wrapLng(190), -170);
+  assert.equal(wrapLng(-190), 170);
+  assert.equal(wrapLng(45), 45);
+  assert.ok([180, -180].includes(wrapLng(540)));
 });

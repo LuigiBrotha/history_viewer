@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200 } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -32,6 +32,7 @@ function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {})
     divIcon: (options) => ({ ...options }),
     marker: (latlng, options) => {
       const marker = {
+        latlng,
         options,
         events: {},
         on(type, fn) {
@@ -65,7 +66,7 @@ function setup({ mode = "date", load = async () => BATTLES, width = 1200 } = {})
   const doc = { getElementById: (id) => elements[id] };
   const win = { innerWidth: width, innerHeight: 800, addEventListener() {}, requestAnimationFrame: (fn) => fn(), localStorage: fakeStorage() };
   const picked = [];
-  const controller = initBattles({ map, mode, onPickDate: (iso) => picked.push(iso), doc, win, load });
+  const controller = initBattles({ map, mode, onPickDate: (iso) => picked.push(iso), doc, win, load, loadPositions });
   const squares = () => [...layers].filter((m) => m.options.icon.className.includes("battle-square")).map((m) => m.options.battleTitle).sort();
   const rows = () => elements["battle-pane"].byClass("battle-row");
   const titleOf = (row) => row.byClass("battle-row-title")[0].textContent;
@@ -175,4 +176,32 @@ test("the button shows the pane, and the map is told", async () => {
   elements["battle-toggle"].dispatch("click");
   assert.equal(elements["battle-split"].classes.has("pane-hidden"), false);
   assert.ok(map.invalidations > before);
+});
+
+test("a battle is drawn at its Eigen positie", async () => {
+  const { controller, layers, ready } = setup({
+    mode: "period",
+    loadPositions: async () => [{ title: "Midway", lat: 5, lng: 6 }],
+  });
+  await ready();
+  controller.setPeriod(null, null);
+  const square = [...layers].find((m) => m.options.battleTitle === "Midway");
+  assert.deepEqual(square.latlng, [5, 6]);
+});
+
+test("when the positions cannot be loaded the squares from the file are still drawn", async () => {
+  const { controller, squares, ready } = setup({
+    mode: "period",
+    loadPositions: async () => {
+      throw new Error("offline");
+    },
+  });
+  const errors = [];
+  const original = console.error;
+  console.error = (...args) => errors.push(args);
+  await ready();
+  console.error = original;
+  controller.setPeriod(null, null);
+  assert.deepEqual(squares(), ["Battle of Kursk", "Midway"]);
+  assert.equal(errors.length, 1);
 });

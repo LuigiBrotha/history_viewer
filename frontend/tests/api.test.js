@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat, fetchAllRoutes, fetchShip } from "../js/api.js";
+import { canEdit, excludePoint, fetchBoats, fetchRoutes, fetchStatus, restorePoint, fetchBoat, fetchAllRoutes, fetchShip, fetchBattlePositions, saveBattlePosition, clearBattlePosition } from "../js/api.js";
 
 test("fetchBoats calls the boten endpoint and returns parsed JSON", async () => {
   const calls = [];
@@ -255,4 +255,51 @@ test("fetchShip rejects when the response is not ok", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 404 });
 
   await assert.rejects(() => fetchShip("408"), /Failed to fetch ship: 404/);
+});
+
+test("fetchBattlePositions returns the parsed list", async () => {
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, json: async () => [{ title: "A", lat: 1, lng: 2 }] };
+  };
+
+  assert.deepEqual(await fetchBattlePositions(), [{ title: "A", lat: 1, lng: 2 }]);
+  assert.equal(calls[0], "api/battles/positions");
+});
+
+test("saveBattlePosition PUTs the encoded title with the coordinates", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options]);
+    return { ok: true, json: async () => ({ title: 'Operation "Weserübung"', lat: 1, lng: 2 }) };
+  };
+
+  const result = await saveBattlePosition('Operation "Weserübung"', 1, 2);
+
+  assert.equal(calls[0][0], `api/battles/positions/${encodeURIComponent('Operation "Weserübung"')}`);
+  assert.equal(calls[0][1].method, "PUT");
+  assert.deepEqual(JSON.parse(calls[0][1].body), { lat: 1, lng: 2 });
+  assert.deepEqual(result, { title: 'Operation "Weserübung"', lat: 1, lng: 2 });
+});
+
+test("clearBattlePosition DELETEs the encoded title", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options]);
+    return { ok: true, status: 204 };
+  };
+
+  await clearBattlePosition('Operation "Weserübung"');
+
+  assert.equal(calls[0][0], `api/battles/positions/${encodeURIComponent('Operation "Weserübung"')}`);
+  assert.equal(calls[0][1].method, "DELETE");
+});
+
+test("the battle position helpers reject when the response is not ok", async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 403 });
+
+  await assert.rejects(() => fetchBattlePositions(), /403/);
+  await assert.rejects(() => saveBattlePosition("A", 1, 2), /403/);
+  await assert.rejects(() => clearBattlePosition("A"), /403/);
 });

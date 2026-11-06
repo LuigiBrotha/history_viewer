@@ -129,3 +129,34 @@ export async function fetchShip(shipExternalId) {
   }
   return response.json();
 }
+
+export async function fetchBattlePositions() {
+  const response = await fetch("api/battles/positions", { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch battle positions: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function saveBattlePosition(title, lat, lng) {
+  const response = await fetch(`api/battles/positions/${encodeURIComponent(title)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lat, lng }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to save battle position: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function clearBattlePosition(title) {
+  const response = await fetch(`api/battles/positions/${encodeURIComponent(title)}`, {
+    method: "DELETE",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to clear battle position: ${response.status}`);
+  }
+}

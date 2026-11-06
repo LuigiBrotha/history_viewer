@@ -115,3 +115,22 @@ export function yearMarks(bounds) {
   }
   return marks;
 }
+
+// Each battle gets its Eigen positie (hand-placed) when there is one; the file's own
+// position stays available as wikiLat/wikiLng.
+export function applyPositions(battles, positions) {
+  const byTitle = new Map(positions.map((position) => [position.title, position]));
+  return battles.map((battle) => {
+    const own = byTitle.get(battle.title);
+    const merged = { ...battle, wikiLat: battle.lat ?? null, wikiLng: battle.lng ?? null };
+    return own ? { ...merged, lat: own.lat, lng: own.lng, own: true } : merged;
+  });
+}
+
+// The equivalent longitude in [-180, 180], for a marker dragged past the date line.
+export function wrapLng(lng) {
+  if (lng >= -180 && lng <= 180) {
+    return lng;
+  }
+  return ((((lng + 180) % 360) + 360) % 360) - 180;
+}
