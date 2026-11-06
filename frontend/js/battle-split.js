@@ -139,6 +139,7 @@ export function initBattleSplit({
 
   function setOpen(next) {
     open = next;
+    if (open) current = size();
     apply();
     remember();
     resizeMap();
@@ -189,6 +190,7 @@ export function initBattleSplit({
 
   return {
     isOpen: () => open,
+    size: () => current,
     open() {
       if (!open) setOpen(true);
     },

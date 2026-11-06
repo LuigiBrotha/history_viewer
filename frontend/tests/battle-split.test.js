@@ -190,6 +190,16 @@ test("open, close and isOpen are available to other modules", () => {
   assert.equal(split.isOpen(), false);
 });
 
+test("size gives the current pane size, and opening re-fits it to the room the other pane leaves", () => {
+  let taken = 0;
+  const { split } = setup({ width: 1000, options: { reserved: () => taken } });
+  assert.equal(split.size(), 360);
+  taken = 400;
+  split.close();
+  split.open();
+  assert.equal(split.size(), 1000 - 400 - 320);
+});
+
 test("the article split keeps its own width, never stores open and starts closed", () => {
   const raw = { "uboats.articlePane": JSON.stringify({ open: true, width: 600 }), "uboats.battlePane": JSON.stringify({ width: 400 }) };
   const options = { storageKey: "uboats.articlePane", defaultWidth: 520, persistOpen: false };

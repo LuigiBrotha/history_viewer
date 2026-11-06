@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {} } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }) } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -80,8 +80,8 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     panTo: (latlng) => pans.push(latlng),
   };
   const elements = {};
-  for (const id of ["battle-split", "map-side", "battle-pane", "battle-divider", "battle-toggle"]) {
-    elements[id] = new Element(id === "battle-pane" ? "aside" : "div");
+  for (const id of ["battle-split", "map-side", "battle-pane", "battle-divider", "battle-toggle", "article-split", "article-pane", "article-divider"]) {
+    elements[id] = new Element(id.endsWith("-pane") ? "aside" : "div");
   }
   elements["battle-split"].rect = { left: 0, top: 0, right: width, bottom: 800, width, height: 800 };
   const keyHandlers = new Set();
@@ -93,13 +93,31 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
   };
   const press = (key) => [...keyHandlers].forEach((fn) => fn({ key }));
   const win = { innerWidth: width, innerHeight: 800, addEventListener() {}, requestAnimationFrame: (fn) => fn(), localStorage: fakeStorage() };
+  elements["article-split"].rect = elements["battle-split"].rect;
   const picked = [];
-  const controller = initBattles({ map, mode, onPickDate: (iso) => picked.push(iso), doc, win, load, loadPositions, savePosition, clearPosition });
+  const changes = [];
+  const articles = [];
+  const controller = initBattles({
+    map,
+    mode,
+    onPickDate: (iso) => picked.push(iso),
+    onBattleChange: (title) => changes.push(title),
+    doc,
+    win,
+    load,
+    loadPositions,
+    savePosition,
+    clearPosition,
+    loadArticle: async (title) => {
+      articles.push(title);
+      return loadArticle(title);
+    },
+  });
   const squares = () => [...layers].filter((m) => m.options.icon.className.includes("battle-square")).map((m) => m.options.battleTitle).sort();
   const rows = () => elements["battle-pane"].byClass("battle-row");
   const titleOf = (row) => row.byClass("battle-row-title")[0].textContent;
   const ready = () => new Promise((resolve) => setImmediate(resolve));
-  return { controller, elements, squares, rows, titleOf, picked, pans, map, ready, layers, controls, press };
+  return { controller, changes, articles, elements, squares, rows, titleOf, picked, pans, map, ready, layers, controls, press };
 }
 
 test("on the timeline page the squares are the battles active on the date", async () => {
@@ -379,4 +397,88 @@ test("the buttons are not offered before the positions have loaded or when they 
   controller.setEditable(true);
   rows().find((r) => titleOf(r) === "Midway").byClass("battle-row-title")[0].dispatch("click");
   assert.equal(rows().flatMap((r) => r.byClass("battle-row-edit")).length, 0);
+});
+
+const clickRow = (ctx, title) => ctx.rows().find((r) => ctx.titleOf(r) === title).byClass("battle-row-title")[0].dispatch("click");
+const articleTitle = (ctx) => ctx.elements["article-pane"].byClass("article-title")[0].textContent;
+
+test("a click on a row shows the article and tells the page", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  clickRow(ctx, "Battle of Kursk");
+  assert.equal(ctx.elements["article-split"].classes.has("pane-hidden"), false);
+  assert.equal(articleTitle(ctx), "Battle of Kursk");
+  assert.deepEqual(ctx.articles, ["Battle of Kursk"]);
+  assert.deepEqual(ctx.changes, ["Battle of Kursk"]);
+  assert.equal(ctx.controller.selectedBattle(), "Battle of Kursk");
+});
+
+test("a click on a square shows the article without setting the date", async () => {
+  const ctx = setup({ mode: "date" });
+  await ctx.ready();
+  ctx.controller.setDate("1942-06-05");
+  [...ctx.layers].find((m) => m.options.battleTitle === "Midway").events.click();
+  assert.equal(articleTitle(ctx), "Midway");
+  assert.equal(ctx.elements["article-split"].classes.has("pane-hidden"), false);
+  assert.deepEqual(ctx.picked, []);
+});
+
+test("the close button closes the article, and the next click opens it again", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  clickRow(ctx, "Midway");
+  ctx.elements["article-pane"].byClass("article-close")[0].dispatch("click");
+  assert.equal(ctx.controller.selectedBattle(), null);
+  assert.equal(ctx.elements["article-split"].classes.has("pane-hidden"), true);
+  assert.deepEqual(ctx.changes, ["Midway", null]);
+  clickRow(ctx, "Midway");
+  assert.equal(ctx.elements["article-split"].classes.has("pane-hidden"), false);
+  assert.equal(ctx.controller.selectedBattle(), "Midway");
+});
+
+test("a battle selected before the file has loaded is applied when it arrives", async () => {
+  const ctx = setup({ mode: "period" });
+  assert.equal(ctx.controller.selectBattle("Midway"), true);
+  assert.equal(ctx.controller.selectedBattle(), null);
+  await ctx.ready();
+  assert.equal(ctx.controller.selectedBattle(), "Midway");
+  assert.deepEqual(ctx.changes, ["Midway"]);
+});
+
+test("an unknown title changes nothing", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  assert.equal(ctx.controller.selectBattle("Nope"), false);
+  assert.equal(ctx.controller.selectedBattle(), null);
+  assert.deepEqual(ctx.changes, []);
+  assert.equal(ctx.elements["article-split"].classes.has("pane-hidden"), true);
+});
+
+test("selectBattle with pickDate sets the date on the timeline page", async () => {
+  const ctx = setup({ mode: "date" });
+  await ctx.ready();
+  ctx.controller.selectBattle("Midway", { pickDate: true });
+  assert.deepEqual(ctx.picked, ["1942-06-04"]);
+});
+
+test("a link in the article to another battle selects it", async () => {
+  const ctx = setup({
+    mode: "period",
+    loadArticle: async () => ({ html: '<a data-battle="Atlantic" href="#">Atlantic</a>', url: "u" }),
+  });
+  await ctx.ready();
+  clickRow(ctx, "Midway");
+  await ctx.ready();
+  ctx.elements["article-pane"].byTag("a")[0].dispatch("click");
+  assert.equal(ctx.controller.selectedBattle(), "Atlantic");
+  assert.equal(articleTitle(ctx), "Atlantic");
+  assert.deepEqual(ctx.changes, ["Midway", "Atlantic"]);
+});
+
+test("each split leaves the map 320px beside the other", async () => {
+  const ctx = setup({ mode: "period", width: 1000 });
+  await ctx.ready();
+  clickRow(ctx, "Midway");
+  const size = (id) => Number(ctx.elements[id].styleProps["--battle-pane-size"].replace("px", ""));
+  assert.ok(size("battle-pane") + size("article-pane") <= 1000 - 320);
 });

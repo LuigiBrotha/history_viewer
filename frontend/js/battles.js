@@ -3,6 +3,8 @@ import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
+import { createArticlePane } from "./battle-article.js";
+import { fetchArticle } from "./api.js";
 
 const BATTLES_URL = "battles/battles.json";
 
@@ -30,14 +32,18 @@ function safeStorage(win) {
 // button that shows it. The file is loaded once. mode "date" is for a page with one selected
 // date, which shows the battles active on it; mode "period" is for a page with a period,
 // which shows those overlapping it. The page tells the selection through setDate or
-// setPeriod and the rest follows. The page keeps working if the file cannot be loaded.
+// setPeriod and the rest follows. Selecting a battle, in the list, on the map or through a
+// link in an article, opens its article beside the list; onBattleChange hears the title, or
+// null when the article is closed. The page keeps working if the file cannot be loaded.
 export function initBattles({
   map,
   mode,
   onPickDate = null,
+  onBattleChange = () => {},
   doc = document,
   win = window,
   load = loadBattles,
+  loadArticle = fetchArticle,
   loadPositions = fetchBattlePositions,
   savePosition = saveBattlePosition,
   clearPosition = clearBattlePosition,
@@ -45,16 +51,32 @@ export function initBattles({
   const splitEl = doc.getElementById("battle-split");
   const paneEl = doc.getElementById("battle-pane");
   if (splitEl === null || paneEl === null) {
-    return { setDate() {}, setPeriod() {}, setEditable() {} };
+    return { setDate() {}, setPeriod() {}, setEditable() {}, selectBattle: () => false, selectedBattle: () => null };
   }
+  const storage = safeStorage(win);
+  let articleSplit = null;
   const split = initBattleSplit({
     splitEl,
     paneEl,
     dividerEl: doc.getElementById("battle-divider"),
     toggleEl: doc.getElementById("battle-toggle"),
     map,
-    storage: safeStorage(win),
+    storage,
     win,
+    reserved: () => (articleSplit?.isOpen() ? articleSplit.size() : 0),
+  });
+  articleSplit = initBattleSplit({
+    splitEl: doc.getElementById("article-split"),
+    paneEl: doc.getElementById("article-pane"),
+    dividerEl: doc.getElementById("article-divider"),
+    toggleEl: null,
+    map,
+    storage,
+    win,
+    storageKey: "uboats.articlePane",
+    defaultWidth: 520,
+    persistOpen: false,
+    reserved: () => (split.isOpen() ? split.size() : 0),
   });
 
   let battles = [];
@@ -62,13 +84,22 @@ export function initBattles({
   let editing = null;
   let editable = false;
   let positionsLoaded = false;
+  let selected = null;
+  let requested = null;
 
   const layer = createBattleLayer(map, {
-    onBattleClick: (battle) => {
-      if (editing?.battle.title !== battle.title) cancelEdit();
-      split.open();
-      layer.setSelected(battle);
-      pane.reveal(battle);
+    onBattleClick: (battle) => selectBattle(battle.title),
+  });
+
+  const articlePane = createArticlePane({
+    rootEl: doc.getElementById("article-pane"),
+    load: loadArticle,
+    onBattleLink: (title) => selectBattle(title, { pickDate: true }),
+    onClose: () => {
+      articleSplit.close();
+      articlePane.clear();
+      selected = null;
+      onBattleChange(null);
     },
   });
 
@@ -77,15 +108,7 @@ export function initBattles({
     mode,
     onEdit: (battle) => startEdit(battle),
     onClear: (battle) => clearOwn(battle),
-    onSelect: (battle) => {
-      cancelEdit();
-      if (mode === "date") {
-        onPickDate?.(battle.start);
-      }
-      layer.setSelected(battle);
-      layer.showBattle(battle);
-      pane.reveal(battle);
-    },
+    onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
   });
 
   // Editing is only offered once the positions are known: saving over positions that
@@ -115,10 +138,7 @@ export function initBattles({
 
   function startEdit(battle) {
     cancelEdit();
-    split.open();
-    layer.setSelected(battle);
-    pane.reveal(battle);
-    layer.showBattle(battle);
+    selectBattle(battle.title);
 
     const handle = layer.startEdit(battle, {});
     const title = doc.createElement("span");
@@ -195,6 +215,31 @@ export function initBattles({
     updateBattle(battle.title, { lat: battle.wikiLat, lng: battle.wikiLng, own: false });
   }
 
+  // pickDate is for the list and the articles: on the timeline page it sets the date to the
+  // battle's start. A request made before the file has loaded is applied when it arrives.
+  function selectBattle(title, { pickDate = false } = {}) {
+    if (!loaded) {
+      requested = { title, pickDate };
+      return true;
+    }
+    const battle = battles.find((b) => b.title === title);
+    if (battle === undefined) return false;
+    // Selecting another battle ends an edit; a click on the square being edited does not.
+    if (editing?.battle.title !== title) cancelEdit();
+    if (pickDate && mode === "date") {
+      onPickDate?.(battle.start);
+    }
+    selected = battle.title;
+    split.open();
+    layer.setSelected(battle);
+    layer.showBattle(battle);
+    pane.reveal(battle);
+    articleSplit.open();
+    articlePane.show(battle);
+    onBattleChange(battle.title);
+    return true;
+  }
+
   function shown() {
     if (selection === null) return [];
     return mode === "date" ? activeOn(battles, selection.date) : battles.filter((b) => overlaps(b, selection.from, selection.to));
@@ -209,9 +254,9 @@ export function initBattles({
   // The Eigen posities are optional: without them the battles stay where the file puts them.
   // Fetched alongside the file rather than after it.
   const positions = loadPositions().then(
-    (loaded) => {
+    (result) => {
       positionsLoaded = true;
-      return loaded;
+      return result;
     },
     (error) => {
       console.error(error);
@@ -219,12 +264,19 @@ export function initBattles({
     },
   );
 
+  let loaded = false;
   load().then(
-    async (loaded) => {
-      battles = applyPositions(loaded, await positions);
+    async (result) => {
+      battles = applyPositions(result, await positions);
+      loaded = true;
       pane.setBattles(battles);
       layer.setBattles(shown());
       applyEditable();
+      if (requested !== null) {
+        const { title, pickDate } = requested;
+        requested = null;
+        selectBattle(title, { pickDate });
+      }
     },
     (error) => {
       console.error(error);
@@ -239,5 +291,7 @@ export function initBattles({
       editable = next;
       applyEditable();
     },
+    selectBattle,
+    selectedBattle: () => selected,
   };
 }
