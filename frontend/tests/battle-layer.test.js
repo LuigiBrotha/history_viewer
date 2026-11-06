@@ -40,6 +40,17 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
         setIcon(icon) {
           marker.options = { ...marker.options, icon };
         },
+        getLatLng: () => marker.dragged ?? { lat: marker.latlng[0], lng: marker.latlng[1] },
+        dragging: {
+          on: false,
+          enable() {
+            marker.dragging.on = true;
+          },
+          disable() {
+            marker.dragging.on = false;
+          },
+          enabled: () => marker.dragging.on,
+        },
       };
       return marker;
     },
@@ -63,6 +74,7 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
       getEast: () => map.bounds.east,
     }),
     panTo: (latlng) => pans.push(latlng),
+    getCenter: () => ({ lat: 12, lng: 34 }),
     zoom,
     bounds,
   };
@@ -171,4 +183,85 @@ test("setSelected marks one square and showBattle pans to it", () => {
   assert.deepEqual(pans, [[51.7, 36.1]]);
   layer.showBattle(battle({ lat: null, lng: null }));
   assert.equal(pans.length, 1);
+});
+
+test("a battle with an own position gets the own class, also when selected", () => {
+  const { layer, squares } = setup();
+  const own = battle({ own: true });
+  layer.setBattles([own, battle({ title: "other" })]);
+  const classes = Object.fromEntries(squares().map((m) => [m.options.battleTitle, m.options.icon.className]));
+  assert.ok(classes["Battle of Kursk"].split(" ").includes("own"));
+  assert.equal(classes.other, "battle-square");
+  layer.setSelected(own);
+  assert.equal(squares()[0].options.icon.className, "battle-square own selected");
+});
+
+test("startEdit makes only that battle's square draggable", () => {
+  const { layer, squares } = setup();
+  const kursk = battle();
+  layer.setBattles([kursk, battle({ title: "other", lat: 10, lng: 10 })]);
+  layer.startEdit(kursk, { onMove() {} });
+  const enabled = Object.fromEntries(squares().map((m) => [m.options.battleTitle, m.dragging.on]));
+  assert.deepEqual(enabled, { "Battle of Kursk": true, other: false });
+});
+
+test("startEdit on a battle without a position puts a square at the map centre", () => {
+  const { layer, squares } = setup();
+  const atlantic = battle({ title: "Atlantic", lat: null, lng: null });
+  layer.setBattles([atlantic]);
+  assert.equal(squares().length, 0);
+  const edit = layer.startEdit(atlantic, { onMove() {} });
+  assert.equal(squares().length, 1);
+  assert.deepEqual(squares()[0].latlng, [12, 34]);
+  assert.equal(squares()[0].dragging.on, true);
+  assert.deepEqual(edit.position(), { lat: 12, lng: 34 });
+});
+
+test("a drag past the date line is wrapped for position() and onMove", () => {
+  const { layer, squares } = setup();
+  const kursk = battle();
+  layer.setBattles([kursk]);
+  const moves = [];
+  const edit = layer.startEdit(kursk, { onMove: (p) => moves.push(p) });
+  squares()[0].dragged = { lat: 20, lng: 190 };
+  squares()[0].events.dragend();
+  assert.deepEqual(edit.position(), { lat: 20, lng: -170 });
+  assert.deepEqual(moves, [{ lat: 20, lng: -170 }]);
+});
+
+test("the edited square survives setBattles and a move out of view", () => {
+  const { layer, map, handlers, squares } = setup();
+  const kursk = battle();
+  layer.setBattles([kursk]);
+  layer.startEdit(kursk, { onMove() {} });
+  layer.setBattles([]);
+  assert.equal(squares().length, 1);
+  map.bounds = { south: -60, west: 0, north: -10, east: 40 };
+  handlers.moveend();
+  assert.equal(squares().length, 1);
+  assert.equal(squares()[0].dragging.on, true);
+});
+
+test("stop disables dragging and drops the temporary square of a positionless battle", () => {
+  const { layer, squares } = setup();
+  const kursk = battle();
+  const atlantic = battle({ title: "Atlantic", lat: null, lng: null });
+  layer.setBattles([kursk, atlantic]);
+  layer.startEdit(atlantic, { onMove() {} }).stop();
+  assert.deepEqual(squares().map((m) => m.options.battleTitle), ["Battle of Kursk"]);
+  const edit = layer.startEdit(kursk, { onMove() {} });
+  edit.stop();
+  assert.equal(squares().length, 1);
+  assert.equal(squares()[0].dragging.on, false);
+});
+
+test("starting a new edit stops the previous one", () => {
+  const { layer, squares } = setup();
+  const a = battle({ title: "a" });
+  const b = battle({ title: "b", lat: 10, lng: 10 });
+  layer.setBattles([a, b]);
+  layer.startEdit(a, { onMove() {} });
+  layer.startEdit(b, { onMove() {} });
+  const enabled = Object.fromEntries(squares().map((m) => [m.options.battleTitle, m.dragging.on]));
+  assert.deepEqual(enabled, { a: false, b: true });
 });

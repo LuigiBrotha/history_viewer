@@ -1,4 +1,4 @@
-import { durationText, labelsToShow, squaresToDraw } from "./battle-model.js";
+import { durationText, labelsToShow, squaresToDraw, wrapLng } from "./battle-model.js";
 
 const SQUARE_SIZE = 10;
 const LABEL_OFFSET_PX = 12;
@@ -20,9 +20,12 @@ function tooltipContent(battle) {
   return root;
 }
 
-function squareIcon(selected) {
+function squareIcon(battle, selected) {
+  const classes = ["battle-square"];
+  if (battle.own) classes.push("own");
+  if (selected) classes.push("selected");
   return L.divIcon({
-    className: selected ? "battle-square selected" : "battle-square",
+    className: classes.join(" "),
     iconSize: [SQUARE_SIZE, SQUARE_SIZE],
     html: document.createElement("span"),
   });
@@ -46,11 +49,28 @@ export function createBattleLayer(map, { onBattleClick }) {
   let labels = [];
   let battles = [];
   let selected = null;
+  let editing = null;
+
+  function addSquare(battle) {
+    const marker = L.marker([battle.lat, battle.lng], {
+      icon: squareIcon(battle, selected === battle.title),
+      battleTitle: battle.title,
+      keyboard: false,
+      riseOnHover: true,
+    });
+    marker.bindTooltip(tooltipContent(battle), { direction: "top", offset: [0, -SQUARE_SIZE / 2] });
+    marker.on("click", () => onBattleClick?.(battle));
+    group.addLayer(marker);
+    squares.set(battle.title, marker);
+    return marker;
+  }
 
   function redraw() {
     const bounds = map.getBounds();
     const view = { south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast() };
-    const wanted = squaresToDraw(battles, view);
+    const drawn = squaresToDraw(battles, view).filter((battle) => battle.title !== editing?.battle.title);
+    // The square being edited is always drawn, wherever it is.
+    const wanted = editing ? [...drawn, editing.battle] : drawn;
     const wantedTitles = new Set(wanted.map((battle) => battle.title));
 
     for (const [title, marker] of squares) {
@@ -61,22 +81,13 @@ export function createBattleLayer(map, { onBattleClick }) {
     }
     for (const battle of wanted) {
       if (squares.has(battle.title)) continue;
-      const marker = L.marker([battle.lat, battle.lng], {
-        icon: squareIcon(selected === battle.title),
-        battleTitle: battle.title,
-        keyboard: false,
-        riseOnHover: true,
-      });
-      marker.bindTooltip(tooltipContent(battle), { direction: "top", offset: [0, -SQUARE_SIZE / 2] });
-      marker.on("click", () => onBattleClick?.(battle));
-      group.addLayer(marker);
-      squares.set(battle.title, marker);
+      addSquare(battle);
     }
 
     for (const label of labels) {
       group.removeLayer(label);
     }
-    labels = labelsToShow(wanted, map.getZoom()).map((battle) =>
+    labels = labelsToShow(drawn, map.getZoom()).map((battle) =>
       L.marker([battle.lat, battle.lng], { icon: labelIcon(battle), interactive: false, keyboard: false }),
     );
     for (const label of labels) {
@@ -85,6 +96,22 @@ export function createBattleLayer(map, { onBattleClick }) {
   }
 
   map.on("moveend zoomend", redraw);
+
+  function battleByTitle(title) {
+    if (editing?.battle.title === title) return editing.battle;
+    return battles.find((battle) => battle.title === title);
+  }
+
+  function stopEditing() {
+    if (!editing) return;
+    const { battle, marker } = editing;
+    editing = null;
+    marker.dragging.disable();
+    // Drop the square so redraw puts it back where the battles say it is.
+    group.removeLayer(marker);
+    if (squares.get(battle.title) === marker) squares.delete(battle.title);
+    redraw();
+  }
 
   return {
     setBattles(next) {
@@ -95,8 +122,34 @@ export function createBattleLayer(map, { onBattleClick }) {
     setSelected(battle) {
       selected = battle === null ? null : battle.title;
       for (const [title, marker] of squares) {
-        marker.setIcon(squareIcon(title === selected));
+        marker.setIcon(squareIcon(battleByTitle(title), title === selected));
       }
+    },
+    // Makes one battle's square draggable; a battle without a position gets one at the
+    // centre of the map. The square stays drawn until stop(), whatever setBattles gives.
+    startEdit(battle, { onMove }) {
+      stopEditing();
+      const start = battle.lat != null && battle.lng != null ? battle : { ...battle, ...map.getCenter() };
+      const session = { battle: { ...battle, lat: start.lat, lng: start.lng }, marker: null, position: null };
+      editing = session;
+      session.position = { lat: start.lat, lng: wrapLng(start.lng) };
+      const existing = squares.get(battle.title);
+      if (existing) group.removeLayer(existing);
+      squares.delete(battle.title);
+      session.marker = addSquare(session.battle);
+      session.marker.dragging.enable();
+      session.marker.on("dragend", () => {
+        const { lat, lng } = session.marker.getLatLng();
+        session.position = { lat, lng: wrapLng(lng) };
+        onMove?.(session.position);
+      });
+      redraw();
+      return {
+        position: () => session.position,
+        stop() {
+          if (editing === session) stopEditing();
+        },
+      };
     },
     // Pans without touching the zoom: the square stays at the zoom the user chose.
     showBattle(battle) {

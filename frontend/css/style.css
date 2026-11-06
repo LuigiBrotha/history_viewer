@@ -695,6 +695,11 @@ html, body {
   inset: -8px;
 }
 
+/* A hand-set position, as opposed to the one from Wikipedia. */
+.battle-square.own span {
+  border-style: dashed;
+}
+
 .battle-square.selected span {
   background: #fff3b0;
   box-shadow: 0 0 0 2px #3b2a00, 0 0 0 4px #ffb300;
