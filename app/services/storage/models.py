@@ -208,3 +208,13 @@ class ShipListState(Base):
 
     boat_slug: Mapped[str] = mapped_column(String, primary_key=True)
     listed_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class PlaceSearch(Base):
+    """A Photon answer kept for ever, keyed on the lowercased, trimmed query. An empty list is an answer too."""
+
+    __tablename__ = "place_searches"
+
+    query: Mapped[str] = mapped_column(String, primary_key=True)
+    results_json: Mapped[str] = mapped_column(Text, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
