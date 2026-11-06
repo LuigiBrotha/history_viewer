@@ -71,6 +71,19 @@ own branch; this part only stores the data.
 | Side of a column | The Kamp of the first country in `combatant1` / `combatant2` that is in the table. |
 | Reading `result` | Strategic before tactical: if the text names a strategic result, only that part counts. "`<X>` victory" where X is a demonym or `Allied`/`Axis`/`Soviet` → that Kamp. "`<X>` defeat" or "`<X>` … failure" → the other column's Kamp. Inconclusive / stalemate / indecisive / draw / ceasefire → both columns' Kampen. Anything else (e.g. "See aftermath", empty) → `[]`. |
 
+## Part 4: Fill the Artikelen for the known Veldslagen only
+
+The 1728 Veldslagen are already known. Reading the whole 25 GB dump again only to find
+them takes hours, so a separate tool reads them directly:
+
+| Topic | Decision |
+|---|---|
+| Sources | The same dump run (20261001), in `~/.cache/uboats/wikipedia/`: `enwiki-20261001-pages-articles-multistream.xml.bz2`, its `-index.txt.bz2` (`offset:page_id:title`), and `enwiki-20261001-redirect.sql.gz`. |
+| Articles | For each title in `battles.json`, the index gives the offset of its bz2 stream. Only those streams are decompressed (each holds 100 pages). The page's wikitext goes into `battle_articles`. |
+| Redirects | `redirect.sql.gz` rows in namespace 0 whose target is a Veldslag title (underscores) → `rd_from` page ids → alias titles via the index → `battle_redirects`. |
+| Winnaar | The same tool fills `winner` in `battles.json` from each stored article's infobox (Part 3). |
+| Tool | `poetry run python -m tools.fill_battle_articles [--dir DIR] [--database URL] [--battles FILE]`. It takes minutes, and a rerun replaces everything. The full extraction (`extract_battles`) still stores articles too, for a future complete rebuild. |
+
 ## Testing
 
 - Renderer: fixture articles from `tests/fixtures/wikipedia/` (a few real WWII articles), with

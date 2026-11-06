@@ -390,3 +390,45 @@
 - [ ] **Step 3: Implement.** Demonyms map to countries in the same table, for example `German` → Nazi Germany and `American` → United States. Match case-insensitively on whole words.
 - [ ] **Step 4: Run** `poetry run pytest`. Expected: PASS.
 - [ ] **Step 5:** Add a line about `winner` to `frontend/battles/README.md`. **Commit:** `Store the winning Kamp of each battle while extracting`.
+
+## Part 4: Fill Artikelen from the multistream dump
+
+### Task 12: Read only the known Veldslagen from the multistream dump
+
+**Files:**
+- Create: `tools/fill_battle_articles.py`
+- Modify: `frontend/battles/README.md`
+- Test: `tests/tools/test_fill_battle_articles.py`
+
+**Interfaces:**
+- Consumes:
+  - the Task 1 models `BattleArticle` and `BattleRedirect`;
+  - `winner(fields)` from Task 11;
+  - `find_infobox(text)` from `tools/extract_battles.py`.
+- Produces:
+  - `read_index(path) -> dict[str, tuple[int, int]]`: title → `(stream offset, page id)`, for the wanted titles only. The `wanted: set[str]` parameter keeps memory small, since the index has about 25M lines. The same function must also return page id → title for the redirect sources.
+  - Split into two functions:
+    - `stream_offsets(index_path, titles: set[str]) -> dict[str, int]`
+    - `titles_for_ids(index_path, ids: set[int]) -> dict[int, str]`
+  - `read_pages(dump_path, offsets: Iterable[int]) -> Iterator[tuple[str, str]]`: `(title, wikitext)` for every page in those streams. The caller keeps the ones it wants. To read a stream, `seek(offset)` and feed a fresh `bz2.BZ2Decompressor` until `eof`. The stream then holds `<page>…</page>` elements with no root.
+  - `redirects_to(sql_gz_path, targets: set[str]) -> dict[int, str]`: `rd_from` → target title (spaces), for rows with `rd_namespace = 0` whose `rd_title` with underscores replaced by spaces is in `targets`. Parse the `INSERT INTO `redirect` VALUES (…),(…);` lines with a tuple regex that handles quoted strings containing `\'` and `,`.
+  - `run(directory, database_url, battles_path)`. It:
+    - writes `battle_articles` (dump_name = the multistream file name);
+    - mirrors `battle_redirects`, deleting rows first, in one transaction;
+    - deletes articles that are not in `battles.json`;
+    - rewrites `battles.json` atomically with `winner` added to each record, keeping the order and all other fields unchanged.
+- CLI: `python -m tools.fill_battle_articles [--dir ~/.cache/uboats/wikipedia] [--database sqlite:///./uboats.db] [--battles frontend/battles/battles.json]`. It prints the counts of articles found, missing titles (listed) and redirects.
+
+- [ ] **Step 1: Write the failing tests.** Build a tiny multistream file in `tmp_path`: two bz2 streams, written as separate `bz2.compress` calls and concatenated, each with 2 `<page>` elements from `tests/fixtures/wikipedia/battle_pages.json`. Also build a matching `index.txt.bz2` (`offset:id:title`) and a `redirect.sql.gz` with one `INSERT` line containing `(10,0,'Operation_Citadel','',''),(11,0,'Some\\'s,_page','',''),(12,1,'Battle_of_Kursk','','')`, where page ids 10/11/12 are in the index. Tests:
+  - `stream_offsets` finds both streams' offsets and ignores titles that are not wanted.
+  - `read_pages` returns the wikitext of a page in the second stream.
+  - `redirects_to` keeps only namespace 0 rows targeting a Veldslag. It handles the escaped quote and comma.
+  - `run` stores the articles and the redirect `Operation Citadel → Battle of Kursk`. It sets `winner` on the battles, for example Kursk → `["sovjet"]`. It leaves the other fields and order of `battles.json` unchanged, and reports a title missing from the index without failing.
+  - A rerun gives identical rows.
+- [ ] **Step 2: Run** `poetry run pytest tests/tools/test_fill_battle_articles.py -v`. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** `poetry run pytest`. Expected: PASS.
+- [ ] **Step 5:** Add a paragraph to `frontend/battles/README.md` with the three file names, the download URL `https://dumps.wikimedia.org/enwiki/20261001/` and the command. **Commit:** `Read the known battles' articles straight from the multistream dump`.
+- [ ] **Step 6 (controller, after the download finishes):**
+  - Run the tool against the real files and the real `uboats.db` of the main checkout. Before that, back up `battles.json`.
+  - Check samples: Kursk, Second Happy Time, Convoy HX 79 and Coral Sea open in the app with their infobox, and the redirect `Operation Drumbeat` resolves.
