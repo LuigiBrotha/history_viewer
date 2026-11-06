@@ -16,6 +16,8 @@ import {
   isBusy,
 } from "./edit-state.js";
 import { initTimeline } from "./timeline.js";
+import { readView } from "./url-state.js";
+import { createUrlSync } from "./url-sync.js";
 import { boatsHeading, renderBoatList, renderExcludedPoints, renderShipSummary, updateDateLabel } from "./sidebar.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
@@ -48,6 +50,14 @@ function main() {
     return;
   }
 
+  // The URL is read once, before the first write can replace it.
+  const initialView = readView(location.search, "date");
+  const urlSync = createUrlSync({ kind: "date" });
+  // While the URL's view is restored, the follow fit stays off so the pinned Kaartuitsnede wins.
+  let restoring = false;
+  let pinnedMap = null;
+  let pinnedBattle = null;
+
   let routes = [];
   let routesBySlug = new Map();
   let boatsBySlug = new Map();
@@ -68,6 +78,7 @@ function main() {
   // fit is true for user actions; live updates redraw without touching the view.
   function render(date, fit) {
     currentDate = date;
+    urlSync.update({ date: date.toISOString().slice(0, 10) });
     const active = activeBoatsOnDate(routes, date);
     updateDateLabel(labelEl, date);
     atlas.setDate(date.toISOString().slice(0, 10));
@@ -83,7 +94,7 @@ function main() {
       const next = { patrol: view.patrol, position: view.position, editable };
       if (followedRouteChanged(drawnRoute, next)) {
         renderFollowedRoute(mapState, view.patrol, view.position, {
-          fit,
+          fit: fit && !restoring,
           onExclude: editable ? (point, button) => editPoint(excludePoint, "Uitsluiten mislukt", view.patrol, point, button) : null,
           isBusy: (point) => view.patrol !== null && isBusy(editState, view.patrol.external_id, point.sequence),
         });
@@ -174,6 +185,7 @@ function main() {
 
   function followBoat(slug) {
     followedSlug = slug;
+    urlSync.update({ boat: slug });
     clearEditError(editState);
     clearDrawnRoute();
     resetButton.hidden = false;
@@ -187,12 +199,51 @@ function main() {
 
   resetButton.addEventListener("click", () => {
     followedSlug = null;
+    urlSync.update({ boat: null });
     boatPanel.close();
     resetButton.hidden = true;
     clearEditError(editState);
     clearDrawnRoute();
     render(currentDate, true);
   });
+
+  // Showing a battle moves the map, so the pinned Kaartuitsnede is applied again once it shows.
+  function onBattleChange(title) {
+    urlSync.update({ battle: title });
+    if (pinnedMap !== null && title === pinnedBattle) {
+      applyPinnedMap();
+    }
+  }
+
+  function applyPinnedMap() {
+    const { lat, lng, zoom } = pinnedMap;
+    pinnedMap = null;
+    mapState.map.setView([lat, lng], zoom, { animate: false });
+  }
+
+  // Each value of the URL was validated on its own, so each is restored on its own.
+  function restoreView() {
+    restoring = true;
+    try {
+      if (initialView.boat !== undefined && routesBySlug.has(initialView.boat)) {
+        followBoat(initialView.boat);
+      }
+      if (initialView.date !== undefined) {
+        timeline.setDate(parseDate(initialView.date));
+      }
+      if (initialView.battle !== undefined) {
+        pinnedBattle = initialView.battle;
+        pinnedMap = initialView.map ?? null;
+        battles.selectBattle(initialView.battle);
+      }
+    } finally {
+      restoring = false;
+    }
+    if (initialView.map !== undefined) {
+      const { lat, lng, zoom } = initialView.map;
+      mapState.map.setView([lat, lng], zoom, { animate: false });
+    }
+  }
 
   function setBoatsCollapsed(collapsed) {
     sidebarEl.classList.toggle("collapsed", collapsed);
@@ -244,7 +295,16 @@ function main() {
       if (mapState === null) {
         mapState = createMap("map");
         shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
-        battles = initBattles({ map: mapState.map, mode: "date", onPickDate: (iso) => timeline?.setDate(parseDate(iso)) });
+        battles = initBattles({
+          map: mapState.map,
+          mode: "date",
+          onPickDate: (iso) => timeline?.setDate(parseDate(iso)),
+          onBattleChange,
+        });
+        mapState.map.on("moveend", () => {
+          const center = mapState.map.getCenter();
+          urlSync.update({ map: { lat: center.lat, lng: center.lng, zoom: mapState.map.getZoom() } });
+        });
         battles.setEditable(editable);
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
@@ -262,6 +322,7 @@ function main() {
         maxDate: range.max,
         onDateChange: (date) => render(date, true),
       });
+      restoreView();
     } else {
       timeline.setRange(range.min, range.max);
       render(currentDate, false);
