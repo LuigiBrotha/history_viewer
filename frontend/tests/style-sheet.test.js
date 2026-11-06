@@ -29,3 +29,22 @@ test("the article column is sized by the custom property that initBattleSplit se
   const bodies = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, selector]) => selector.trim() === "#article-pane").map(([, , body]) => body);
   assert.ok(bodies.some((body) => body.includes(`var(${property},`)));
 });
+
+test("the infobox floats only inside the container query of the article pane", () => {
+  const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const start = css.indexOf("@container (min-width: 760px)");
+  assert.ok(start >= 0);
+  const open = css.indexOf("{", start);
+  let depth = 0;
+  let end = open;
+  for (; end < css.length; end += 1) {
+    if (css[end] === "{") depth += 1;
+    if (css[end] === "}" && --depth === 0) break;
+  }
+  const inside = css.slice(open, end + 1);
+  const outside = css.slice(0, start) + css.slice(end + 1);
+  assert.match(inside, /float\s*:\s*right/);
+  assert.doesNotMatch(outside, /\.article-body[^{}]*\{[^{}]*float\s*:/);
+  assert.match(outside, /#article-pane\s*\{[^{}]*container-type\s*:\s*inline-size/);
+  assert.doesNotMatch(inside, /container-type/);
+});

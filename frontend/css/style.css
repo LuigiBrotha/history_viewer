@@ -1303,6 +1303,7 @@ html, body {
   overflow: hidden;
   background: white;
   font-size: 16px;
+  container-type: inline-size;
 }
 
 #article-split.pane-hidden #article-pane,
@@ -1398,7 +1399,7 @@ html, body {
   color: #555;
 }
 
-/* The infobox sits right inside the column; the text flows around it. */
+/* The infobox is full width above the text; only a wide column floats it beside the text. */
 .article-body table {
   max-width: 100%;
   border-collapse: collapse;
@@ -1406,11 +1407,17 @@ html, body {
 }
 
 .article-body table.article-infobox {
-  float: right;
-  clear: right;
-  width: 22em;
-  max-width: 50%;
-  margin: 0 0 12px 16px;
+  width: 100%;
+  margin: 0 0 12px;
+}
+
+@container (min-width: 760px) {
+  .article-body table.article-infobox {
+    float: right;
+    clear: right;
+    width: 300px;
+    margin: 0 0 12px 16px;
+  }
 }
 
 .article-body th,
