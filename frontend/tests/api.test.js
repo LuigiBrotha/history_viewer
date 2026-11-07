@@ -344,3 +344,18 @@ test("fetchPlaces throws on a status other than 200", async () => {
   const { fetchPlaces } = await import("../js/api.js");
   await assert.rejects(fetchPlaces("nar", {}), /503/);
 });
+
+
+test("fetchArticle asks for the language when it is not English", async () => {
+  const { fetchArticle } = await import("../js/api.js");
+  const calls = [];
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  await fetchArticle("Slag om K", "nl");
+  await fetchArticle("Kursk", "en");
+  await fetchArticle("Kursk");
+  assert.deepEqual(calls, ["api/battles/articles/Slag%20om%20K?lang=nl", "api/battles/articles/Kursk",
+    "api/battles/articles/Kursk"]);
+});

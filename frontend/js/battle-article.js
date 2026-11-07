@@ -4,7 +4,12 @@ import { winnerText } from "./battle-model.js";
 const LOADING = "Laden…";
 const NO_ARTICLE = "Geen artikel beschikbaar voor deze veldslag.";
 const LOAD_FAILED = "Artikel kon niet worden geladen.";
-const SOURCE = "Bron: Engelse Wikipedia, CC BY-SA 4.0";
+const SOURCES = {
+  en: "Bron: Engelse Wikipedia, CC BY-SA 4.0",
+  nl: "Bron: Nederlandse Wikipedia, CC BY-SA 4.0",
+  de: "Bron: Duitse Wikipedia, CC BY-SA 4.0",
+  pl: "Bron: Poolse Wikipedia, CC BY-SA 4.0",
+};
 
 function element(tag, className, content) {
   const node = document.createElement(tag);
@@ -32,8 +37,11 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   close.setAttribute("type", "button");
   close.setAttribute("aria-label", "Sluit artikel");
   close.addEventListener("click", () => onClose?.());
+  const langLabel = element("span", "article-lang");
+  langLabel.hidden = true;
   const head = element("div", "article-head");
-  head.append(title, close);
+  head.append(langLabel, title, close);
+  let sourceText = SOURCES.en;
 
   const winner = element("p", "article-winner");
   winner.hidden = true;
@@ -62,7 +70,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   }
 
   function showSource(url) {
-    source.replaceChildren(`${SOURCE} · `, newTabLink(url, "Origineel artikel"));
+    source.replaceChildren(`${sourceText} · `, newTabLink(url, "Origineel artikel"));
     source.hidden = false;
   }
 
@@ -80,7 +88,11 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   return {
     async show(battle) {
       const ticket = ++latest;
+      const lang = battle.lang ?? "en";
       title.textContent = battle.title;
+      langLabel.textContent = lang.toUpperCase();
+      langLabel.hidden = lang === "en";
+      sourceText = SOURCES[lang] ?? SOURCES.en;
       winner.textContent = winnerText(battle.winner);
       winner.hidden = false;
       body.replaceChildren();
@@ -88,7 +100,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
       setStatus(LOADING);
       let article;
       try {
-        article = await load(battle.title);
+        article = await load(battle.title, lang);
       } catch {
         if (ticket !== latest) return;
         setStatus(LOAD_FAILED);

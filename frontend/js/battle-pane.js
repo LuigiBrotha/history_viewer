@@ -84,6 +84,9 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
     const name = element("button", "battle-row-title", battle.title);
     name.setAttribute("type", "button");
     const meta = element("div", "battle-row-meta");
+    if (battle.lang && battle.lang !== "en") {
+      meta.appendChild(element("span", "battle-lang", battle.lang.toUpperCase()));
+    }
     meta.append(element("span", "battle-row-dates", battle.date_text), element("span", "battle-row-duration", durationText(battle)));
     if (battle.own) {
       meta.appendChild(element("span", "battle-ownpos", "eigen positie"));

@@ -383,3 +383,9 @@ test("a battle that gets an Eigen positie drops out of the filtered list", () =>
   assert.deepEqual(shown(), ["Lost early"]);
   assert.equal(label.textContent, "Alleen zonder positie (1)");
 });
+
+test("a battle from another Wikipedia shows its language next to the title", () => {
+  const { rows } = setup("date", [battle({ title: "Slag om K", lang: "nl" }), battle({ title: "Kursk" })]);
+  const labels = rows().map((r) => r.byClass("battle-lang").map((l) => l.textContent));
+  assert.deepEqual(labels.sort(), [[], ["NL"]].sort());
+});

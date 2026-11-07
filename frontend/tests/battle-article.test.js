@@ -125,3 +125,15 @@ test("the Winnaar line names the winning Kamp and is emptied by clear", async ()
   pane.clear();
   assert.equal(line().hidden, true);
 });
+
+test("an article in another language is loaded in that language and labelled", async () => {
+  const asked = [];
+  const { rootEl, pane } = setup(async (title, lang) => {
+    asked.push([title, lang]);
+    return null;
+  });
+  await pane.show({ title: "Slag om K", url: "https://nl.wikipedia.org/wiki/Slag_om_K", lang: "nl" });
+  await pane.show({ title: "Battle of Kursk", url: "https://en.wikipedia.org/wiki/Battle_of_Kursk" });
+  assert.deepEqual(asked, [["Slag om K", "nl"], ["Battle of Kursk", "en"]]);
+  assert.equal(rootEl.byClass("article-lang")[0].hidden, true);
+});

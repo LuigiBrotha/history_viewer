@@ -161,9 +161,10 @@ export async function clearBattlePosition(title) {
   }
 }
 
-// The sanitised article of a battle, or null when there is none.
-export async function fetchArticle(title) {
-  const response = await fetch(`api/battles/articles/${encodeURIComponent(title)}`, {
+// The sanitised article of a battle in its language, or null when there is none.
+export async function fetchArticle(title, lang = "en") {
+  const query = lang === "en" ? "" : `?lang=${encodeURIComponent(lang)}`;
+  const response = await fetch(`api/battles/articles/${encodeURIComponent(title)}${query}`, {
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (response.status === 404) return null;
