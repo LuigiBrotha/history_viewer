@@ -88,10 +88,10 @@ def strip_comments(text):
     return COMMENT.sub("", text)
 
 
-def find_infobox(text):
+def find_infobox(text, pattern=INFOBOX):
     """Fields (lower-case name to raw value) of the first conflict infobox, or None."""
     text = strip_comments(text)
-    match = INFOBOX.search(text)
+    match = pattern.search(text)
     if match is None:
         return None
     fields = {}

@@ -191,3 +191,8 @@ def winner(fields):
         if found:
             return found
     return []
+
+
+def other_winner(lang, fields):
+    """The Winnaar from an infobox in another language; filled in per language below."""
+    return []
