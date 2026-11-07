@@ -41,7 +41,7 @@ Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum
 _Avoid_: Succes, slachtoffer
 
 **Veldslag**:
-Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen Engels Wikipedia-artikel, met een begin- en einddatum en soms een positie.
+Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen artikel op de Engelse, Nederlandse, Duitse of Poolse Wikipedia, met een begin- en einddatum en soms een positie. Artikelen in meerdere talen over dezelfde slag (verbonden door taallinks) vormen één Veldslag.
 _Avoid_: Operatie, gevecht
 
 **Artikel**:
