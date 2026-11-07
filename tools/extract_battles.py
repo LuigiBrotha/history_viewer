@@ -314,6 +314,8 @@ def short_place(place):
 
 def extract_battle(title, text):
     """(record, None) for a World War II battle, otherwise (None, reason)."""
+    from tools import battle_winner  # battle_winner reuses this module's text helpers
+
     fields = find_infobox(text)
     if fields is None:
         return None, "no infobox"
@@ -340,6 +342,7 @@ def extract_battle(title, text):
         "lng": lng,
         "part_of": part_of or None,
         "place": short_place(place) if place else None,
+        "winner": battle_winner.winner(fields),
     }, None
 
 

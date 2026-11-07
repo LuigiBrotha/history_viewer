@@ -69,7 +69,7 @@ own branch; this part only stores the data.
 | Kampen | `as`, `westers`, `sovjet`, `overig`. Same split as the atlas legend, plus a fourth for everything outside the three (China, partisans, …). |
 | Country → Kamp | A fixed table in the tool, keyed by the country names the flag templates and links use (`Nazi Germany`, `Empire of Japan`, `Soviet Union`, `United Kingdom`, …). Axis: Germany, Italy, Japan and their allies (Hungary, Romania, Bulgaria, Slovakia, Croatia, Finland, Thailand, Vichy France, Manchukuo). Western: UK, USA, France, the Commonwealth dominions, the governments in exile, Brazil. Soviet: USSR, Mongolia. Anything else known: `overig`. Not in the table: unknown. |
 | Side of a column | The Kamp of the first country in `combatant1` / `combatant2` that is in the table. |
-| Reading `result` | Strategic before tactical: if the text names a strategic result, only that part counts. "`<X>` victory" where X is a demonym or `Allied`/`Axis`/`Soviet` → that Kamp. "`<X>` defeat" or "`<X>` … failure" → the other column's Kamp. Inconclusive / stalemate / indecisive / draw / ceasefire → both columns' Kampen. Anything else (e.g. "See aftermath", empty) → `[]`. |
+| Reading `result` | Strategic before tactical: if the text names a strategic result, only that part counts. "`<X>` victory" where X is a demonym or `Soviet` → that Kamp. `Allied` → the Kamp of the column that is not `as` (Battle of Berlin: `sovjet`), `westers` if neither or both are; `Axis` → `as`. "`<X>` defeat" or "`<X>` … failure" → the other column's Kamp. Inconclusive / stalemate / indecisive / draw / ceasefire → both columns' Kampen. Anything else (e.g. "See aftermath", empty) → `[]`. |
 
 ## Part 4: Fill the Artikelen for the known Veldslagen only
 

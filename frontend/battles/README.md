@@ -11,6 +11,10 @@ Dates and coordinates are parsed automatically from the infobox and `{{coord}}` 
 article, so they can be wrong or missing. An article whose date is only a year or is not
 understood is left out; a battle without a coordinate is only listed, not drawn.
 
+`winner` is the Kamp that won, read from the infobox `result` (strategic before tactical):
+a list of `as`, `westers`, `sovjet` or `overig`. `[]` means unknown, two Kampen an undecided
+battle (one per side).
+
 ## Rebuilding
 
 Download `enwiki-latest-pages-articles.xml.bz2` from <https://dumps.wikimedia.org/enwiki/latest/>

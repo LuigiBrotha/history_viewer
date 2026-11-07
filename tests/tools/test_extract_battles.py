@@ -174,6 +174,7 @@ def test_extract_battle_prints_and_asserts_every_fixture_article(pages, capsys):
     assert (kursk["lat"], kursk["lng"]) == (51.7, 36.1)
     assert kursk["part_of"] == "the Eastern Front of World War II"
     assert kursk["place"] == "Kursk, Kursk Oblast, Russian SFSR, Soviet Union"
+    assert kursk["winner"] == ["sovjet"]
 
     atlantic = battle_of("Battle of the Atlantic")
     assert (atlantic["start"], atlantic["end"]) == ("1939-09-03", "1945-05-08")
@@ -327,7 +328,7 @@ def test_run_writes_sorted_compact_json_and_counts_skips(tmp_path, capsys):
         ("Battle A", "1943-06-05"),
         ("Battle B", "1943-06-05"),
     ]
-    assert set(battles[0]) == {"title", "url", "start", "end", "precision", "date_text", "lat", "lng", "part_of", "place"}
+    assert set(battles[0]) == {"title", "url", "start", "end", "precision", "date_text", "lat", "lng", "part_of", "place", "winner"}
     assert (battles[0]["lat"], battles[0]["lng"]) == (10, 20)
     report = capsys.readouterr().out
     assert "3 battles written" in report
