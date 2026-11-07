@@ -139,6 +139,36 @@ def _position(tokens):
         return None
 
 
+# The first place marked on a German location map, {{Positionskarte~ |Land |lat=… |long=…}}.
+_POSITION_MAP = re.compile(
+    r"\{\{\s*Positionskarte[~+]?\s*\|[^{}]*?\blat\s*=\s*([^|}]+)\|[^{}]*?\blong\s*=\s*([^|}]+)", re.IGNORECASE
+)
+
+
+def _slash_value(text, positive, negative):
+    """Degrees from "52/30/0/N", "32/20/00" or "-33.9"; None when it is not one."""
+    parts = [p.strip() for p in text.strip().split("/") if p.strip()]
+    if not parts:
+        return None
+    sign = 1
+    if parts[-1].upper() in (positive, negative):
+        sign = -1 if parts.pop().upper() == negative else 1
+    try:
+        numbers = [float(p) for p in parts]
+    except ValueError:
+        return None
+    if not 1 <= len(numbers) <= 3 or any(n >= 60 or n < 0 for n in numbers[1:]):
+        return None
+    head = numbers[0]
+    value = abs(head) + sum(n / 60**i for i, n in enumerate(numbers[1:], 1))
+    return sign * (-value if head < 0 else value)
+
+
+def _slash_pair(lat_text, lng_text):
+    lat, lng = _slash_value(lat_text, "N", "S"), _slash_value(lng_text, "E", "W")
+    return None if lat is None or lng is None else checked(lat, lng)
+
+
 def _german(body):
     named = dict(part.split("=", 1) for part in body.split("|") if "=" in part)
     ns, ew = named.get("NS", "").strip(), named.get("EW", "").strip()
@@ -162,6 +192,12 @@ def other_coordinates(lang, text):
     elif lang == "de":
         match = _COORDINATE_DE.search(text)
         position = match and _german(match.group(1))
+        if not position:
+            fields = find_infobox(text, LANGUAGES["de"].infobox) or {}
+            position = _slash_pair(fields.get("breitengrad", ""), fields.get("längengrad", ""))
+        if not position:
+            marker = _POSITION_MAP.search(text)
+            position = marker and _slash_pair(marker.group(1), marker.group(2))
     elif lang == "pl":
         fields = find_infobox(text, LANGUAGES["pl"].infobox) or {}
         raw = fields.get(LANGUAGES["pl"].coord_field, "")
