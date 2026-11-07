@@ -173,7 +173,7 @@ export async function fetchArticle(title) {
   return response.json();
 }
 
-// Places come from Photon through the backend. The caller's signal cancels a stale lookup.
+// Places come from Nominatim through the backend. The caller's signal cancels a stale lookup.
 export async function fetchPlaces(query, { signal } = {}) {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   const response = await fetch(`api/places?q=${encodeURIComponent(query)}`, {

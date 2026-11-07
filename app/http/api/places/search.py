@@ -6,10 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
-from app.services.places.photon import PhotonClient, PhotonError
+from app.services.places.nominatim import NominatimClient, PlaceSearchError
 from app.services.storage.place_search_repository import PlaceSearchRepository
 
 MAX_QUERY_LENGTH = 200
+CACHE_PREFIX = "nominatim:"
 
 
 class PlaceOut(BaseModel):
@@ -24,9 +25,9 @@ class RequestHandler:
     router = APIRouter(tags=["api"], route_class=WireupRoute)
 
     def __init__(self, session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()],
-                 photon: Annotated[PhotonClient, Inject()]):
+                 places: Annotated[NominatimClient, Inject()]):
         self.session_factory = session_factory
-        self.photon = photon
+        self.places = places
 
     @router.get("/api/places", name="places_search")
     async def search_places(self, q: str = "") -> list[PlaceOut]:
@@ -35,11 +36,13 @@ class RequestHandler:
             raise HTTPException(status_code=422, detail="Geef een zoekterm van 1 tot 200 tekens.")
         async with self.session_factory() as session:
             repository = PlaceSearchRepository(session)
-            results = await repository.get(query)
+            # Keyed by source, so answers cached from an earlier source are not reused.
+            key = CACHE_PREFIX + query
+            results = await repository.get(key)
             if results is None:
                 try:
-                    results = await self.photon.search(query)
-                except PhotonError:
+                    results = await self.places.search(query)
+                except PlaceSearchError:
                     raise HTTPException(status_code=503, detail="Plaatsen zoeken mislukt.")
-                await repository.put(query, results)
+                await repository.put(key, results)
         return [PlaceOut(**result) for result in results]

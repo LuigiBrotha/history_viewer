@@ -17,7 +17,7 @@ function deferred() {
   return d;
 }
 
-function setup({ sources, answer = async () => [NARVIK] } = {}) {
+function setup({ sources, answer = async () => [NARVIK], delayMs = 400 } = {}) {
   mock.timers.enable(["setTimeout"]);
   const doc = new Element("document");
   doc.createElement = (tag) => new Element(tag);
@@ -53,6 +53,7 @@ function setup({ sources, answer = async () => [NARVIK] } = {}) {
     return answer(query, options);
   };
   const search = createMapSearch({
+    ...(delayMs === null ? {} : { delayMs }),
     map,
     sources: sources ?? [
       { group: "Boten", search: (q) => (q.toLowerCase().startsWith("n") ? [{ label: "U-1", sub: "Nar", item: { slug: "u1" } }] : []) },
@@ -319,3 +320,21 @@ for (const how of ["choose", "Escape"]) {
     assert.equal(t.calls[0].options.signal.aborted, true);
   });
 }
+
+
+test("places are looked up after a pause of 1.5 s by default, as Nominatim allows no search-as-you-type", async () => {
+  const t = setup({ delayMs: null });
+  t.type("nar");
+  mock.timers.tick(1499);
+  assert.equal(t.calls.length, 0);
+  mock.timers.tick(1);
+  assert.equal(t.calls.length, 1);
+});
+
+test("found places credit OpenStreetMap", async () => {
+  const t = setup();
+  t.type("nar");
+  mock.timers.tick(400);
+  await t.flush();
+  assert.match(text(t), /© OpenStreetMap-bijdragers/);
+});

@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.http.api.places.search import RequestHandler
-from app.services.places.photon import PhotonError
+from app.services.places.nominatim import PlaceSearchError
 from app.services.storage.database import create_engine, create_session_factory, init_models
 
 RESULT = [{"name": "Narvik", "sub": "Nordland, Norge", "lat": 68.0, "lng": 17.0, "bbox": None}]
@@ -57,8 +57,8 @@ async def test_blank_and_long_query_422(tmp_path, q):
     await engine.dispose()
 
 
-async def test_photon_failure_503_not_cached(tmp_path):
-    client = FakeClient(error=PhotonError("boom"))
+async def test_search_failure_503_not_cached(tmp_path):
+    client = FakeClient(error=PlaceSearchError("boom"))
     engine, handler = await make_handler(tmp_path, client)
     with pytest.raises(HTTPException) as info:
         await handler.search_places("Narvik")
@@ -67,4 +67,17 @@ async def test_photon_failure_503_not_cached(tmp_path):
     with pytest.raises(HTTPException):
         await handler.search_places("Narvik")
     assert len(client.calls) == 2
+    await engine.dispose()
+
+
+async def test_an_answer_cached_from_photon_is_not_used(tmp_path):
+    from app.services.storage.place_search_repository import PlaceSearchRepository
+
+    client = FakeClient()
+    engine, handler = await make_handler(tmp_path, client)
+    async with handler.session_factory() as session:
+        await PlaceSearchRepository(session).put("narvik", [])
+    result = await handler.search_places("Narvik")
+    assert client.calls == ["narvik"]
+    assert [r.model_dump() for r in result] == RESULT
     await engine.dispose()

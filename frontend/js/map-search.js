@@ -2,8 +2,13 @@
 const MIN_PLACE_CHARS = 3;
 const PLACE_ZOOM = 10;
 const PLACES = "Plaatsen";
+// Nominatim's data is OpenStreetMap's, whose licence asks for this credit.
+const PLACES_CREDIT = "Gegevens © OpenStreetMap-bijdragers";
 
-export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = document, win = window, delayMs = 400, markerMs = 30000 }) {
+// Nominatim's usage policy allows no search-as-you-type, so places wait for a real pause.
+const PLACES_DELAY_MS = 1500;
+
+export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = document, win = window, delayMs = PLACES_DELAY_MS, markerMs = 30000 }) {
   let appGroups = [];
   let places = { state: "idle", items: [] };
   let rows = [];
@@ -73,7 +78,7 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     for (const { group, results } of appGroups) addGroup(group, results);
     const placeEntries = places.items.map((place) => ({ label: place.name, sub: place.sub, item: place }));
     const note = places.state === "loading" ? "Plaatsen zoeken…" : places.state === "error" ? "Plaatsen zoeken mislukt." : null;
-    addGroup(PLACES, placeEntries, note);
+    addGroup(PLACES, placeEntries, note ?? (placeEntries.length ? PLACES_CREDIT : null));
     if (!nodes.length && places.state !== "loading") nodes.push(el("div", "map-search-note", "Niets gevonden."));
     rows.forEach((row, i) => row.node.classList.toggle("is-active", i === active));
     list.replaceChildren(...nodes);
