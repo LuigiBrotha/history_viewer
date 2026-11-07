@@ -12,5 +12,6 @@ def normalize_title(raw: str) -> str:
     return title[:1].upper() + title[1:]
 
 
-def wiki_url(title: str) -> str:
-    return WIKI_URL + quote(title.replace(" ", "_"), safe="_(),:'!*;@$&=+~-./")
+def wiki_url(title: str, lang: str = "en") -> str:
+    base = WIKI_URL if lang == "en" else f"https://{lang}.wikipedia.org/wiki/"
+    return base + quote(title.replace(" ", "_"), safe="_(),:'!*;@$&=+~-./")

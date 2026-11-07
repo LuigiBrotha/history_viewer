@@ -10,7 +10,7 @@ import mwparserfromhell
 from mwparserfromhell.nodes import ExternalLink, Heading, HTMLEntity, Tag, Template, Text, Wikilink
 
 from app.services.wiki.dates import render_date
-from app.services.wiki.infobox import render_infobox
+from app.services.wiki.infobox import render_infobox, render_plain_infobox
 from app.services.wiki.sanitize import sanitize
 from app.services.wiki.titles import normalize_title, wiki_url
 
@@ -18,9 +18,19 @@ LOG = logging.getLogger(__name__)
 
 IMAGE_WIDTH = 330
 INFOBOXES = {"infobox military conflict", "infobox military operation", "infobox battle"}
+# The conflict infoboxes of the other languages; they are shown as a plain table of their fields.
+FOREIGN_INFOBOXES = {
+    "infobox militair conflict", "infobox veldslag", "infobox militärischer konflikt", "wojna infobox",
+    "bitwa infobox", "konflikt zbrojny infobox",
+}
+FILE_NAMESPACES = {"file", "image", "bestand", "afbeelding", "datei", "bild", "plik", "grafika"}
+CATEGORY_NAMESPACES = {"category", "categorie", "kategorie", "kategoria"}
 DROPPED_SECTIONS = {
     "references", "notes", "citations", "bibliography", "sources", "further reading", "external links", "see also",
     "footnotes",
+    "bronnen", "noten", "referenties", "literatuur", "externe links", "zie ook", "voetnoten", "bronvermelding",
+    "einzelnachweise", "literatur", "weblinks", "anmerkungen", "siehe auch", "quellen",
+    "przypisy", "bibliografia", "linki zewnętrzne", "zobacz też", "uwagi",
 }
 DATE_TEMPLATES = {"start date", "end date", "start date and age", "end date and age"}
 FIRST_ARGUMENT = {"nowrap", "small", "flag", "flagcountry", "navy", "army", "air force", "center"}
@@ -69,7 +79,8 @@ def plain_text(rendered: str) -> str:
 
 
 class _Renderer:
-    def __init__(self, battle_index: Mapping[str, str], image_src: Callable[[str, int], str]):
+    def __init__(self, battle_index: Mapping[str, str], image_src: Callable[[str, int], str], lang: str = "en"):
+        self.lang = lang
         self.battle_index = battle_index
         self.image_src = image_src
 
@@ -103,16 +114,16 @@ class _Renderer:
         else:
             prefix, colon, rest = target.partition(":")
             namespace = prefix.strip().lower()
-            if colon and namespace in ("file", "image"):
+            if colon and namespace in FILE_NAMESPACES:
                 return self.figure(rest.strip(), node.text.nodes if node.text is not None else [])
-            if colon and (namespace == "category" or INTERLANGUAGE.fullmatch(prefix.strip())):
+            if colon and (namespace in CATEGORY_NAMESPACES or INTERLANGUAGE.fullmatch(prefix.strip())):
                 return ""
         label = self.inline(node.text.nodes) if node.text is not None else escape(target)
         title = normalize_title(target)
         if not title:
             return label
         fragment = target.partition("#")[2].strip()
-        href = wiki_url(title)
+        href = wiki_url(title, self.lang)
         if fragment:
             href += "#" + quote(fragment.replace(" ", "_"))
         battle = self.battle_index.get(title)
@@ -252,6 +263,8 @@ class _Renderer:
 
     def infobox(self, node: Template) -> str:
         fields = {str(param.name).strip().lower(): str(param.value).strip() for param in node.params}
+        if template_name(node) in FOREIGN_INFOBOXES:
+            return render_plain_infobox(fields, self.inline_text)
         return render_infobox(fields, self.inline_text)
 
     def block(self, kind: str, payload) -> str:
@@ -289,14 +302,15 @@ def _list_tag(marker: str) -> str:
 
 
 def _is_infobox(node) -> bool:
-    return isinstance(node, Template) and template_name(node) in INFOBOXES
+    return isinstance(node, Template) and template_name(node) in INFOBOXES | FOREIGN_INFOBOXES
 
 
 def _is_standalone(node) -> bool:
     if isinstance(node, Tag):
         return str(node.tag).strip().lower() in ("table", "blockquote")
     if isinstance(node, Wikilink):
-        return re.match(r"\s*(?:file|image)\s*:", str(node.title), re.IGNORECASE) is not None
+        prefix = str(node.title).partition(":")
+        return bool(prefix[1]) and prefix[0].strip().lower() in FILE_NAMESPACES
     return False
 
 
@@ -381,10 +395,10 @@ def _fallback(kind: str, payload) -> str:
 
 
 def render_article(
-    wikitext: str, *, battle_index: Mapping[str, str], image_src: Callable[[str, int], str]
+    wikitext: str, *, battle_index: Mapping[str, str], image_src: Callable[[str, int], str], lang: str = "en"
 ) -> str:
     """Sanitised HTML for an Artikel: its own infobox first, then the body without reference sections."""
-    renderer = _Renderer(battle_index, image_src)
+    renderer = _Renderer(battle_index, image_src, lang)
     nodes = list(mwparserfromhell.parse(wikitext).nodes)
     parts = []
     infobox = next((node for node in nodes if _is_infobox(node)), None)

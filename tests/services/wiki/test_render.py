@@ -301,3 +301,54 @@ def test_block_fallback_and_infobox_failure_are_logged(monkeypatch, caplog):
 
 def test_html_list_items_keep_their_text():
     assert "alpha" in render("<ul><li>alpha</li></ul>")
+
+
+OTHER = Path(__file__).resolve().parents[2] / "fixtures" / "wikipedia" / "other_language_pages.json"
+
+
+def test_links_in_a_foreign_article_go_to_that_wikipedia_and_battles_stay_in_the_app():
+    result = render_article(
+        "De [[Slag om Arnhem]] en [[Nederland]].",
+        battle_index={"Slag om Arnhem": "Battle of Arnhem"}, image_src=image_src, lang="nl",
+    )
+    assert 'href="https://nl.wikipedia.org/wiki/Nederland"' in result
+    assert 'data-battle="Battle of Arnhem"' in result
+
+
+def test_local_file_and_category_links_are_handled():
+    result = render_article(
+        "[[Bestand:Kaart.png|thumb|Een kaart]] tekst [[Categorie:Veldslag]]",
+        battle_index={}, image_src=image_src, lang="nl",
+    )
+    assert "Categorie" not in result
+    assert "/api/battles/images/" in result
+
+
+def test_a_foreign_infobox_is_a_plain_table_of_its_fields():
+    result = render_article(
+        "{{Infobox Militärischer Konflikt\n|KONFLIKT=Schlacht um Narvik\n|DATUM=9. April 1940\n|ORT=[[Narvik]]\n"
+        "|BILD=Narvik.png\n|NOTIZEN=\n}}\nText.",
+        battle_index={}, image_src=image_src, lang="de",
+    )
+    assert "<table" in result
+    assert "9. April 1940" in result
+    assert "Narvik" in result
+    assert "Notizen" not in result and "NOTIZEN" not in result  # an empty field is left out
+
+
+def test_foreign_reference_sections_are_dropped():
+    result = render_article(
+        "Tekst.\n== Przypisy ==\n<references/>\n== Bibliografia ==\nKsiążka.",
+        battle_index={}, image_src=image_src, lang="pl",
+    )
+    assert "Przypisy" not in result
+    assert "Książka" not in result
+
+
+def test_real_foreign_articles_render():
+    pages = json.loads(OTHER.read_text(encoding="utf-8"))
+    for lang, articles in pages.items():
+        for title, wikitext in articles.items():
+            result = render_article(wikitext, battle_index={}, image_src=image_src, lang=lang)
+            assert "<table" in result, title
+            assert len(result) > 1000, title

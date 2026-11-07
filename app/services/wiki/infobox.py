@@ -63,3 +63,32 @@ def render_infobox(fields: Mapping[str, str], render_inline: Callable[[str], str
         else:
             rows.append(f'<tr><th colspan="2">{label}</th></tr><tr><td>{cells[0]}</td><td>{cells[1]}</td></tr>')
     return f'<table class="article-infobox">{"".join(rows)}</table>'
+
+
+# Fields of another language's infobox that are layout, not content.
+PLAIN_SKIPPED = {
+    "afbeelding", "onderschrift", "bild", "bildbreite", "beschreibung", "grafika", "opis grafiki", "image",
+    "caption", "kod mapy", "wariant mapy", "mapa", "commons", "wikicytaty", "portaal", "portaal2", "epoka",
+    "breedte", "image_size", "imagesize", "width", "alt",
+}
+PLAIN_IMAGES = ("afbeelding", "bild", "grafika", "image")
+
+
+def render_plain_infobox(fields: Mapping[str, str], render_inline: Callable[[str], str]) -> str:
+    """Another language's infobox: its image, then one row per non-empty field, named as in the source."""
+    rows = []
+    image = next((COMMENT.sub("", fields[name]).strip() for name in PLAIN_IMAGES if fields.get(name, "").strip()), "")
+    if image:
+        link = image if image.startswith("[[") else f"[[File:{FILE_PREFIX.sub('', image)}|thumb]]"
+        figure = render_inline(link)
+        if not _is_empty(figure):
+            rows.append(f'<tr><td colspan="2">{figure}</td></tr>')
+    for name, value in fields.items():
+        if name in PLAIN_SKIPPED or not value.strip():
+            continue
+        cell = render_inline(value).strip()
+        if _is_empty(cell):
+            continue
+        label = name.replace("_", " ")
+        rows.append(f"<tr><th>{label[:1].upper() + label[1:].lower()}</th><td>{cell}</td></tr>")
+    return f'<table class="article-infobox">{"".join(rows)}</table>'

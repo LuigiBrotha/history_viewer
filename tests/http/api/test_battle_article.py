@@ -69,3 +69,27 @@ async def test_second_request_is_served_from_cache(handler, monkeypatch):
     second = await handler.handle_request("Operation Drumbeat")
     assert first == second
     assert len(calls) == 1
+
+
+async def test_a_foreign_article_is_found_by_language(tmp_path):
+    from app.services.storage.models import ForeignBattleArticle
+
+    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/foreign.db")
+    await init_models(engine)
+    factory = create_session_factory(engine)
+    async with factory() as session:
+        session.add(ForeignBattleArticle(lang="nl", title="Slag om K", battle="Slag om K",
+                                         wikitext="De '''Slag om K''' bij [[Kornwerderzand]].",
+                                         dump_name="d", extracted_at=datetime.now(timezone.utc)))
+        session.add(BattleArticle(title="Slag om K", wikitext="English text.", dump_name="d",
+                                  extracted_at=datetime.now(timezone.utc)))
+        await session.commit()
+    handler = RequestHandler(ArticleService(factory))
+    result = await handler.handle_request("Slag om K", lang="nl")
+    assert result.url == "https://nl.wikipedia.org/wiki/Slag_om_K"
+    assert "https://nl.wikipedia.org/wiki/Kornwerderzand" in result.html
+    english = await handler.handle_request("Slag om K")
+    assert "English text" in english.html
+    with pytest.raises(HTTPException):
+        await handler.handle_request("Slag om K", lang="xx")
+    await engine.dispose()
