@@ -88,6 +88,11 @@ def test_no_infobox_is_skipped():
         ("nl", "{{Infobox militair conflict\n| lat_deg = 47\n| lat_min = 0\n| lat_dir = S\n| lon_deg = 8\n"
                "| lon_dir = W\n}}", (-47.0, -8.0)),
         ("nl", "{{Infobox militair conflict\n| lat_deg = \n| lon_deg = \n}}", (None, None)),
+        ("de", "{{Positionskarte~ |Irak |lat=32/20/00 |long=36/12/00 |label=Rutba}}", (32.33333, 36.2)),
+        ("de", "{{Positionskarte~ |Polen |lat=52/30/0/N |long=13/30/0/E}}", (52.5, 13.5)),
+        ("de", "{{Positionskarte~ |Welt |lat=-33.9 |long=151.2}}", (-33.9, 151.2)),
+        ("de", "{{Infobox Militärischer Konflikt\n|BREITENGRAD=52/30/0/N\n|LÄNGENGRAD=13/22/0/E\n}}", (52.5, 13.36667)),
+        ("de", "{{Infobox Militärischer Konflikt\n|BREITENGRAD=\n|LÄNGENGRAD=\n}}", (None, None)),
     ],
 )
 def test_other_coordinates(lang, text, expected):
