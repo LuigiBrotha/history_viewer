@@ -149,7 +149,7 @@ def _expand(body):
     return ""
 
 
-def _clauses(result):
+def _clauses(result, strategic=("strategic",), tactical=("tactical",)):
     text = COMMENT.sub("", REF.sub("", result or ""))
     text = BREAK.sub(" ; ", text).replace("\n", " ; ")
     text = LINK.sub(r"\1", text)
@@ -159,8 +159,8 @@ def _clauses(result):
         text = INNERMOST_TEMPLATE.sub(lambda m: _expand(m.group(1)), text)
     text = tidy(re.sub(r"\{\{.*", "", text, flags=re.DOTALL)).lower()
     clauses = [c.strip() for c in _CLAUSE.split(text) if c.strip()]
-    strategic = [c for c in clauses if "strategic" in c and "tactical" not in c]
-    return strategic or clauses
+    chosen = [c for c in clauses if any(w in c for w in strategic) and not any(w in c for w in tactical)]
+    return chosen or clauses
 
 
 def _clause_winner(clause, columns):
@@ -193,6 +193,189 @@ def winner(fields):
     return []
 
 
+# ---- Other languages -------------------------------------------------------------------
+# Country codes of the flag templates (German {{DEU-1935}}, Polish {{państwo|DEU|1935}}).
+ISO_KAMP = {
+    **dict.fromkeys(["DEU", "ITA", "JPN", "HUN", "ROU", "BGR", "FIN", "SVK", "HRV", "THA", "MAN", "ALB"], "as"),
+    **dict.fromkeys(["GBR", "USA", "FRA", "CAN", "AUS", "NZL", "ZAF", "IND", "POL", "NLD", "BEL", "NOR",
+                     "LUX", "GRC", "YUG", "CSK", "CZE", "BRA", "PHL"], "westers"),
+    **dict.fromkeys(["SUN", "SOV", "URS", "MNG"], "sovjet"),
+    **dict.fromkeys(["CHN", "ETH", "MEX", "IRN", "IRQ", "DNK", "ESP", "TUR"], "overig"),
+}
+
+# Country names as the other Wikipedias link or write them.
+LOCAL_COUNTRIES = {
+    "nl": {
+        **dict.fromkeys(["nazi-duitsland", "duitsland", "duitse rijk", "derde rijk", "wehrmacht", "koninkrijk italië",
+                         "italië", "japans keizerrijk", "japan", "hongarije", "roemenië", "finland", "bulgarije"], "as"),
+        **dict.fromkeys(["nederland", "verenigd koninkrijk", "verenigde staten", "frankrijk", "polen", "canada",
+                         "australië", "nieuw-zeeland", "belgië", "noorwegen", "griekenland", "joegoslavië",
+                         "brits-indië", "zuid-afrika", "tsjecho-slowakije", "vrij frankrijk"], "westers"),
+        **dict.fromkeys(["sovjet-unie", "rode leger", "mongolië"], "sovjet"),
+        **dict.fromkeys(["republiek china", "china"], "overig"),
+    },
+    "de": {
+        **dict.fromkeys(["deutsches reich", "deutschland", "wehrmacht", "königreich italien", "italien",
+                         "japanisches kaiserreich", "japan", "ungarn", "rumänien", "finnland", "bulgarien"], "as"),
+        **dict.fromkeys(["vereinigtes königreich", "vereinigte staaten", "frankreich", "polen", "kanada",
+                         "australien", "neuseeland", "niederlande", "belgien", "norwegen", "griechenland",
+                         "jugoslawien", "britisch-indien", "südafrika", "tschechoslowakei"], "westers"),
+        **dict.fromkeys(["sowjetunion", "rote armee", "mongolei"], "sovjet"),
+        **dict.fromkeys(["republik china", "china"], "overig"),
+    },
+    "pl": {
+        **dict.fromkeys(["iii rzesza", "niemcy", "wehrmacht", "włochy", "królestwo włoch", "japonia",
+                         "cesarstwo japonii", "węgry", "rumunia", "finlandia", "bułgaria", "słowacja"], "as"),
+        **dict.fromkeys(["2rp", "ii rzeczpospolita", "polska", "wielka brytania", "usa", "stany zjednoczone",
+                         "francja", "kanada", "australia", "nowa zelandia", "holandia", "belgia", "norwegia",
+                         "grecja", "jugosławia", "czechosłowacja", "polskie siły zbrojne na zachodzie"], "westers"),
+        **dict.fromkeys(["zsrr", "związek radziecki", "armia czerwona", "mongolia"], "sovjet"),
+        **dict.fromkeys(["chiny", "republika chińska"], "overig"),
+    },
+}
+
+# The words for a side in a result, with "allied" for the Allies and "axis" for the Axis.
+LOCAL_ACTORS = {
+    "nl": {
+        **dict.fromkeys(["duitse", "duitsers", "nazi-duitsland", "duitsland", "italiaanse", "japanse", "hongaarse",
+                         "roemeense", "finse", "bulgaarse", "asmogendheden"], "as"),
+        **dict.fromkeys(["nederlandse", "britse", "amerikaanse", "franse", "poolse", "canadese", "australische",
+                         "belgische", "noorse", "griekse", "joegoslavische", "nieuw-zeelandse", "zuid-afrikaanse",
+                         "indiase", "britten", "amerikanen"], "westers"),
+        **dict.fromkeys(["sovjet", "sovjet-", "russische", "rode leger", "sovjets"], "sovjet"),
+        **dict.fromkeys(["chinese", "partizanen"], "overig"),
+        **dict.fromkeys(["geallieerde", "geallieerden"], "allied"),
+        **dict.fromkeys(["as"], "axis"),
+    },
+    "de": {
+        **dict.fromkeys(["deutscher", "deutsche", "deutschen", "wehrmacht", "italienischer", "japanischer",
+                         "japaner", "ungarischer", "rumänischer", "finnischer", "finnen"], "as"),
+        **dict.fromkeys(["britischer", "briten", "amerikanischer", "us-amerikanischer", "amerikaner",
+                         "französischer", "franzosen", "polnischer", "polen", "kanadischer", "australischer",
+                         "norwegischer", "niederländischer", "griechischer", "jugoslawischer"], "westers"),
+        **dict.fromkeys(["sowjetischer", "sowjetische", "sowjetischen", "roten armee", "rote armee", "sowjets",
+                         "russischer"], "sovjet"),
+        **dict.fromkeys(["chinesischer", "chinesen", "partisanen"], "overig"),
+        **dict.fromkeys(["alliierten", "alliierter", "alliierte"], "allied"),
+        **dict.fromkeys(["achsenmächte", "achse"], "axis"),
+    },
+    "pl": {
+        **dict.fromkeys(["niemców", "niemiec", "niemieckie", "niemcy", "iii rzeszy", "wehrmachtu", "japończyków",
+                         "japonii", "japońskie", "włochów", "włoskie", "finów", "fińskie", "węgrów"], "as"),
+        **dict.fromkeys(["polaków", "polski", "polskie", "wojska polskiego", "brytyjczyków", "brytyjskie",
+                         "amerykanów", "amerykańskie", "francuzów", "francuskie", "norwegów"], "westers"),
+        **dict.fromkeys(["armii czerwonej", "zsrr", "radzieckie", "sowieckie", "rosjan", "związku radzieckiego",
+                         "wojsk radzieckich"], "sovjet"),
+        **dict.fromkeys(["chińczyków", "chin", "chińskie", "partyzantów"], "overig"),
+        **dict.fromkeys(["aliantów", "alianckie", "alianci"], "allied"),
+        **dict.fromkeys(["państw osi", "osi"], "axis"),
+    },
+}
+
+_A = "(?P<actor>ACTORS)"
+LOCAL_OUTCOMES = {
+    "nl": [(rf"{_A}(?:\s+\w+){{0,2}}?\s*overwinning", "win"), (rf"overwinning\s+(?:voor|van)\s+(?:de\s+|het\s+)?{_A}", "win"),
+           (rf"{_A}(?:\s+\w+){{0,2}}?\s*nederlaag", "loss"), (rf"nederlaag\s+(?:voor|van)\s+(?:de\s+|het\s+)?{_A}", "loss"),
+           (rf"terugtrekking\s+(?:van\s+)?(?:de\s+)?{_A}", "loss")],
+    "de": [(rf"{_A}\s+\w*sieg", "win"), (rf"\w*(?:sieg|erfolg)\s+(?:der|des|für\s+die)\s+{_A}", "win"),
+           (rf"{_A}\s+niederlage", "loss"), (rf"niederlage\s+(?:der|des)\s+{_A}", "loss"),
+           (rf"(?:abzug|rückzug|kapitulation)\s+(?:der|des)\s+{_A}", "loss")],
+    "pl": [(rf"zwycięstwo\s+{_A}", "win"), (rf"{_A}\s+zwycięstwo", "win"),
+           (rf"(?:klęska|porażka|kapitulacja|odwrót)\s+{_A}", "loss")],
+}
+LOCAL_UNDECIDED = {
+    "nl": r"\b(?:onbeslist|onbesliste|patstelling|gelijkspel|wapenstilstand|staakt-het-vuren)\b",
+    "de": r"\b(?:unentschieden|patt|waffenstillstand|unentschiedener)\b",
+    "pl": r"(?:nierozstrzygnięt|\bremis\b|\brozejm)",
+}
+LOCAL_STRATEGIC = {"nl": (("strateg",), ("tactisch",)), "de": (("strategisch",), ("taktisch",)),
+                   "pl": (("strategiczn",), ("taktyczn",))}
+
+_LINK_OR_TEMPLATE = re.compile(r"\{\{([^{}]*)\}\}|\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
+_FLAG_FILE = re.compile(r"flag[ _]of[ _](?:the[ _])?(.+?)\.(?:svg|png)", re.IGNORECASE)
+
+
+def _template_kamp(lang, body):
+    name, *arguments = [part.strip() for part in body.split("|")]
+    # {{państwo|DEU|1935}} names its country in the arguments, {{DEU-1935}} in its name.
+    candidates = [a for a in arguments if "=" not in a] if name.lower() == "państwo" else [name]
+    for candidate in candidates:
+        code = candidate.split("-")[0].strip()
+        if code.upper() in ISO_KAMP and code.isupper():
+            return ISO_KAMP[code.upper()]
+        if kamp := LOCAL_COUNTRIES[lang].get(_normal(candidate)):
+            return kamp
+    return None
+
+
+def other_side_kamp(lang, field):
+    """The Kamp of the first known country in a side field of another language, or None."""
+    text = COMMENT.sub("", REF.sub("", field or ""))
+    for match in _LINK_OR_TEMPLATE.finditer(text):
+        template, target, label = match.groups()
+        if template is not None:
+            if kamp := _template_kamp(lang, template):
+                return kamp
+            continue
+        flag = _FLAG_FILE.search(target)
+        if flag:
+            if kamp := COUNTRIES.get(_normal(flag.group(1).replace("_", " "))):
+                return kamp
+            continue
+        for name in (target, label):
+            if name and (kamp := LOCAL_COUNTRIES[lang].get(_normal(name)) or COUNTRIES.get(_normal(name))):
+                return kamp
+    return None
+
+
+def _local_actor_kamp(lang, actor, columns):
+    kind = LOCAL_ACTORS[lang][actor]
+    if kind == "allied":
+        return _actor_kamp("allied", columns)
+    if kind == "axis":
+        return "as"
+    return kind
+
+
+def _compiled(lang):
+    actors = sorted(LOCAL_ACTORS[lang], key=len, reverse=True)
+    pattern = "|".join(re.escape(a) for a in actors)
+    return [(re.compile(r.replace("ACTORS", pattern)), kind) for r, kind in LOCAL_OUTCOMES[lang]]
+
+
+_LOCAL_COMPILED = {lang: _compiled(lang) for lang in LOCAL_OUTCOMES}
+
+
+def _local_clause_winner(lang, clause, columns):
+    found = []
+    for pattern, kind in _LOCAL_COMPILED[lang]:
+        for match in pattern.finditer(clause):
+            found.append((match.start(), kind, match.group("actor")))
+    if found:
+        _, kind, actor = min(found)
+        kamp = _local_actor_kamp(lang, actor, columns)
+        if kind == "loss":
+            if kamp not in columns:
+                return None
+            other = [k for k in columns if k and k != kamp]
+            return [other[0]] if len(other) == 1 else None
+        return [kamp]
+    if re.search(LOCAL_UNDECIDED[lang], clause):
+        both = {k for k in columns if k}
+        return [k for k in KAMPEN if k in both] if len(both) == 2 else None
+    return None
+
+
 def other_winner(lang, fields):
-    """The Winnaar from an infobox in another language; filled in per language below."""
+    """The Winnaar from an infobox of another language: a list of Kampen, [] when unknown."""
+    from tools.wiki_languages import LANGUAGES
+
+    language = LANGUAGES[lang]
+    columns = (other_side_kamp(lang, fields.get(language.side1, "")),
+               other_side_kamp(lang, fields.get(language.side2, "")))
+    strategic, tactical = LOCAL_STRATEGIC[lang]
+    for clause in _clauses(fields.get(language.result, ""), strategic, tactical):
+        found = _local_clause_winner(lang, clause, columns)
+        if found:
+            return found
     return []

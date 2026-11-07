@@ -87,3 +87,67 @@ def test_no_infobox_is_skipped():
 )
 def test_other_coordinates(lang, text, expected):
     assert other_coordinates(lang, text) == expected
+
+
+from tools.battle_winner import other_side_kamp, other_winner
+
+
+@pytest.mark.parametrize(
+    "lang, title, expected",
+    [
+        ("de", "Kesselschlacht bei Uman", ["as"]),
+        ("de", "Schlacht um Narvik", ["as"]),
+        ("de", "Unternehmen Zitadelle", ["sovjet"]),
+        ("nl", "Slag om Arnhem", ["as"]),
+        ("nl", "Slag om Den Haag", ["westers"]),
+        ("nl", "Slag om de Grebbeberg", ["as"]),
+        ("pl", "Bitwa nad Bzurą", ["as"]),
+        ("pl", "Obrona Westerplatte", ["as"]),
+    ],
+)
+def test_other_winner_of_real_articles(pages, lang, title, expected):
+    from tools.extract_battles import find_infobox
+
+    fields = find_infobox(pages[lang][title], LANGUAGES[lang].infobox)
+    assert other_winner(lang, fields) == expected
+
+
+@pytest.mark.parametrize(
+    "lang, field, expected",
+    [
+        ("de", "{{DEU-1935}}<br />{{HUN-1940}}", "as"),
+        ("de", "{{SUN-1923}}", "sovjet"),
+        ("de", "{{GBR}}<br />{{NOR}}", "westers"),
+        ("de", "[[Sowjetunion]]", "sovjet"),
+        ("nl", "[[Bestand:Flag of the United Kingdom.svg|25px]] [[Verenigd Koninkrijk]]", "westers"),
+        ("nl", "[[Sovjet-Unie]]", "sovjet"),
+        ("pl", "{{państwo|2RP}}", "westers"),
+        ("pl", "{{państwo|III Rzesza}}", "as"),
+        ("pl", "{{Państwo|DEU|1935}}", "as"),
+        ("pl", "{{państwo|ZSRR}}", "sovjet"),
+        ("pl", "nic", None),
+    ],
+)
+def test_other_side_kamp(lang, field, expected):
+    assert other_side_kamp(lang, field) == expected
+
+
+@pytest.mark.parametrize(
+    "lang, result, side1, side2, expected",
+    [
+        ("nl", "Geallieerde overwinning", "[[Sovjet-Unie]]", "[[nazi-Duitsland]]", ["sovjet"]),
+        ("nl", "Onbeslist", "[[Nederland]]", "[[nazi-Duitsland]]", ["as", "westers"]),
+        ("nl", "Tactische Japanse overwinning, strategische Amerikaanse overwinning", "[[Verenigde Staten]]", "[[Japans Keizerrijk]]", ["westers"]),
+        ("de", "Sieg der Alliierten", "{{GBR}}", "{{DEU-1935}}", ["westers"]),
+        ("de", "Unentschieden", "{{GBR}}", "{{DEU-1935}}", ["as", "westers"]),
+        ("de", "Niederlage der Wehrmacht", "{{SUN-1923}}", "{{DEU-1935}}", ["sovjet"]),
+        ("pl", "zwycięstwo Armii Czerwonej", "{{państwo|ZSRR}}", "{{państwo|III Rzesza}}", ["sovjet"]),
+        ("pl", "bitwa nierozstrzygnięta", "{{państwo|2RP}}", "{{państwo|III Rzesza}}", ["as", "westers"]),
+        ("pl", "klęska Niemców", "{{państwo|ZSRR}}", "{{państwo|III Rzesza}}", ["sovjet"]),
+        ("pl", "", "{{państwo|ZSRR}}", "{{państwo|III Rzesza}}", []),
+    ],
+)
+def test_other_winner_rules(lang, result, side1, side2, expected):
+    language = LANGUAGES[lang]
+    fields = {language.result: result, language.side1: side1, language.side2: side2}
+    assert other_winner(lang, fields) == expected
