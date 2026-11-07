@@ -102,8 +102,33 @@ def countries_of(lang, wikitext):
     return found
 
 
-def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE):
+DEFAULT_UNIT_BATTLES = Path("~/.cache/uboats/wikipedia/unit_battles.json")
+
+
+def _unit_battles(path):
+    """The result of tools.extract_unit_battles, or empty tables when it is missing."""
+    path = Path(path).expanduser()
+    if not path.exists():
+        return {"units": {}, "people": {}, "aliases": {}}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _add(names, extra):
+    for name in extra:
+        if name not in names:
+            names.append(name)
+
+
+def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles=DEFAULT_UNIT_BATTLES):
     battles_path = Path(battles_path)
+    known = _unit_battles(unit_battles)
+    aliases = known.get("aliases", {})
+    # Veldslag → the units and people whose own article names it.
+    from_articles = {"units": {}, "people": {}}
+    for kind in from_articles:
+        for name, titles in known.get(kind, {}).items():
+            for title in titles:
+                from_articles[kind].setdefault(title, []).append(name)
     battles = json.loads(battles_path.read_text(encoding="utf-8"))
     engine = create_engine(database_url)
     with Session(engine) as session:
@@ -127,8 +152,12 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE):
         # Each field from the first article that has it: English, then the others in order.
         battle["countries"] = next((c for lang, text in sources if (c := countries_of(lang, text))), [])
         found = [people_and_units(lang, text) for lang, text in sources]
-        battle["commanders"] = next((people for people, _ in found if people), [])
-        battle["units"] = next((units for _, units in found if units), [])
+        people = [aliases.get(n, n) for n in next((people for people, _ in found if people), [])]
+        units = [aliases.get(n, n) for n in next((units for _, units in found if units), [])]
+        battle["commanders"] = list(dict.fromkeys(people))
+        battle["units"] = list(dict.fromkeys(units))
+        _add(battle["commanders"], from_articles["people"].get(title, []))
+        _add(battle["units"], from_articles["units"].get(title, []))
     _write_atomically(battles_path, json.dumps(battles, ensure_ascii=False, separators=(",", ":")))
     print(f"{sum(1 for b in battles if b['countries'])} of {len(battles)} Veldslagen have Landen")
 
@@ -137,8 +166,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--battles", default=DEFAULT_OUTPUT, help="the battles.json to enrich")
     parser.add_argument("--database", default=DEFAULT_DATABASE, help="database with the stored articles (an SQLite URL)")
+    parser.add_argument("--unit-battles", default=DEFAULT_UNIT_BATTLES, help="the result of tools.extract_unit_battles")
     arguments = parser.parse_args(argv)
-    run(arguments.battles, arguments.database)
+    run(arguments.battles, arguments.database, arguments.unit_battles)
 
 
 if __name__ == "__main__":

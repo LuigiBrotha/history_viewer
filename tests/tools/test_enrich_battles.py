@@ -37,7 +37,7 @@ def test_run_adds_the_countries_of_each_battle(tmp_path):
         {"title": "Schlacht C", "start": "1939-09-01", "lang": "de"},
         {"title": "Battle D", "start": "1941-01-01"},
     ])
-    run(path, url)
+    run(path, url, tmp_path / "no_unit_battles.json")
     battles = json.loads(path.read_text(encoding="utf-8"))
     assert [b["countries"] for b in battles] == [
         ["Verenigd Koninkrijk", "Duitsland"],
@@ -51,9 +51,9 @@ def test_run_adds_the_countries_of_each_battle(tmp_path):
 
 def test_a_second_run_gives_the_same_file(tmp_path):
     path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01"}])
-    run(path, url)
+    run(path, url, tmp_path / "no_unit_battles.json")
     first = path.read_text(encoding="utf-8")
-    run(path, url)
+    run(path, url, tmp_path / "no_unit_battles.json")
     assert path.read_text(encoding="utf-8") == first
 
 
@@ -78,7 +78,7 @@ def test_people_and_units_reads_each_language():
 
 def test_run_adds_commanders_and_units(tmp_path):
     path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01"}])
-    run(path, url)
+    run(path, url, tmp_path / "no_unit_battles.json")
     battle = json.loads(path.read_text(encoding="utf-8"))[0]
     assert battle["commanders"] == [] and battle["units"] == []
 
@@ -91,3 +91,25 @@ def test_ranks_are_dropped_and_units_in_the_commander_field_count_as_units():
         ["Karl Dönitz", "Otto Kretschmer", "Ernst Busch (field marshal)"],
         ["2nd Belorussian Front", "Stavka", "Army Group Centre"],
     )
+
+
+def test_units_and_people_from_their_own_articles_join_their_battles(tmp_path):
+    path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01"}, {"title": "Battle B", "start": "1940-05-10"}])
+    units = tmp_path / "unit_battles.json"
+    units.write_text(json.dumps({
+        "complete": True,
+        "units": {"7th Panzer Division (Wehrmacht)": ["Battle A"]},
+        "people": {"Erwin Rommel": ["Battle A", "Battle B"]},
+        "aliases": {"Rommel": "Erwin Rommel"},
+    }), encoding="utf-8")
+    import sqlite3
+    connection = sqlite3.connect(tmp_path / "test.db")
+    connection.execute("UPDATE battle_articles SET wikitext = ? WHERE title = 'Battle A'", (
+        "{{Infobox military conflict\n| commander1 = [[Rommel]]\n| units1 = [[Afrika Korps]]\n}}",))
+    connection.commit()
+    connection.close()
+    run(path, url, units)
+    a, b = json.loads(path.read_text(encoding="utf-8"))
+    assert a["commanders"] == ["Erwin Rommel"]
+    assert a["units"] == ["Afrika Korps", "7th Panzer Division (Wehrmacht)"]
+    assert b["commanders"] == ["Erwin Rommel"]
