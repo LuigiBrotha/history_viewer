@@ -167,9 +167,29 @@ def other_coordinates(lang, text):
         raw = fields.get(LANGUAGES["pl"].coord_field, "")
         tokens = re.findall(r"\d+(?:[.,]\d+)?|[NSEW]\b", raw)
         position = tokens and _position([t.replace(",", ".") for t in tokens])
+    if not position:
+        position = _degree_fields(text)
     if position:
         return position
     return extract_coordinates(text)
+
+
+_DEGREE_FIELD = re.compile(r"\|\s*(lat|lon|long)_(deg|min|sec|dir)\s*=\s*([^|}\n]*)", re.IGNORECASE)
+
+
+def _degree_fields(text):
+    """A position from lat_deg/lat_min/lat_sec/lat_dir and lon_… fields (a location map in an infobox)."""
+    values = {}
+    for axis, part, value in _DEGREE_FIELD.findall(text):
+        values.setdefault(("lat" if axis.lower() == "lat" else "lon", part.lower()), value.strip())
+    if not values.get(("lat", "deg")) or not values.get(("lon", "deg")):
+        return None
+    tokens = []
+    for axis, positive, negative in (("lat", "N", "S"), ("lon", "E", "W")):
+        tokens += [values.get((axis, part)) or "0" for part in ("deg", "min", "sec")]
+        direction = (values.get((axis, "dir")) or positive).upper()[:1]
+        tokens.append(direction if direction in (positive, negative) else positive)
+    return _position(tokens)
 
 
 def extract_other_battle(lang, title, text):

@@ -83,6 +83,11 @@ def test_no_infobox_is_skipped():
         ("pl", "{{Wojna infobox\n|współrzędne = 54°24′26″N 18°40′05″E\n}}", (54.40722, 18.66806)),
         ("pl", "{{Wojna infobox\n|współrzędne = 52°14′S 21°0′W\n}}", (-52.23333, -21.0)),
         ("pl", "{{Wojna infobox\n|współrzędne = \n}}", (None, None)),
+        ("nl", "{{Infobox militair conflict\n| lat_deg = 41\n| lat_min = 26\n| lat_sec = 35\n| lon_deg = 12\n"
+               "| lon_min = 37\n| lon_sec = 30\n}}", (41.44306, 12.625)),
+        ("nl", "{{Infobox militair conflict\n| lat_deg = 47\n| lat_min = 0\n| lat_dir = S\n| lon_deg = 8\n"
+               "| lon_dir = W\n}}", (-47.0, -8.0)),
+        ("nl", "{{Infobox militair conflict\n| lat_deg = \n| lon_deg = \n}}", (None, None)),
     ],
 )
 def test_other_coordinates(lang, text, expected):
