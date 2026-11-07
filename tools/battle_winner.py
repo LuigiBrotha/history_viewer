@@ -6,7 +6,7 @@ undecided battle (one per side). Strategic results count over tactical ones.
 
 import re
 
-from tools.extract_battles import BREAK, COMMENT, REF, remove_templates, tidy
+from tools.extract_battles import BREAK, COMMENT, INNERMOST_TEMPLATE, LINK, REF, tidy
 
 KAMPEN = ("as", "westers", "sovjet", "overig")
 
@@ -78,19 +78,21 @@ DEMONYMS = {
     "australian": "westers", "new zealand": "westers", "indian": "westers", "polish": "westers",
     "dutch": "westers", "belgian": "westers", "norwegian": "westers", "greek": "westers",
     "yugoslav": "westers", "brazilian": "westers", "south african": "westers",
-    "czechoslovak": "westers", "commonwealth": "westers", "filipino": "westers",
+    "czechoslovak": "westers", "czech": "westers", "commonwealth": "westers", "filipino": "westers",
     "anglo-american": "westers", "western allied": "westers",
     "soviet": "sovjet", "soviets": "sovjet", "russian": "sovjet", "mongolian": "sovjet",
     "chinese": "overig", "partisan": "overig", "partisans": "overig",
     "yugoslav partisan": "overig", "chetnik": "overig", "ethiopian": "overig",
+    "indonesian": "overig", "francoist": "overig",
 }
 ALLIED = {"allied", "allies", "allied forces"}
 AXIS = {"axis", "axis powers"}
 
 _ACTORS = sorted(set(DEMONYMS) | set(COUNTRIES) | ALLIED | AXIS, key=len, reverse=True)
+_LOSS = ("defeat", "failure", "withdrawal", "retreat", "surrender")
 _OUTCOME = re.compile(
-    r"(?<![\w.-])(" + "|".join(re.escape(a) for a in _ACTORS) + r")(?![\w-])"
-    r"(?:\s+[a-z-]+){0,2}?\s+(victory|victorious|success|defeat|failure)\b"
+    r"(?<![\w.-])(" + "|".join(re.escape(a) for a in _ACTORS) + r")(?!\w)(?:-[\w]+)*"
+    r"(?:\s+[a-z-]+){0,2}?\s+(victory|victorious|success|" + "|".join(_LOSS) + r")\b"
 )
 _UNDECIDED = re.compile(r"\b(?:inconclusive|stalemate|indecisive|draw|ceasefire|cease-fire|status quo)\b")
 _SIDE = re.compile(
@@ -98,7 +100,10 @@ _SIDE = re.compile(
     r"|\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]",
     re.IGNORECASE,
 )
-_FLAG_TEMPLATE = re.compile(r"\{\{\s*(?:flag\w*|navy|army)\s*\|\s*([^|{}]*)[^{}]*\}\}", re.IGNORECASE)
+_LIST_TEMPLATES = {
+    "ubl", "ublist", "unbulleted list", "plainlist", "plain list", "indented plainlist", "blist",
+    "bulleted list", "flatlist", "hlist", "longitem", "nowrap", "nwr", "nobr", "small", "center",
+}
 _CLAUSE = re.compile(r"[,;\n*•]|\s+but\s+|\s+and\s+(?=strategic)")
 
 
@@ -125,11 +130,27 @@ def _actor_kamp(actor, columns):
     return DEMONYMS.get(actor) or COUNTRIES.get(actor)
 
 
+def _expand(body):
+    """Keep the items of list templates and the country of flag templates; drop the rest."""
+    name, *arguments = [part.strip() for part in body.split("|")]
+    name = re.sub(r"[\s_]+", " ", name.lower())
+    arguments = [a for a in arguments if "=" not in a]
+    if name in _LIST_TEMPLATES:
+        return " ; ".join(arguments)
+    if (name.startswith("flag") or name in ("navy", "army")) and arguments:
+        return arguments[0]
+    return ""
+
+
 def _clauses(result):
     text = COMMENT.sub("", REF.sub("", result or ""))
-    text = BREAK.sub("\n", text)
-    text = _FLAG_TEMPLATE.sub(lambda m: m.group(1), text)
-    text = tidy(remove_templates(text.replace("\n", " ; "))).lower()
+    text = BREAK.sub(" ; ", text).replace("\n", " ; ")
+    text = LINK.sub(r"\1", text)
+    previous = None
+    while previous != text:
+        previous = text
+        text = INNERMOST_TEMPLATE.sub(lambda m: _expand(m.group(1)), text)
+    text = tidy(re.sub(r"\{\{.*", "", text, flags=re.DOTALL)).lower()
     clauses = [c.strip() for c in _CLAUSE.split(text) if c.strip()]
     strategic = [c for c in clauses if "strategic" in c and "tactical" not in c]
     return strategic or clauses
@@ -141,7 +162,7 @@ def _clause_winner(clause, columns):
         kamp = _actor_kamp(outcome.group(1), columns)
         if kamp is None:
             return None
-        if outcome.group(2) in ("defeat", "failure"):
+        if outcome.group(2) in _LOSS:
             if kamp not in columns:
                 return None
             other = [k for k in columns if k and k != kamp]

@@ -109,3 +109,23 @@ def test_side_kamp():
     assert side_kamp("{{navy|United Kingdom}}") == "westers"
     assert side_kamp("Some unknown militia") is None
     assert side_kamp("") is None
+
+
+@pytest.mark.parametrize(
+    "result, combatant1, combatant2, expected",
+    [
+        ("{{ublist|Allied victory}}", UK, GERMANY, ["westers"]),
+        ("{{ubl|Heavy damage to the city |Soviet victory in the [[Battle of Berlin]] }}", UK, GERMANY, ["sovjet"]),
+        ("{{ublist|[[Nazi Germany|German]] victory}} * French tactical withdrawal", UK, GERMANY, ["as"]),
+        ("{{plainlist|Thai Victory}} * Japanese-mediated armistice", GERMANY, GERMANY, ["as"]),
+        ("British-Norwegian victory", UK, GERMANY, ["westers"]),
+        ("Polish-Soviet victory", GERMANY, USSR, ["westers"]),
+        ("German withdrawal", GERMANY, USSR, ["sovjet"]),
+        ("German retreat", GERMANY, USSR, ["sovjet"]),
+        ("German surrender", GERMANY, UK, ["westers"]),
+        ("Czech victory", GERMANY, "", ["westers"]),
+        ("{{ublist|Viet Minh victory}}", "", "", ["overig"]),
+    ],
+)
+def test_real_result_shapes(result, combatant1, combatant2, expected):
+    assert winner(fields(result, combatant1, combatant2)) == expected
