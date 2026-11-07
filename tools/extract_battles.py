@@ -65,7 +65,18 @@ SPACING = {"snd": " – ", "spaced ndash": " – ", "ndash": "–", "en dash": "
 DATE_TEMPLATES = {"start date", "start date and age", "end date", "end date and age"}
 PARENTHESES = re.compile(r"\([^()]*\)")
 CIRCA = re.compile(r"\b(?:circa|ca\.|c\.)\s*", re.IGNORECASE)
-RANGE_SEPARATOR = re.compile(r"\s*[–—-]\s*|\s+to\s+", re.IGNORECASE)
+RANGE_SEPARATOR = re.compile(r"\s*[–—−-]\s*|\s+to\s+", re.IGNORECASE)
+# Templates that give a range as six numbers: year, month, day of the start and of the end.
+RANGE_TEMPLATES = {"start and end dates", "start and end date", "date range",
+                   "date range and age in years, months, weeks and days"}
+# Templates that list several items; a date field means its first one.
+DATE_LIST_TEMPLATES = {"ubl", "unbulleted list", "plainlist", "plain list", "flatlist", "bulleted list", "idp"}
+# Words that only say when within the month: "Early June 1943" is read as June 1943.
+VAGUE = re.compile(r"\b(?:early|late|mid|beginning of|end of|start of)\b[\s-]*", re.IGNORECASE)
+# A night between two days, "23/24 January 1943", is read as 23–24 January 1943.
+NIGHT = re.compile(r"\b(\d{1,2})/(\d{1,2})\b(?=\s+\D)")
+# A label before the date in a list item: "PQ 7a: 26 December 1941".
+ITEM_LABEL = re.compile(r"^[A-Za-z][\w .'-]{0,30}:\s+(?=\d)")
 
 
 class DateSkip(Exception):
@@ -136,8 +147,11 @@ def expand_template(body, dates):
     numbers = [a for a in arguments if a.isdigit()]
     if name in DATE_TEMPLATES:
         return render_date(numbers[:3])
-    if name == "start and end dates" and len(numbers) >= 6:
+    if name in RANGE_TEMPLATES and len(numbers) >= 6:
         return f"{render_date(numbers[:3])} – {render_date(numbers[3:6])}"
+    if name in DATE_LIST_TEMPLATES and parts[1:]:
+        items = [item.strip() for item in re.split(r"\n|\*", "|".join(parts[1:]).split("|")[0]) if item.strip()]
+        return items[0] if items else ""
     return ""
 
 
@@ -160,7 +174,13 @@ def tidy(text):
 def clean_date_text(raw):
     text = REF.sub("", strip_comments(raw))
     text = BREAK.split(text, 1)[0]
-    return tidy(PARENTHESES.sub("", remove_templates(text, dates=True)))
+    text = remove_templates(text, dates=True)
+    # What follows a semicolon is a note ("; 3 weeks and 4 days"), not part of the date; cut
+    # after tidy, which has turned entities such as &nbsp; into characters.
+    text = tidy(PARENTHESES.sub("", text)).split(";")[0]
+    text = ITEM_LABEL.sub("", text)
+    text = NIGHT.sub(r"\1–\2", text)
+    return VAGUE.sub("", text).strip(" ,")
 
 
 def plain_text(raw):
