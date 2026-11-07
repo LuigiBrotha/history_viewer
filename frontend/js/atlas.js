@@ -1,3 +1,5 @@
+import { WINNER_LEGEND } from "./battle-model.js";
+
 const OVERLAY_OPACITY = 0.5;
 const PANE = "atlas";
 // Above the base map, below the route lines and markers.
@@ -23,6 +25,17 @@ function addLegend(map, legend, labelEl) {
       const swatch = document.createElement("span");
       swatch.className = "atlas-swatch";
       swatch.style.background = color;
+      row.append(swatch, name);
+      box.append(row);
+    }
+    const heading = document.createElement("div");
+    heading.className = "atlas-legend-heading";
+    heading.textContent = "Winnaar Veldslag";
+    box.append(heading);
+    for (const { name, classes } of WINNER_LEGEND) {
+      const row = document.createElement("div");
+      const swatch = document.createElement("span");
+      swatch.className = ["winner-swatch", ...classes].join(" ");
       row.append(swatch, name);
       box.append(row);
     }

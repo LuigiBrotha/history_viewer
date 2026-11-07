@@ -272,3 +272,16 @@ test("starting a new edit stops the previous one", () => {
   const enabled = Object.fromEntries(squares().map((m) => [m.options.battleTitle, m.dragging.on]));
   assert.deepEqual(enabled, { a: false, b: true });
 });
+
+
+test("a square carries the classes of its Winnaar, also when selected and own", () => {
+  const { layer, squares } = setup();
+  const won = battle({ winner: ["sovjet"] });
+  const undecided = battle({ title: "draw", lat: 10, lng: 10, winner: ["as", "westers"], own: true });
+  layer.setBattles([won, undecided, battle({ title: "unknown", lat: 20, lng: 20 })]);
+  layer.setSelected(won);
+  const classes = Object.fromEntries(squares().map((m) => [m.options.battleTitle, m.options.icon.className]));
+  assert.equal(classes["Battle of Kursk"], "battle-square win1-sovjet selected");
+  assert.equal(classes.draw, "battle-square win1-as win2-westers own");
+  assert.equal(classes.unknown, "battle-square");
+});

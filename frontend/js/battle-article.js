@@ -1,4 +1,5 @@
 import { fetchArticle } from "./api.js";
+import { winnerText } from "./battle-model.js";
 
 const LOADING = "Laden…";
 const NO_ARTICLE = "Geen artikel beschikbaar voor deze veldslag.";
@@ -34,13 +35,15 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   const head = element("div", "article-head");
   head.append(title, close);
 
+  const winner = element("p", "article-winner");
+  winner.hidden = true;
   const status = element("p", "article-status");
   status.hidden = true;
   const body = element("div", "article-body");
   const source = element("p", "article-source");
   source.hidden = true;
   const scroll = element("div", "article-scroll");
-  scroll.append(status, body, source);
+  scroll.append(winner, status, body, source);
 
   rootEl.replaceChildren(head, scroll);
 
@@ -78,6 +81,8 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     async show(battle) {
       const ticket = ++latest;
       title.textContent = battle.title;
+      winner.textContent = winnerText(battle.winner);
+      winner.hidden = false;
       body.replaceChildren();
       source.hidden = true;
       setStatus(LOADING);
@@ -103,6 +108,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     clear() {
       latest += 1;
       title.textContent = "";
+      winner.hidden = true;
       body.replaceChildren();
       source.hidden = true;
       setStatus("");

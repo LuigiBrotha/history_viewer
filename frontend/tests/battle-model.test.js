@@ -223,3 +223,35 @@ test("withoutPosition keeps battles with no position, active on the date or in t
   assert.deepEqual(titles(withoutPosition(list, "period", { from: null, to: null }, "sea")), ["Lost A", "Lost B"]);
   assert.deepEqual(titles(withoutPosition(list, "date", null, "")), ["Lost A", "Half", "Lost B"]);
 });
+
+import { WINNER_LEGEND, winnerClasses, winnerText } from "../js/battle-model.js";
+
+test("winnerClasses gives one class per Kamp, in place order, and none when unknown", () => {
+  assert.deepEqual(winnerClasses(["sovjet"]), ["win1-sovjet"]);
+  assert.deepEqual(winnerClasses(["as", "westers"]), ["win1-as", "win2-westers"]);
+  assert.deepEqual(winnerClasses([]), []);
+  assert.deepEqual(winnerClasses(undefined), []);
+  assert.deepEqual(winnerClasses(["nonsense"]), []);
+});
+
+test("winnerText names the Kamp, both Kampen when undecided, or says unknown", () => {
+  assert.equal(winnerText(["sovjet"]), "Winnaar: Sovjet-Unie");
+  assert.equal(winnerText(["overig"]), "Winnaar: overig");
+  assert.equal(winnerText(["as", "westers"]), "Winnaar: onbeslist (As – Westerse geallieerden)");
+  assert.equal(winnerText([]), "Winnaar: onbekend");
+  assert.equal(winnerText(undefined), "Winnaar: onbekend");
+});
+
+test("the legend shows the four Kampen, undecided and unknown", () => {
+  assert.deepEqual(
+    WINNER_LEGEND.map(({ name, classes }) => [name, classes]),
+    [
+      ["As", ["win1-as"]],
+      ["Westerse geallieerden", ["win1-westers"]],
+      ["Sovjet-Unie", ["win1-sovjet"]],
+      ["Overig", ["win1-overig"]],
+      ["Onbeslist", ["win1-as", "win2-westers"]],
+      ["Onbekend", []],
+    ],
+  );
+});

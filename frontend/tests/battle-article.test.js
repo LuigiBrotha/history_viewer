@@ -114,3 +114,14 @@ test("clear empties the title and body and drops a pending load", async () => {
   assert.equal(rootEl.byTag("h2")[0].textContent, "");
   assert.doesNotMatch(rootEl.allText(), /Tekst|Laden/);
 });
+
+
+test("the Winnaar line names the winning Kamp and is emptied by clear", async () => {
+  const { rootEl, pane } = setup(async () => null);
+  const line = () => rootEl.byClass("article-winner")[0];
+  await pane.show({ title: "Battle of Kursk", url: "https://en.wikipedia.org/wiki/Battle_of_Kursk", winner: ["sovjet"] });
+  assert.equal(line().textContent, "Winnaar: Sovjet-Unie");
+  assert.equal(line().hidden, false);
+  pane.clear();
+  assert.equal(line().hidden, true);
+});

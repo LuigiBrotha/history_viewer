@@ -1,4 +1,4 @@
-import { durationText, labelsToShow, squaresToDraw, wrapLng } from "./battle-model.js";
+import { durationText, labelsToShow, squaresToDraw, winnerClasses, wrapLng } from "./battle-model.js";
 
 const SHOW_ZOOM = 8;
 
@@ -23,7 +23,7 @@ function tooltipContent(battle) {
 }
 
 function squareIcon(battle, selected) {
-  const classes = ["battle-square"];
+  const classes = ["battle-square", ...winnerClasses(battle.winner)];
   if (battle.own) classes.push("own");
   if (selected) classes.push("selected");
   return L.divIcon({

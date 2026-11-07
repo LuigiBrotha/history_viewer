@@ -679,13 +679,41 @@ html, body {
 /* Battles: square amber markers, unlike the round boat and ship markers. */
 }
 
-.battle-square span {
+/* The colour of the winning Kamp, as in the atlas legend; an undecided battle is split
+   diagonally between its two Kampen, an unknown Winnaar stays amber. */
+.battle-square span,
+.winner-swatch {
   display: block;
   width: 10px;
   height: 10px;
   box-sizing: border-box;
-  background: #ffb300;
+  background: linear-gradient(135deg, var(--win1, #ffb300) 50%, var(--win2, var(--win1, #ffb300)) 50%);
   border: 2px solid #3b2a00;
+}
+
+.win1-as { --win1: #555555; }
+.win1-westers { --win1: #8fc1e3; }
+.win1-sovjet { --win1: #e59a92; }
+.win1-overig { --win1: #8cc084; }
+.win2-as { --win2: #555555; }
+.win2-westers { --win2: #8fc1e3; }
+.win2-sovjet { --win2: #e59a92; }
+.win2-overig { --win2: #8cc084; }
+
+.winner-swatch {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.article-winner {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.atlas-legend-heading {
+  margin-top: 6px;
+  font-weight: 600;
 }
 
 /* A larger hit area for a finger. */
@@ -701,7 +729,6 @@ html, body {
 }
 
 .battle-square.selected span {
-  background: #fff3b0;
   box-shadow: 0 0 0 2px #3b2a00, 0 0 0 4px #ffb300;
 }
 

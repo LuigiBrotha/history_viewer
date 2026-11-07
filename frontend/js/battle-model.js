@@ -145,3 +145,29 @@ export function wrapLng(lng) {
   }
   return ((((lng + 180) % 360) + 360) % 360) - 180;
 }
+
+// The Kampen a Winnaar is made of, in the order of the extraction, with their names.
+const KAMP_NAMES = { as: "As", westers: "Westerse geallieerden", sovjet: "Sovjet-Unie", overig: "Overig" };
+
+function knownKampen(winner) {
+  return Array.isArray(winner) ? winner.filter((kamp) => kamp in KAMP_NAMES).slice(0, 2) : [];
+}
+
+// The classes that colour a square or swatch: win1-<kamp>, and win2-<kamp> for the second
+// Kamp of an undecided battle. No class leaves the colour of an unknown Winnaar.
+export function winnerClasses(winner) {
+  return knownKampen(winner).map((kamp, i) => `win${i + 1}-${kamp}`);
+}
+
+export function winnerText(winner) {
+  const kampen = knownKampen(winner);
+  if (kampen.length === 1) return `Winnaar: ${kampen[0] === "overig" ? "overig" : KAMP_NAMES[kampen[0]]}`;
+  if (kampen.length === 2) return `Winnaar: onbeslist (${kampen.map((k) => KAMP_NAMES[k]).join(" – ")})`;
+  return "Winnaar: onbekend";
+}
+
+export const WINNER_LEGEND = [
+  ...Object.entries(KAMP_NAMES).map(([kamp, name]) => ({ name, classes: [`win1-${kamp}`] })),
+  { name: "Onbeslist", classes: ["win1-as", "win2-westers"] },
+  { name: "Onbekend", classes: [] },
+];

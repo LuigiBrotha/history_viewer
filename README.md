@@ -79,6 +79,11 @@ On this machine a battle's position can be corrected: select its row (or square)
 the Wikipedia position, is drawn dashed, and can be removed again with `Eigen positie wissen`.
 A battle without a position can be given one this way too.
 
+A square has the colour of the Kamp that won the battle (`winner` in `battles.json`), in the
+colours of the atlas legend plus green for the rest (China, partisans, resistance); an undecided
+battle is split diagonally between its two Kampen, and an unknown outcome stays amber. The
+legend under the atlas legend explains them, and the Artikel starts with a `Winnaar:` line.
+
 `Alleen zonder positie (N)` in the pane lists only the battles without any position under the
 selected date or period. While it is ticked, the selected battle stays in the list even after
 it gets a position, until another one is chosen.
