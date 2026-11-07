@@ -115,6 +115,7 @@ function main() {
     },
     fetchPlaces,
   });
+  battles.placeToggle();
 
   const slider = initPeriodSlider({
     trackEl,

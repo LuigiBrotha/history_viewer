@@ -62,6 +62,7 @@ export function initBattles({
       selectedBattle: () => null,
       allBattles: () => [],
       moveEditTo: () => false,
+      placeToggle() {},
     };
   }
   const storage = safeStorage(win);
@@ -317,6 +318,18 @@ export function initBattles({
     selectBattle,
     selectedBattle: () => selected,
     allBattles: () => battles,
+    // Moves the Veldslagen button into the top-left row of map controls, after the ones
+    // already there, so the page decides its place in that row.
+    placeToggle() {
+      const toggleEl = doc.getElementById("battle-toggle");
+      if (toggleEl === null) return;
+      const control = L.control({ position: "topleft" });
+      control.onAdd = () => {
+        L.DomEvent.disableClickPropagation(toggleEl);
+        return toggleEl;
+      };
+      control.addTo(map);
+    },
     // Moves the square being placed; the position is only stored by Bewaar.
     moveEditTo(lat, lng) {
       if (!editing) return false;

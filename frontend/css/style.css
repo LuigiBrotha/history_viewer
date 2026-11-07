@@ -803,6 +803,11 @@ html, body {
   cursor: pointer;
 }
 
+/* Once placed in the row of map controls it flows with them. */
+#battle-toggle.leaflet-control {
+  position: static;
+}
+
 #battle-toggle[aria-expanded="true"] {
   background: #ffe9a8;
 }

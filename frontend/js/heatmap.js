@@ -154,6 +154,7 @@ function main() {
     },
     fetchPlaces,
   });
+  battles.placeToggle();
 
   initAtlas(map).then((loaded) => {
     atlas = loaded;

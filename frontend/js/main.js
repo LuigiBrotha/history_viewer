@@ -218,6 +218,7 @@ function main() {
       },
       fetchPlaces,
     });
+    battles.placeToggle();
   }
 
   function onBoatSelect(slug) {

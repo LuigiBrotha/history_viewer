@@ -566,3 +566,11 @@ test("moveEditTo then Annuleer saves nothing and keeps the old place", async () 
   assert.deepEqual(squareOf().latlng, [30, -178]);
   assert.equal(controller.moveEditTo(1, 2), false);
 });
+
+test("placeToggle puts the Veldslagen button in the top-left row of map controls", async () => {
+  const { controller, controls, elements } = setup({ mode: "period" });
+  controller.placeToggle();
+  assert.equal(controls.length, 1);
+  assert.equal(controls[0].options.position, "topleft");
+  assert.equal(controls[0].el, elements["battle-toggle"]);
+});
