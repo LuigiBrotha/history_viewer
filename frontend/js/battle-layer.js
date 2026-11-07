@@ -1,5 +1,7 @@
 import { durationText, labelsToShow, squaresToDraw, wrapLng } from "./battle-model.js";
 
+const SHOW_ZOOM = 8;
+
 const SQUARE_SIZE = 10;
 const LABEL_OFFSET_PX = 12;
 
@@ -156,9 +158,10 @@ export function createBattleLayer(map, { onBattleClick }) {
       };
     },
     // Pans without touching the zoom: the square stays at the zoom the user chose.
+    // Centres the battle and zooms in to at least SHOW_ZOOM, never out.
     showBattle(battle) {
       if (battle.lat != null && battle.lng != null) {
-        map.panTo([battle.lat, battle.lng]);
+        map.setView([battle.lat, battle.lng], Math.max(map.getZoom(), SHOW_ZOOM));
       }
     },
   };

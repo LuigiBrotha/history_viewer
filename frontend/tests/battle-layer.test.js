@@ -74,6 +74,7 @@ function setup({ zoom = 5, bounds = { south: -90, west: -180, north: 90, east: 1
       getEast: () => map.bounds.east,
     }),
     panTo: (latlng) => pans.push(latlng),
+    setView: (latlng, nextZoom) => pans.push([...latlng, nextZoom]),
     getCenter: () => ({ lat: 12, lng: 34 }),
     zoom,
     bounds,
@@ -168,7 +169,7 @@ test("names show next to few squares, or when zoomed in", () => {
   assert.equal(labels().length, 3);
 });
 
-test("setSelected marks one square and showBattle pans to it", () => {
+test("setSelected marks one square and showBattle zooms in to it", () => {
   const { layer, squares, pans } = setup();
   const kursk = battle();
   layer.setBattles([kursk, battle({ title: "other", lat: 10, lng: 10 })]);
@@ -180,9 +181,15 @@ test("setSelected marks one square and showBattle pans to it", () => {
   assert.ok(squares().every((m) => m.options.icon.className === "battle-square"));
 
   layer.showBattle(kursk);
-  assert.deepEqual(pans, [[51.7, 36.1]]);
+  assert.deepEqual(pans, [[51.7, 36.1, 8]]);
   layer.showBattle(battle({ lat: null, lng: null }));
   assert.equal(pans.length, 1);
+});
+
+test("showBattle never zooms out", () => {
+  const { layer, pans } = setup({ zoom: 11 });
+  layer.showBattle(battle());
+  assert.deepEqual(pans, [[51.7, 36.1, 11]]);
 });
 
 test("a battle with an own position gets the own class, also when selected", () => {

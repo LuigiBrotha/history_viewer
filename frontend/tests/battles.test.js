@@ -78,6 +78,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     getCenter: () => ({ lat: 10, lng: 20 }),
     getBounds: () => ({ getSouth: () => -90, getWest: () => -180, getNorth: () => 90, getEast: () => 180 }),
     panTo: (latlng) => pans.push(latlng),
+    setView: (latlng) => pans.push(latlng),
   };
   const elements = {};
   for (const id of ["battle-split", "map-side", "battle-pane", "battle-divider", "battle-toggle", "article-split", "article-pane", "article-divider"]) {
