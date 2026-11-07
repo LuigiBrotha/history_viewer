@@ -71,3 +71,23 @@ _Avoid_: Overwinnaar
 **Zoeken op de kaart**:
 Het zoekveld linksboven op de kaartpagina's (Ctrl+K) om een boot, schip, Veldslag of plaats te kiezen; een keuze doet hetzelfde als erop klikken.
 _Avoid_: kaartzoeker
+
+**Eenheid**:
+Een militaire eenheid met een eigen Wikipedia-artikel, zoals een divisie, brigade, leger, regiment of vloot. Gekoppeld aan de Veldslagen waarin ze vocht, uit de infobox van de Veldslag of uit de infobox van de Eenheid zelf.
+_Avoid_: Krijgseenheid, troepen, unit
+
+**Bevelhebber**:
+Een generaal, admiraal of andere leider die in de infobox van een Veldslag als bevelhebber staat.
+_Avoid_: Commandant (dat is de commandant van een boot), leider
+
+**Land**:
+Een land dat aan een Veldslag deelnam, aan welke kant dan ook. Elk Land hoort bij één Kamp.
+_Avoid_: Natie, partij
+
+**Spoor**:
+De Veldslagen van één Eenheid of Bevelhebber op volgorde van datum, op de kaart verbonden door een lijn met pijlen. Een Veldslag die een kortere Veldslag uit hetzelfde Spoor helemaal omvat, telt niet mee.
+_Avoid_: Route (dat is van een boot), pad
+
+**Label**:
+Een filter boven de Veldslagenlijst, gekozen via het zoekveld, zoals 'Land: Polen' of 'Winnaar: As'. Labels gelden samen: een Veldslag moet aan alle labels voldoen.
+_Avoid_: Tag, chip
