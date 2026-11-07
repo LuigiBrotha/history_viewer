@@ -55,3 +55,39 @@ def test_a_second_run_gives_the_same_file(tmp_path):
     first = path.read_text(encoding="utf-8")
     run(path, url)
     assert path.read_text(encoding="utf-8") == first
+
+
+from tools.enrich_battles import linked_names, people_and_units
+
+
+def test_linked_names_keeps_linked_articles_only():
+    field = ("{{flagicon|Nazi Germany}} [[Erwin Rommel]]<br />{{flagicon|Italy}} [[Ettore Bastico|E. Bastico]] †<br />"
+             "[[File:Flag.svg|20px]] [[Nazi Germany|Germany]] Some unlinked general [[Erwin_Rommel]] [[Category:X]]")
+    assert linked_names(field) == ["Erwin Rommel", "Ettore Bastico"]
+
+
+def test_people_and_units_reads_each_language():
+    en = ("{{Infobox military conflict\n| commander1 = [[Erwin Rommel]]\n| commander2 = [[Bernard Montgomery]]\n"
+          "| units1 = [[Afrika Korps]]\n| units2 = [[Eighth Army (United Kingdom)|Eighth Army]]\n}}")
+    assert people_and_units("en", en) == (["Erwin Rommel", "Bernard Montgomery"], ["Afrika Korps", "Eighth Army (United Kingdom)"])
+    de = "{{Infobox Militärischer Konflikt\n|BEFEHLSHABER1=[[Eduard Dietl]]\n|BEFEHLSHABER2=[[William Whitworth]]\n}}"
+    assert people_and_units("de", de) == (["Eduard Dietl", "William Whitworth"], [])
+    pl = "{{Wojna infobox\n|dowódca1 = [[Tadeusz Kutrzeba]]<br>[[Władysław Bortnowski]]\n|dowódca2 = [[Gerd von Rundstedt]]\n}}"
+    assert people_and_units("pl", pl)[0] == ["Tadeusz Kutrzeba", "Władysław Bortnowski", "Gerd von Rundstedt"]
+
+
+def test_run_adds_commanders_and_units(tmp_path):
+    path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01"}])
+    run(path, url)
+    battle = json.loads(path.read_text(encoding="utf-8"))[0]
+    assert battle["commanders"] == [] and battle["units"] == []
+
+
+def test_ranks_are_dropped_and_units_in_the_commander_field_count_as_units():
+    en = ("{{Infobox military conflict\n| commander1 = [[Admiral]] [[Karl Dönitz]]<br />[[Major (rank)|Maj.]] X"
+          "<br />[[Kapitänleutnant]] [[Otto Kretschmer]]\n| commander2 = [[2nd Belorussian Front]]<br />[[Stavka]]"
+          "<br />[[Ernst Busch (field marshal)]]\n| units1 = [[Army Group Centre]]\n}}")
+    assert people_and_units("en", en) == (
+        ["Karl Dönitz", "Otto Kretschmer", "Ernst Busch (field marshal)"],
+        ["2nd Belorussian Front", "Stavka", "Army Group Centre"],
+    )

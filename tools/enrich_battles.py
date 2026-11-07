@@ -1,4 +1,5 @@
-"""Add what the stored articles say about each Veldslag to battles.json: its Landen.
+"""Add what the stored articles say about each Veldslag to battles.json: its Landen,
+Bevelhebbers and Eenheden.
 
 Reads the wikitext kept in the database by the extractions, so it never touches a dump:
 
@@ -7,27 +8,91 @@ Reads the wikitext kept in the database by the extractions, so it never touches 
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import BattleArticle, ForeignBattleArticle
-from tools.countries import side_countries
+from tools.battle_winner import COMMENT, REF
+from tools.countries import land_of, side_countries
 from tools.extract_battles import DEFAULT_DATABASE, DEFAULT_OUTPUT, _write_atomically, find_infobox
 from tools.wiki_languages import LANGUAGES, ORDER
 
 ENGLISH_SIDES = ("combatant1", "combatant2", "combatant3")
+PEOPLE_FIELDS = {"en": ("commander1", "commander2", "commander3"), "nl": ("commander1", "commander2"),
+                 "de": ("befehlshaber1", "befehlshaber2"), "pl": ("dowódca1", "dowódca2")}
+UNIT_FIELDS = {"en": ("units1", "units2", "units3"), "nl": ("units1", "units2"), "de": (), "pl": ()}
+_LINK = re.compile(r"\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
+
+
+def _fields(lang, wikitext):
+    if lang == "en":
+        return find_infobox(wikitext) or {}
+    return find_infobox(wikitext, LANGUAGES[lang].infobox) or {}
+
+
+def linked_names(field):
+    """The titles of the articles a field links to, each once; files, categories and countries left out."""
+    names = []
+    for target in _LINK.findall(COMMENT.sub("", REF.sub("", field or ""))):
+        title = re.sub(r"[\s_]+", " ", target).strip()
+        if not title or ":" in title or land_of(title):
+            continue
+        title = title[:1].upper() + title[1:]
+        if title not in names:
+            names.append(title)
+    return names
+
+
+# Ranks are linked next to a commander's name; they are not Bevelhebbers.
+RANKS = {
+    "admiral", "vice admiral", "rear admiral", "fleet admiral", "grand admiral", "commodore", "captain", "commander",
+    "general", "lieutenant general", "major general", "brigadier", "brigadier general", "colonel", "lieutenant colonel",
+    "major", "lieutenant", "field marshal", "marshal", "marshal of the soviet union", "general of the army",
+    "generalfeldmarschall", "generaloberst", "generalleutnant", "generalmajor", "oberst", "hauptmann", "leutnant",
+    "großadmiral", "grossadmiral", "vizeadmiral", "konteradmiral", "kapitän zur see", "fregattenkapitän",
+    "korvettenkapitän", "kapitänleutnant", "oberleutnant zur see", "taisa", "chūjō", "taishō", "shōshō",
+}
+# A name like this in a commander field is an Eenheid, not a person.
+UNIT_NAME = re.compile(
+    r"\b(?:front|army|armies|corps|division|fleet|group|brigade|regiment|squadron|flotilla|battalion|wing|"
+    r"command|stavka|okh|okw|kriegsmarine|luftwaffe|wehrmacht)\b",
+    re.IGNORECASE,
+)
+
+
+def _is_rank(name):
+    return re.sub(r"\s*\([^)]*\)", "", name).strip().lower() in RANKS or "(rank)" in name.lower()
+
+
+def people_and_units(lang, wikitext):
+    """(Bevelhebbers, Eenheden) linked from an article's infobox. Ranks are left out, and
+    units named in a commander field count as Eenheden."""
+    fields = _fields(lang, wikitext)
+    people, units = [], []
+    for key in PEOPLE_FIELDS.get(lang, ()):
+        for name in linked_names(fields.get(key, "")):
+            if _is_rank(name):
+                continue
+            target = units if UNIT_NAME.search(re.sub(r"\([^)]*\)", "", name)) else people
+            if name not in target:
+                target.append(name)
+    for key in UNIT_FIELDS.get(lang, ()):
+        for name in linked_names(fields.get(key, "")):
+            if name not in units:
+                units.append(name)
+    return people, units
 
 
 def countries_of(lang, wikitext):
     """The Landen on all sides of an article's infobox, in order, each once."""
+    fields = _fields(lang, wikitext)
     if lang == "en":
-        fields = find_infobox(wikitext) or {}
         sides = ENGLISH_SIDES
     else:
         language = LANGUAGES[lang]
-        fields = find_infobox(wikitext, language.infobox) or {}
         sides = (language.side1, language.side2)
     found = []
     for side in sides:
@@ -59,12 +124,11 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE):
         if battle.get("lang", "en") == "en" and title in english:
             sources.append(("en", english[title]))
         sources += foreign.get(title, [])
-        countries = []
-        for lang, wikitext in sources:
-            countries = countries_of(lang, wikitext)
-            if countries:
-                break
-        battle["countries"] = countries
+        # Each field from the first article that has it: English, then the others in order.
+        battle["countries"] = next((c for lang, text in sources if (c := countries_of(lang, text))), [])
+        found = [people_and_units(lang, text) for lang, text in sources]
+        battle["commanders"] = next((people for people, _ in found if people), [])
+        battle["units"] = next((units for _, units in found if units), [])
     _write_atomically(battles_path, json.dumps(battles, ensure_ascii=False, separators=(",", ":")))
     print(f"{sum(1 for b in battles if b['countries'])} of {len(battles)} Veldslagen have Landen")
 
