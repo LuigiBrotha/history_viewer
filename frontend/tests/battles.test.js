@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }) } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }) } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -114,6 +114,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     loadPositions,
     savePosition,
     clearPosition,
+    download,
     loadArticle: async (title) => {
       articles.push(title);
       return loadArticle(title);
@@ -709,4 +710,45 @@ test("a Bevelhebber label draws the Spoor and shows all its battles whatever the
   ctx.controller.setLabels([]);
   assert.equal([...ctx.layers].filter((l) => String(l.options.icon.className).startsWith("track")).length, 0);
   assert.deepEqual(ctx.squares(), []);
+});
+
+
+test("Exporteren downloads the listed battles as CSV or GeoJSON", async () => {
+  const files = [];
+  const ctx = setup({ mode: "period", download: (name, type, text) => files.push({ name, type, text }) });
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  const search = ctx.elements["battle-pane"].byClass("battle-search")[0];
+  search.value = "midway";
+  search.dispatch("input");
+  const pane = ctx.elements["battle-pane"];
+  pane.byClass("battle-export-csv")[0].dispatch("click");
+  pane.byClass("battle-export-geojson")[0].dispatch("click");
+  assert.deepEqual(files.map((f) => [f.name, f.type]), [["veldslagen.csv", "text/csv"], ["veldslagen.geojson", "application/geo+json"]]);
+  assert.equal(files[0].text.trim().split("\r\n").length, 2);
+  assert.match(files[0].text, /Midway/);
+});
+
+test("a back-up holds the Eigen posities, and restoring one asks first and saves only what differs", async () => {
+  const files = [];
+  const saved = [];
+  const positions = [{ title: "Midway", lat: 1, lng: 2 }, { title: "Kursk", lat: 3, lng: 4 }];
+  const ctx = setup({
+    mode: "period", download: (name, type, text) => files.push({ name, text }),
+    loadPositions: async () => positions, savePosition: async (...args) => saved.push(args),
+  });
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  ctx.controller.setEditable(true);
+  await ctx.controller.backupPositions();
+  assert.equal(files[0].name, "eigen-posities.json");
+  const backup = JSON.stringify({ positions: [{ title: "Midway", lat: 1, lng: 2 }, { title: "Atlantic", lat: 5, lng: 6 }] });
+  const asked = [];
+  assert.equal(await ctx.controller.restorePositions(backup, (q) => (asked.push(q), false)), false);
+  assert.deepEqual(saved, []);
+  assert.equal(await ctx.controller.restorePositions(backup, () => true), true);
+  assert.deepEqual(saved, [["Atlantic", 5, 6]]);
+  assert.deepEqual(asked, ["1 Eigen positie terugzetten? (1 is al gelijk)"]);
+  assert.deepEqual(ctx.squares().includes("Atlantic"), true);
+  await assert.rejects(ctx.controller.restorePositions("not json", () => true));
 });

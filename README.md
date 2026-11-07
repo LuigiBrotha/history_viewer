@@ -111,6 +111,11 @@ duration. The Landen, Bevelhebbers and Eenheden come from `poetry run python -m 
 which reads the stored articles and, when present, the result of
 `poetry run python -m tools.extract_unit_battles` (the battles listed in the articles of units and people).
 
+Under the battle list, *Exporteren en back-up* downloads the listed battles (with their labels and search
+applied) as CSV or GeoJSON, and all Eigen posities as a JSON back-up. On this machine a back-up can be
+restored: where it differs from the stored positions it wins, positions it lacks stay, and the page asks
+first, saying how many will change.
+
 Every map page keeps its view in its URL, so a bookmark or copied link (a *Pin*) opens the
 same view again: `datum` on `/`, `van` and `tot` on `/status` and `/heatmap`, and on all three
 `veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`), `zonderpositie=1`, `filter` and `sorteer`. The links between

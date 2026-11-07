@@ -34,7 +34,9 @@ function percent(value) {
 // "period" the rows overlapping the period are, and the others are dimmed.
 // While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
-export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange }) {
+export function createBattlePane({
+  rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
+}) {
   let rows = [];
   // The rows in the chosen sort order; rows itself stays in date order.
   let order = [];
@@ -91,7 +93,36 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
   scroll.append(empty, track);
   const source = element("p", "battle-source", SOURCE);
 
-  rootEl.replaceChildren(head, noposRow, labelsEl, axis, scroll, source);
+  // Export of the listed battles, and a back-up of the Eigen posities (restoring only where
+  // editing is offered).
+  const tools = element("details", "battle-tools");
+  const button = (className, text, handler) => {
+    const node = element("button", className, text);
+    node.setAttribute("type", "button");
+    node.addEventListener("click", handler);
+    return node;
+  };
+  const restoreInput = element("input", "battle-restore-file");
+  restoreInput.setAttribute("type", "file");
+  restoreInput.setAttribute("accept", "application/json,.json");
+  restoreInput.hidden = true;
+  restoreInput.addEventListener("change", async () => {
+    const file = restoreInput.files?.[0];
+    restoreInput.value = "";
+    if (file) onRestore?.(await file.text());
+  });
+  const restoreButton = button("battle-restore", "Eigen posities terugzetten…", () => restoreInput.click());
+  restoreButton.hidden = true;
+  tools.append(
+    element("summary", "battle-tools-summary", "Exporteren en back-up"),
+    button("battle-export-csv", "Lijst als CSV", () => onExport?.("csv")),
+    button("battle-export-geojson", "Lijst als GeoJSON", () => onExport?.("geojson")),
+    button("battle-backup", "Back-up Eigen posities", () => onBackup?.()),
+    restoreButton,
+    restoreInput,
+  );
+
+  rootEl.replaceChildren(head, noposRow, labelsEl, axis, scroll, tools, source);
 
   function renderLabels() {
     labelsEl.replaceChildren(...labels.map((label) => {
@@ -274,8 +305,11 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
     },
     setEditable(next) {
       editable = next;
+      restoreButton.hidden = !editable;
       refreshActions();
     },
+    // The listed battles, in the order shown.
+    visibleBattles: () => order.filter((r) => !r.el.hidden).map((r) => r.battle),
     // The labels every listed battle must match.
     setLabels(next) {
       labels = next;

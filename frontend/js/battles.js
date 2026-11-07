@@ -1,6 +1,7 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
+import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
 import { TRACK_COLORS, createTrackLayer } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
@@ -50,6 +51,7 @@ export function initBattles({
   loadArticle = fetchArticle,
   loadPositions = fetchBattlePositions,
   savePosition = saveBattlePosition,
+  download = null,
   clearPosition = clearBattlePosition,
 }) {
   const splitEl = doc.getElementById("battle-split");
@@ -146,6 +148,9 @@ export function initBattles({
     onNoposChange,
     onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
+    onExport: (format) => exportList(format),
+    onBackup: () => backupPositions().catch((error) => win.alert?.(`Back-up mislukt: ${error.message}`)),
+    onRestore: (text) => restorePositions(text).catch((error) => win.alert?.(`Terugzetten mislukt: ${error.message}`)),
   });
 
   const trackLayer = createTrackLayer(map);
@@ -157,6 +162,44 @@ export function initBattles({
       battles: track(battles, label),
       color: TRACK_COLORS[i % TRACK_COLORS.length],
     })));
+  }
+
+  // A file for the viewer to save; the page's own download unless one is given (tests).
+  const save = download ?? ((name, type, text) => {
+    const url = win.URL.createObjectURL(new win.Blob([text], { type }));
+    const link = doc.createElement("a");
+    link.href = url;
+    link.download = name;
+    link.click();
+    win.setTimeout(() => win.URL.revokeObjectURL(url), 0);
+  });
+
+  function exportList(format) {
+    const listed = pane.visibleBattles();
+    if (format === "geojson") save("veldslagen.geojson", "application/geo+json", toGeoJson(listed));
+    else save("veldslagen.csv", "text/csv", toCsv(listed));
+  }
+
+  async function backupPositions() {
+    save("eigen-posities.json", "application/json", backupText(await loadPositions()));
+  }
+
+  // Restores a back-up after asking: where it differs it wins, what it lacks stays. Resolves
+  // to whether anything was restored; rejects on a file that is not a back-up.
+  async function restorePositions(text, ask = (question) => win.confirm(question)) {
+    const backup = readBackup(text);
+    const { set, unchanged } = restorePlan(await loadPositions(), backup);
+    if (set.length === 0) return false;
+    const question = `${set.length} Eigen positie${set.length === 1 ? "" : "s"} terugzetten? `
+      + `(${unchanged} ${unchanged === 1 ? "is" : "zijn"} al gelijk)`;
+    if (!ask(question)) return false;
+    for (const { title, lat, lng } of set) await savePosition(title, lat, lng);
+    const restored = new Map(set.map((p) => [p.title, p]));
+    battles = battles.map((b) => (restored.has(b.title) ? { ...b, lat: restored.get(b.title).lat, lng: restored.get(b.title).lng, own: true } : b));
+    pane.setBattles(battles);
+    layer.setBattles(shown());
+    drawTracks();
+    return true;
   }
 
   function applyLabels() {
@@ -395,6 +438,9 @@ export function initBattles({
     onLabelsChange: (listener) => labelListeners.push(listener),
     setSort: (next) => pane.setSort(next),
     onSortChange: (listener) => sortListeners.push(listener),
+    exportList,
+    backupPositions,
+    restorePositions,
     // The keyboard's actions (see shortcuts.js).
     step(direction) {
       const battle = pane.neighbour(direction);
