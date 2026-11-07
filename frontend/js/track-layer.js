@@ -1,8 +1,9 @@
 // The Sporen of the chosen Eenheden and Bevelhebbers: per Spoor a line through its battles in
 // date order, an arrow halfway each step that shows the way, and the number of each battle.
 
-// Strong, well-separated colours, one per Spoor, readable on both base maps.
-export const TRACK_COLORS = ["#d7191c", "#2b83ba", "#1a9641", "#7b3294", "#e66101", "#008080"];
+// Strong colours, one per Spoor, unlike those of the Kampen on the squares (grey, blue, red,
+// green, amber), so a Spoor never looks like a Winnaar.
+export const TRACK_COLORS = ["#7b2ff7", "#ff6a00", "#00838f", "#c2185b", "#111111", "#8d5524"];
 
 const ARROW_SIZE = 16;
 const NUMBER_SIZE = 18;
