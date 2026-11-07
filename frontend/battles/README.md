@@ -33,3 +33,22 @@ choose another database.
 
 The `battles.json` in the repository was first built from the twelve sample articles in
 `tests/fixtures/wikipedia/battle_pages.json`, so that the pages work before the full run.
+
+## Articles and winners from the multistream dump
+
+The Artikelen and the `winner` of the battles already in `battles.json` can be filled without
+reading the whole dump. Download these three files from
+<https://dumps.wikimedia.org/enwiki/20261001/> into `~/.cache/uboats/wikipedia/`:
+
+- `enwiki-20261001-pages-articles-multistream.xml.bz2`
+- `enwiki-20261001-pages-articles-multistream-index.txt.bz2`
+- `enwiki-20261001-redirect.sql.gz`
+
+Then run:
+
+```
+poetry run python -m tools.fill_battle_articles [--dir DIR] [--database URL] [--battles FILE]
+```
+
+Only the bz2 streams that hold a battle are read (peak memory about 60 MB). A rerun replaces
+the articles and redirects and rewrites `winner` in `battles.json`, keeping everything else.
