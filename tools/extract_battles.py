@@ -443,7 +443,9 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
     engine = create_engine(database_url)
     BattleArticle.__table__.create(engine, checkfirst=True)
     BattleRedirect.__table__.create(engine, checkfirst=True)
-    session = Session(engine)
+    # Articles wait here and are written in one short transaction per save, so other writers
+    # (the server, the ship crawl) never find the database locked for long.
+    articles = []
     # Every redirect in the dump goes to a file of its own, so that the database is not locked for the whole run.
     scratch_path = dump.with_name(f"{output.stem}.redirects.sqlite")
     scratch = sqlite3.connect(scratch_path)
@@ -454,7 +456,11 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
         scratch.executemany("INSERT OR REPLACE INTO redirects (alias, target) VALUES (?, ?)", redirects)
         scratch.commit()
         redirects.clear()
-        session.commit()
+        if articles:
+            with Session(engine) as session, session.begin():
+                for article in articles:
+                    session.merge(article)
+            articles.clear()
         ordered = sorted(battles.values(), key=lambda b: (b["start"], b["title"]))
         _write_atomically(output, json.dumps(ordered, ensure_ascii=False, separators=(",", ":")))
         _write_atomically(review_path, "".join(f"{line}\n" for line in review))
@@ -474,8 +480,8 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
                     review.append(f"{title}\t{reason}\t{fields.get('date', '')[:200]}".replace("\n", " "))
             else:
                 battles[title] = battle
-                session.merge(BattleArticle(title=title, wikitext=wikitext, dump_name=dump.name,
-                                            extracted_at=datetime.now(timezone.utc)))
+                articles.append(BattleArticle(title=title, wikitext=wikitext, dump_name=dump.name,
+                                              extracted_at=datetime.now(timezone.utc)))
         if time.monotonic() - last_save >= save_every_seconds:
             save()
             last_save = time.monotonic()
@@ -484,7 +490,6 @@ def run(dump, output, save_every_seconds=SAVE_EVERY_SECONDS, database_url=DEFAUL
             print(f"{pages} pages read, {len(battles)} battles so far", file=sys.stderr, flush=True)
     save()
     scratch.close()
-    session.close()
     _finish_redirects(engine, scratch_path, battles)
     engine.dispose()
     scratch_path.unlink()

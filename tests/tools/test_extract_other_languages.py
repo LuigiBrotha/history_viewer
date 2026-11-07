@@ -96,3 +96,32 @@ def test_a_language_without_its_files_is_skipped(files, capsys):
     other, battles_path, database_url = files
     run(other, battles_path, database_url, languages=("nl", "de", "pl"))
     assert "pl: no dump" in capsys.readouterr().out
+
+
+def _assert_writable(database_url):
+    import sqlite3
+
+    connection = sqlite3.connect(database_url.removeprefix("sqlite:///"), timeout=0)
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.rollback()
+    finally:
+        connection.close()
+
+
+def test_the_database_stays_free_for_other_writers_during_a_scan(files, monkeypatch):
+    import tools.extract_other_languages as tool
+
+    other, battles_path, database_url = files
+    real = tool.extract_other_battle
+    seen = []
+
+    def checking(lang, title, wikitext):
+        if seen:
+            _assert_writable(database_url)  # raises "database is locked" while a scan holds a write
+        seen.append(title)
+        return real(lang, title, wikitext)
+
+    monkeypatch.setattr(tool, "extract_other_battle", checking)
+    run(other, battles_path, database_url, languages=("nl",))
+    assert len(seen) >= 2

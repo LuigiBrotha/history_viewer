@@ -54,11 +54,17 @@ def scan(lang, dump, out_path, engine, save_every_seconds=SAVE_EVERY_SECONDS):
     language = LANGUAGES[lang]
     state = json.loads(out_path.read_text(encoding="utf-8")) if out_path.exists() else {"complete": False, "pages": 0, "battles": []}
     battles = {item["record"]["title"]: item for item in state["battles"]}
-    session = Session(engine)
     pages = state["pages"]
+    # Articles wait here and are written in one short transaction per save, so other writers
+    # (the server, the ship crawl) never find the database locked for long.
+    articles = []
 
     def save(complete=False):
-        session.commit()
+        if articles:
+            with Session(engine) as session, session.begin():
+                for article in articles:
+                    session.merge(article)
+            articles.clear()
         _write_atomically(out_path, json.dumps({"complete": complete, "pages": pages,
                                                  "battles": list(battles.values())}, ensure_ascii=False))
 
@@ -68,17 +74,18 @@ def scan(lang, dump, out_path, engine, save_every_seconds=SAVE_EVERY_SECONDS):
             record, _ = extract_other_battle(lang, title, wikitext)
             if record is not None:
                 battles[title] = {"id": page_id, "record": record}
-                session.merge(ForeignBattleArticle(lang=lang, title=title, wikitext=wikitext, dump_name=dump.name,
-                                                   extracted_at=datetime.now(timezone.utc)))
+                articles.append(ForeignBattleArticle(lang=lang, title=title, wikitext=wikitext, dump_name=dump.name,
+                                                     extracted_at=datetime.now(timezone.utc)))
         if time.monotonic() - last_save >= save_every_seconds:
             save()
             last_save = time.monotonic()
         if pages % PROGRESS_EVERY == 0:
             print(f"{lang}: {pages} pages read, {len(battles)} battles", file=sys.stderr, flush=True)
-    session.execute(delete(ForeignBattleArticle).where(ForeignBattleArticle.lang == lang,
-                                                       ForeignBattleArticle.title.not_in(list(battles))))
+    save()
+    with Session(engine) as session, session.begin():
+        session.execute(delete(ForeignBattleArticle).where(ForeignBattleArticle.lang == lang,
+                                                           ForeignBattleArticle.title.not_in(list(battles))))
     save(complete=True)
-    session.close()
     return state
 
 

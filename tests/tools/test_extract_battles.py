@@ -548,3 +548,28 @@ def test_run_resumes_redirects_and_articles_after_a_stop(tmp_path, pages, monkey
         "Midway": "Battle of Midway",
     }
     assert not list(tmp_path.glob("*.redirects.sqlite"))
+
+
+def test_the_database_stays_free_for_other_writers_during_a_run(tmp_path, pages, monkeypatch):
+    import sqlite3
+
+    database = tmp_path / "test.db"
+    real = tools_extract.extract_battle
+    seen = []
+
+    def checking(title, wikitext):
+        if seen:
+            connection = sqlite3.connect(database, timeout=0)
+            try:
+                connection.execute("BEGIN IMMEDIATE")
+                connection.rollback()
+            finally:
+                connection.close()
+        seen.append(title)
+        return real(title, wikitext)
+
+    monkeypatch.setattr(tools_extract, "extract_battle", checking)
+    dump = tmp_path / "d.xml.bz2"
+    make_dump(dump, DUMP_PAGES)
+    run(dump, tmp_path / "battles.json", save_every_seconds=3600, database_url=f"sqlite:///{database}")
+    assert len(seen) >= 3
