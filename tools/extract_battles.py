@@ -1,8 +1,8 @@
 """Extract the World War II battles from a dump of English Wikipedia.
 
 The dump (enwiki-latest-pages-articles.xml.bz2, 25.8 GB compressed) is streamed once and
-never held in memory. Every article with a military conflict infobox that overlaps the
-war and names World War II becomes one record in frontend/battles/battles.json. Dates
+never held in memory. Every article with a military conflict infobox whose date overlaps
+the war (1 September 1939 – 2 September 1945) becomes one record in frontend/battles/battles.json. Dates
 and coordinates are parsed from wikitext and anything not understood is left out:
 
     poetry run python -m tools.extract_battles [dump.xml.bz2 | directory] [--output FILE]
@@ -325,9 +325,8 @@ def extract_battle(title, text):
         return None, f"date: {skip.reason}"
     if parsed.end < WAR_START or parsed.start > WAR_END:
         return None, "outside the war period"
+    # Every battle that starts, ends or takes place during the war counts.
     text = strip_comments(text)
-    if not names_world_war_ii(text, fields):
-        return None, "does not name World War II"
     lat, lng = extract_coordinates(text)
     part_of = next((plain_text(fields[n]) for n in ("part_of", "partof", "campaign") if fields.get(n)), None)
     place = next((plain_text(fields[n]) for n in ("place", "location") if fields.get(n)), None)

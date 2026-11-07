@@ -237,15 +237,11 @@ def test_extract_battle_prints_and_asserts_every_fixture_article(pages, capsys):
     assert len([b for b, _ in results.values() if b is not None]) == 10
 
 
-def test_extract_battle_requires_world_war_ii_in_a_category_or_part_of():
+def test_extract_battle_takes_any_battle_during_the_war_whether_or_not_it_names_world_war_ii():
     infobox = "{{Infobox military conflict\n| date = 5 June 1943\n%s}}\n"
     assert extract_battle("A", infobox % "| part_of = [[WWII]]\n")[0] is not None
-    assert extract_battle("A", infobox % "| campaign = the Second World War\n")[0] is not None
-    assert extract_battle("A", infobox % "" + "[[Category:Battles of World War II involving X]]")[0] is not None
-    assert extract_battle("A", infobox % "" + "[[Category:Battles of World War I involving X]]") == (None, "does not name World War II")
-    assert extract_battle("A", infobox % "| part_of = the Cold War\n") == (None, "does not name World War II")
-    # A mention in the running text is not enough.
-    assert extract_battle("A", infobox % "" + "It was part of World War II.") == (None, "does not name World War II")
+    assert extract_battle("A", infobox % "| part_of = the Chinese Civil War\n")[0] is not None
+    assert extract_battle("A", infobox % "")[0] is not None
 
 
 def test_extract_battle_keeps_battles_that_start_before_the_war_only_when_they_overlap():
