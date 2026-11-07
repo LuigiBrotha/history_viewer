@@ -1,8 +1,10 @@
 import { addBaseMaps } from "./base-maps.js";
-import { canEdit, fetchStatus } from "./api.js";
+import { canEdit, fetchPlaces, fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
+import { createMapSearch } from "./map-search.js";
+import { matchBattles } from "./search-model.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, gridMax, heatColor, patrolCells, ROWS, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
@@ -139,6 +141,19 @@ function main() {
   });
   battles.setPeriod(null, null);
   periodView.restore({ slider, battles });
+
+  const search = createMapSearch({
+    map: map,
+    sources: [{ group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) }],
+    onPick: ({ group, item }) => {
+      if (group === "Plaatsen") {
+        if (!battles.moveEditTo(item.lat, item.lng)) search.showPlace(item);
+      } else {
+        battles.selectBattle(item.title);
+      }
+    },
+    fetchPlaces,
+  });
 
   initAtlas(map).then((loaded) => {
     atlas = loaded;

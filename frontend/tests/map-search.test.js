@@ -289,3 +289,33 @@ test("Esc in the field removes the temporary marker", () => {
   t.key("Escape");
   assert.equal(t.markers[0].removed, true);
 });
+
+test("Enter again after choosing does not pick a second time", () => {
+  const t = setup();
+  t.type("nar");
+  t.key("ArrowDown");
+  t.key("Enter");
+  t.key("Enter");
+  assert.equal(t.picks.length, 1);
+});
+
+for (const how of ["choose", "Escape"]) {
+  test(`a late place answer after ${how} does not reopen the list with stale places`, async () => {
+    let resolve;
+    const t = setup({ answer: () => new Promise((r) => (resolve = r)) });
+    t.type("nar");
+    mock.timers.tick(400);
+    if (how === "choose") {
+      t.key("ArrowDown");
+      t.key("Enter");
+    } else {
+      t.key("Escape");
+    }
+    resolve([NARVIK]);
+    await t.flush();
+    t.input.dispatch("focus");
+    assert.doesNotMatch(text(t), /Narvik\b(?! 1940)/);
+    assert.doesNotMatch(text(t), /Plaatsen zoeken…/);
+    assert.equal(t.calls[0].options.signal.aborted, true);
+  });
+}

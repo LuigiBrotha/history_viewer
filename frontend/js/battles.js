@@ -181,7 +181,8 @@ export function initBattles({
     control.addTo(map);
 
     const onKey = (event) => {
-      if (event.key === "Escape") cancelEdit();
+      // Esc in the map search field only closes its list.
+      if (event.key === "Escape" && !event.target?.closest?.(".map-search")) cancelEdit();
     };
     doc.addEventListener("keydown", onKey);
 

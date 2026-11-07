@@ -96,7 +96,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     addEventListener: (type, fn) => keyHandlers.add(fn),
     removeEventListener: (type, fn) => keyHandlers.delete(fn),
   };
-  const press = (key) => [...keyHandlers].forEach((fn) => fn({ key }));
+  const press = (key, target = null) => [...keyHandlers].forEach((fn) => fn({ key, target }));
   const win = { innerWidth: width, innerHeight: 800, addEventListener() {}, requestAnimationFrame: (fn) => fn(), localStorage: fakeStorage() };
   elements["article-split"].rect = elements["battle-split"].rect;
   const picked = [];
@@ -372,6 +372,15 @@ test("Annuleer and Esc restore the old place", async () => {
     assert.deepEqual(squareOf().latlng, [30, -178]);
     assert.deepEqual(saved, []);
   }
+});
+
+test("Esc inside the map search field does not cancel the edit", async () => {
+  const { controls, press } = await startEditing();
+  const inSearch = { closest: (selector) => (selector === ".map-search" ? {} : null) };
+  press("Escape", inSearch);
+  assert.equal(controls[0].removed, false);
+  press("Escape", { closest: () => null });
+  assert.equal(controls[0].removed, true);
 });
 
 test("other keys do not cancel the edit", async () => {

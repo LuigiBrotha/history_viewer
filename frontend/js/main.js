@@ -1,9 +1,11 @@
-import { EditError, canEdit, excludePoint, fetchBoats, fetchShips, fetchStatus, restorePoint } from "./api.js";
+import { EditError, canEdit, excludePoint, fetchBoats, fetchPlaces, fetchShips, fetchStatus, restorePoint } from "./api.js";
 import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage, parseDate } from "./time-model.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
 import { createBoatPanel } from "./boat-panel.js";
+import { createMapSearch } from "./map-search.js";
+import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import {
   beginEdit,
@@ -66,7 +68,7 @@ function main() {
   let followedSlug = null;
   let currentDate = null;
   let atlas = { setDate() {} };
-  let battles = { setDate() {}, setEditable() {} };
+  let battles = { setDate() {}, setEditable() {}, allBattles: () => [] };
   let ships = [];
   let shipLayer = null;
   let editable = false;
@@ -190,6 +192,32 @@ function main() {
     clearDrawnRoute();
     resetButton.hidden = false;
     render(currentDate, true);
+  }
+
+  // Choosing a result does what clicking that thing does.
+  function initSearch(map) {
+    const search = createMapSearch({
+      map,
+      sources: [
+        { group: "Boten", search: (q) => matchBoats([...boatsBySlug.values()], q) },
+        { group: "Schepen", search: (q) => matchShips(ships, q) },
+        { group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) },
+      ],
+      onPick: ({ group, item }) => {
+        if (group === "Boten") {
+          onBoatSelect(item.slug);
+        } else if (group === "Schepen") {
+          boatPanel.openShip(item);
+          if (item.date) timeline?.setDate(parseDate(item.date));
+          if (item.lat != null && item.lng != null) map.setView([item.lat, item.lng], Math.max(map.getZoom(), 6));
+        } else if (group === "Veldslagen") {
+          battles.selectBattle(item.title);
+        } else if (!battles.moveEditTo(item.lat, item.lng)) {
+          search.showPlace(item);
+        }
+      },
+      fetchPlaces,
+    });
   }
 
   function onBoatSelect(slug) {
@@ -320,6 +348,7 @@ function main() {
           urlSync.update({ map: { lat: center.lat, lng: center.lng, zoom: mapState.map.getZoom() } });
         });
         battles.setEditable(editable);
+        initSearch(mapState.map);
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));

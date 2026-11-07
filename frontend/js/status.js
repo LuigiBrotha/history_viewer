@@ -1,10 +1,12 @@
-import { canEdit, fetchShips, fetchStatus } from "./api.js";
+import { canEdit, fetchPlaces, fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
+import { createMapSearch } from "./map-search.js";
+import { matchBattles } from "./search-model.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
@@ -100,6 +102,19 @@ function main() {
     onNoposChange: periodView.onNoposChange,
   });
   battles.setPeriod(null, null);
+
+  const search = createMapSearch({
+    map: state.map,
+    sources: [{ group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) }],
+    onPick: ({ group, item }) => {
+      if (group === "Plaatsen") {
+        if (!battles.moveEditTo(item.lat, item.lng)) search.showPlace(item);
+      } else {
+        battles.selectBattle(item.title);
+      }
+    },
+    fetchPlaces,
+  });
 
   const slider = initPeriodSlider({
     trackEl,

@@ -42,6 +42,12 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     controller = null;
   }
 
+  // Stops a place fetch that is still waiting, so a late answer cannot come back on refocus.
+  function dropPlaces() {
+    cancelPending();
+    if (places.state === "loading") places = { state: "idle", items: [] };
+  }
+
   function render() {
     list.hidden = !open;
     if (!open) {
@@ -78,6 +84,8 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     const row = rows[index];
     if (!row) return;
     open = false;
+    active = -1;
+    dropPlaces();
     render();
     onPick({ group: row.group, item: row.entry.item });
   }
@@ -125,6 +133,7 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     if (event.key === "Escape") {
       event.stopPropagation();
       open = false;
+      dropPlaces();
       removeMarker();
       render();
       input.blur();

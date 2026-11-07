@@ -67,3 +67,7 @@ _Avoid_: Partij, zijde (als de groep wordt bedoeld)
 **Winnaar**:
 Het Kamp dat een Veldslag won, volgens de strategische uitkomst. Een onbesliste Veldslag heeft twee Kampen, een onbekende uitkomst geen.
 _Avoid_: Overwinnaar
+
+**Zoeken op de kaart**:
+Het zoekveld linksboven op de kaartpagina's (Ctrl+K) om een boot, schip, Veldslag of plaats te kiezen; een keuze doet hetzelfde als erop klikken.
+_Avoid_: kaartzoeker
