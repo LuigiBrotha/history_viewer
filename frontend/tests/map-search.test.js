@@ -338,3 +338,25 @@ test("found places credit OpenStreetMap", async () => {
   await t.flush();
   assert.match(text(t), /© OpenStreetMap-bijdragers/);
 });
+
+
+test("focus puts the cursor in the search field", () => {
+  const t = setup();
+  let focused = 0;
+  t.input.focus = () => (focused += 1);
+  t.search.focus();
+  assert.equal(focused, 1);
+});
+
+test("typed coordinates are offered first, picked like a place and never sent to the place search", () => {
+  const t = setup();
+  t.type("52.37, 4.89");
+  assert.match(text(t), /Coördinaten/);
+  mock.timers.tick(5000);
+  assert.equal(t.calls.length, 0);
+  t.key("ArrowDown");
+  t.key("Enter");
+  assert.equal(t.picks.length, 1);
+  assert.equal(t.picks[0].group, "Plaatsen");
+  assert.deepEqual([t.picks[0].item.lat, t.picks[0].item.lng], [52.37, 4.89]);
+});

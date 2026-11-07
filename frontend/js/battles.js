@@ -63,6 +63,13 @@ export function initBattles({
       allBattles: () => [],
       moveEditTo: () => false,
       placeToggle() {},
+      step() {},
+      editSelected() {},
+      save() {},
+      saveAndNext() {},
+      clearSelected() {},
+      toggleArticle() {},
+      togglePane() {},
     };
   }
   const storage = safeStorage(win);
@@ -98,6 +105,7 @@ export function initBattles({
   let editable = false;
   let positionsLoaded = false;
   let selected = null;
+  let lastSelected = null;
   let requested = null;
 
   const layer = createBattleLayer(map, {
@@ -108,13 +116,15 @@ export function initBattles({
     rootEl: doc.getElementById("article-pane"),
     load: loadArticle,
     onBattleLink: (title) => selectBattle(title, { pickDate: true }),
-    onClose: () => {
-      articleSplit.close();
-      articlePane.clear();
-      selected = null;
-      onBattleChange(null);
-    },
+    onClose: () => closeArticle(),
   });
+
+  function closeArticle() {
+    articleSplit.close();
+    articlePane.clear();
+    selected = null;
+    onBattleChange(null);
+  }
 
   const pane = createBattlePane({
     rootEl: paneEl,
@@ -163,6 +173,11 @@ export function initBattles({
     save.className = "battle-edit-save";
     save.textContent = "Bewaar";
     save.setAttribute("type", "button");
+    const saveNext = doc.createElement("button");
+    saveNext.className = "battle-edit-save-next";
+    saveNext.textContent = "Bewaar en volgende";
+    saveNext.setAttribute("type", "button");
+    saveNext.title = "Bewaar en ga naar de volgende Veldslag zonder positie (Shift+Enter)";
     const cancel = doc.createElement("button");
     cancel.className = "battle-edit-cancel";
     cancel.textContent = "Annuleer";
@@ -173,7 +188,7 @@ export function initBattles({
     error.hidden = true;
     const barEl = doc.createElement("div");
     barEl.className = "battle-edit-bar";
-    barEl.append(title, save, cancel, error);
+    barEl.append(title, save, saveNext, cancel, error);
     const control = L.control({ position: "topleft" });
     control.onAdd = () => {
       L.DomEvent.disableClickPropagation(barEl);
@@ -198,18 +213,19 @@ export function initBattles({
     editing = session;
     editHandle = handle;
 
-    save.addEventListener("click", async () => {
+    // Stores the dragged place; with next, goes on to edit the next battle without a position.
+    async function store(next) {
+      if (save.disabled) return;
       const { lat, lng } = handle.position();
-      save.disabled = true;
-      cancel.disabled = true;
+      const buttons = [save, saveNext, cancel];
+      buttons.forEach((button) => (button.disabled = true));
       error.hidden = true;
       try {
         await savePosition(battle.title, lat, lng);
       } catch (failure) {
         console.error(failure);
         error.hidden = false;
-        save.disabled = false;
-        cancel.disabled = false;
+        buttons.forEach((button) => (button.disabled = false));
         return;
       }
       if (editing === session) {
@@ -218,7 +234,14 @@ export function initBattles({
         session.stop();
       }
       updateBattle(battle.title, { lat, lng, own: true });
-    });
+      if (next) {
+        const following = pane.nextUnplaced(battle.title);
+        if (following) startEdit(following);
+      }
+    }
+    session.store = store;
+    save.addEventListener("click", () => store(false));
+    saveNext.addEventListener("click", () => store(true));
     cancel.addEventListener("click", () => cancelEdit());
   }
 
@@ -318,6 +341,33 @@ export function initBattles({
     selectBattle,
     selectedBattle: () => selected,
     allBattles: () => battles,
+    // The keyboard's actions (see shortcuts.js).
+    step(direction) {
+      const battle = pane.neighbour(direction);
+      if (battle) selectBattle(battle.title, { pickDate: true });
+    },
+    editSelected() {
+      const battle = battles.find((b) => b.title === selected);
+      if (battle && editable && positionsLoaded) startEdit(battle);
+    },
+    save: () => editing?.store(false),
+    saveAndNext: () => editing?.store(true),
+    clearSelected() {
+      const battle = battles.find((b) => b.title === selected);
+      if (battle?.own && editable && positionsLoaded) clearOwn(battle);
+    },
+    toggleArticle() {
+      if (articleSplit.isOpen()) {
+        lastSelected = selected;
+        closeArticle();
+      } else if (lastSelected !== null) {
+        selectBattle(lastSelected);
+      }
+    },
+    togglePane() {
+      if (split.isOpen()) split.close();
+      else split.open();
+    },
     // Moves the Veldslagen button into the top-left row of map controls, after the ones
     // already there, so the page decides its place in that row.
     placeToggle() {

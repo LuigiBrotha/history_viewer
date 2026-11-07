@@ -383,3 +383,29 @@ test("a battle that gets an Eigen positie drops out of the filtered list", () =>
   assert.deepEqual(shown(), ["Lost early"]);
   assert.equal(label.textContent, "Alleen zonder positie (1)");
 });
+
+test("neighbour walks the visible rows from the selected one, and starts at an end without one", () => {
+  const { pane, rootEl } = setup("date", NOPOS);
+  assert.equal(pane.neighbour(1).title, "Lost early");
+  assert.equal(pane.neighbour(-1).title, "Lost 1942");
+  pane.reveal(NOPOS[1]);
+  assert.equal(pane.neighbour(1).title, "Placed");
+  assert.equal(pane.neighbour(-1), null);
+  const search = rootEl.byClass("battle-search")[0];
+  search.value = "lost";
+  search.dispatch("input");
+  pane.reveal(NOPOS[2]);
+  assert.equal(pane.neighbour(1), null);
+  assert.equal(pane.neighbour(-1).title, "Lost early");
+});
+
+test("nextUnplaced finds the next visible battle without a position after the given one", () => {
+  const { pane } = setup("date", [
+    battle({ title: "A", start: "1940-01-01", lat: null, lng: null }),
+    battle({ title: "B", start: "1941-01-01" }),
+    battle({ title: "C", start: "1942-01-01", lat: null, lng: null }),
+  ]);
+  assert.equal(pane.nextUnplaced("A").title, "C");
+  assert.equal(pane.nextUnplaced("C"), null);
+  assert.equal(pane.nextUnplaced("B").title, "C");
+});

@@ -47,3 +47,21 @@ test("an empty or blank query matches nothing", () => {
     assert.deepEqual(matchBattles(battles, q), []);
   }
 });
+
+import { parseCoordinates } from "../js/search-model.js";
+
+test("parseCoordinates reads decimal and degree notations", () => {
+  assert.deepEqual(parseCoordinates("52.37, 4.89"), { lat: 52.37, lng: 4.89 });
+  assert.deepEqual(parseCoordinates("52.37 4.89"), { lat: 52.37, lng: 4.89 });
+  assert.deepEqual(parseCoordinates("-33.9, 151.2"), { lat: -33.9, lng: 151.2 });
+  assert.deepEqual(parseCoordinates("51°59′N 5°55′E"), { lat: 51.98333, lng: 5.91667 });
+  assert.deepEqual(parseCoordinates("54°24'26\"N 18°40'05\"E"), { lat: 54.40722, lng: 18.66806 });
+  assert.deepEqual(parseCoordinates("12°S 77°W"), { lat: -12, lng: -77 });
+  assert.deepEqual(parseCoordinates("N 52.5 E 13.4"), { lat: 52.5, lng: 13.4 });
+});
+
+test("parseCoordinates leaves names and impossible numbers alone", () => {
+  for (const text of ["Narvik", "U-99", "1940", "95, 10", "10, 190", "52.37", "Slag om 1944 5", ""]) {
+    assert.equal(parseCoordinates(text), null, text);
+  }
+});

@@ -215,6 +215,20 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
       refreshActions();
       row.el.scrollIntoView?.({ block: "center" });
     },
+    // The visible battle before (-1) or after (1) the selected one; without one, the last or first.
+    neighbour(direction) {
+      const visible = rows.filter((r) => !r.el.hidden);
+      if (!visible.length) return null;
+      const index = revealed === null ? -1 : visible.indexOf(revealed);
+      if (index === -1) return (direction > 0 ? visible[0] : visible[visible.length - 1]).battle;
+      return visible[index + direction]?.battle ?? null;
+    },
+    // The first visible battle without a position after the one with this title.
+    nextUnplaced(title) {
+      const visible = rows.filter((r) => !r.el.hidden);
+      const index = visible.findIndex((r) => r.battle.title === title);
+      return visible.slice(index + 1).find((r) => r.battle.lat == null || r.battle.lng == null)?.battle ?? null;
+    },
     setEditable(next) {
       editable = next;
       refreshActions();

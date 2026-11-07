@@ -94,6 +94,12 @@ extraction (`tools/extract_battles.py`, or `tools/fill_battle_articles.py` for t
 already known; see `frontend/battles/README.md`). Images in an article are fetched once
 by the server and kept in the image cache folder (`WIKI_IMAGE_DIR`).
 
+Keyboard shortcuts on the map pages (press `?` for the overview): `↑`/`↓` previous or next
+battle in the list, `P` Positie aanpassen, `Enter` Bewaar, `Shift+Enter` Bewaar en volgende
+(on to the next battle without a position), `Esc` cancel, `W` wipe the Eigen positie, `A`
+article open or closed, `V` battle list open or closed, `/` or `Ctrl+K` search. Coordinates
+typed into the search field (`52.37, 4.89`, `51°59′N 5°55′E`) can be chosen like a place.
+
 Every map page keeps its view in its URL, so a bookmark or copied link (a *Pin*) opens the
 same view again: `datum` on `/`, `van` and `tot` on `/status` and `/heatmap`, and on all three
 `veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`) and `zonderpositie=1`. The links between
