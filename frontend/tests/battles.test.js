@@ -73,6 +73,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
       return marker;
     },
     layerGroup: () => ({ addTo() { return this; }, addLayer: (l) => layers.add(l), removeLayer: (l) => layers.delete(l) }),
+    polyline: (latlngs, options) => ({ latlngs, options: { ...options, icon: { className: "track-line" } } }),
   };
   const map = {
     invalidations: 0,
@@ -684,4 +685,28 @@ test("labels filter the list and the squares, and changes are reported", async (
   assert.deepEqual(heard, [["Japan"], []]);
   ctx.controller.setLabels([{ kind: "land", value: "Duitsland" }]);
   assert.deepEqual(heard, [["Japan"], []]);
+});
+
+
+test("a Bevelhebber label draws the Spoor and shows all its battles whatever the date", async () => {
+  const ctx = setup({
+    mode: "date",
+    load: async () => [
+      battle({ title: "Early", start: "1940-05-10", end: "1940-05-20", lat: 50, lng: 5, commanders: ["Erwin Rommel"] }),
+      battle({ title: "Late", start: "1942-05-26", end: "1942-06-21", lat: 32, lng: 23, commanders: ["Erwin Rommel"] }),
+      battle({ title: "Other", start: "1942-05-26", end: "1942-06-21", lat: 1, lng: 1 }),
+    ],
+  });
+  await ctx.ready();
+  ctx.controller.setDate("1941-01-01");
+  assert.deepEqual(ctx.squares(), []);
+  ctx.controller.addLabel({ kind: "bevelhebber", value: "Erwin Rommel" });
+  assert.deepEqual(ctx.squares(), ["Early", "Late"]);
+  const kinds = [...ctx.layers].map((l) => l.options.icon.className);
+  assert.equal(kinds.filter((k) => k === "track-line").length, 1);
+  assert.equal(kinds.filter((k) => k === "track-number").length, 2);
+  assert.equal(kinds.filter((k) => k === "track-arrow").length, 1);
+  ctx.controller.setLabels([]);
+  assert.equal([...ctx.layers].filter((l) => String(l.options.icon.className).startsWith("track")).length, 0);
+  assert.deepEqual(ctx.squares(), []);
 });

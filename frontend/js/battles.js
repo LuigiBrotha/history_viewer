@@ -1,6 +1,7 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
-import { labelKey, matchesLabels } from "./battle-labels.js";
+import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
+import { TRACK_COLORS, createTrackLayer } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -147,9 +148,21 @@ export function initBattles({
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
   });
 
+  const trackLayer = createTrackLayer(map);
+
+  // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.
+  function drawTracks() {
+    const tracked = labels.filter(isTrackLabel);
+    trackLayer.setTracks(tracked.map((label, i) => ({
+      battles: track(battles, label),
+      color: TRACK_COLORS[i % TRACK_COLORS.length],
+    })));
+  }
+
   function applyLabels() {
     pane.setLabels(labels);
     layer.setBattles(shown());
+    drawTracks();
   }
 
   // A change made in the app is reported, so the page can keep it in the URL.
@@ -173,6 +186,7 @@ export function initBattles({
     const updated = battles.find((battle) => battle.title === title);
     pane.setBattles(battles);
     layer.setBattles(shown());
+    drawTracks();
     layer.setSelected(updated);
     pane.reveal(updated);
   }
@@ -311,8 +325,10 @@ export function initBattles({
   }
 
   function shown() {
-    if (selection === null) return [];
     const labelled = battles.filter((b) => matchesLabels(b, labels));
+    // A Spoor is shown whole, whatever the date or period.
+    if (labels.some(isTrackLabel)) return labelled;
+    if (selection === null) return [];
     return mode === "date" ? activeOn(labelled, selection.date) : labelled.filter((b) => overlaps(b, selection.from, selection.to));
   }
 
@@ -342,6 +358,7 @@ export function initBattles({
       loaded = true;
       pane.setBattles(battles);
       layer.setBattles(shown());
+      drawTracks();
       applyEditable();
       if (requested !== null) {
         const { title, pickDate, onResolved } = requested;

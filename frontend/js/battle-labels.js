@@ -7,15 +7,23 @@ const KAMP_NAMES = { as: "As", westers: "Westerse geallieerden", sovjet: "Sovjet
 const WINNER_NAMES = { ...KAMP_NAMES, onbeslist: "onbeslist", onbekend: "onbekend" };
 const LANGUAGE_NAMES = { en: "Engels", nl: "Nederlands", de: "Duits", pl: "Pools" };
 const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie" };
-const KIND_NAMES = { land: "Land", winnaar: "Winnaar", taal: "Taal", positie: "Positie" };
+const KIND_NAMES = {
+  land: "Land", bevelhebber: "Bevelhebber", eenheid: "Eenheid", winnaar: "Winnaar", taal: "Taal", positie: "Positie",
+};
+// Labels whose value is a name from the battles themselves, each read from its own list.
+const NAMED = { land: "countries", bevelhebber: "commanders", eenheid: "units" };
+// An Eenheid or Bevelhebber label also draws a Spoor.
+const TRACKS = new Set(["bevelhebber", "eenheid"]);
 const FIXED = { winnaar: WINNER_NAMES, taal: LANGUAGE_NAMES, positie: POSITION_NAMES };
-const MAX_COUNTRIES = 8;
+const MAX_NAMES = 8;
 
 function matches(battle, { kind, value }) {
   const winner = Array.isArray(battle.winner) ? battle.winner : [];
   switch (kind) {
     case "land":
-      return Array.isArray(battle.countries) && battle.countries.includes(value);
+    case "bevelhebber":
+    case "eenheid":
+      return Array.isArray(battle[NAMED[kind]]) && battle[NAMED[kind]].includes(value);
     case "winnaar":
       if (value === "onbeslist") return winner.length === 2;
       if (value === "onbekend") return winner.length === 0;
@@ -35,7 +43,7 @@ export function matchesLabels(battle, labels) {
 }
 
 export function labelText({ kind, value }) {
-  const name = kind === "land" ? value : FIXED[kind]?.[value] ?? value;
+  const name = kind in NAMED ? value : FIXED[kind]?.[value] ?? value;
   return `${KIND_NAMES[kind]}: ${name}`;
 }
 
@@ -44,7 +52,7 @@ export function labelKey({ kind, value }) {
 }
 
 function valid({ kind, value }) {
-  if (kind === "land") return value.length > 0;
+  if (kind in NAMED) return value.length > 0;
   return kind in FIXED && value in FIXED[kind];
 }
 
@@ -75,18 +83,22 @@ function suggestion(label) {
   return { label: labelText(label), sub: "", item: label };
 }
 
-// The labels a query could mean: countries that occur in the battles, then the fixed ones.
+// The labels a query could mean: names that occur in the battles (Landen, Bevelhebbers,
+// Eenheden), then the fixed ones.
 export function searchLabels(battles, query) {
   const needle = query.trim().toLowerCase();
   if (!needle) return [];
-  const countries = new Set();
-  for (const battle of battles) {
-    for (const country of battle.countries ?? []) {
-      if (country.toLowerCase().includes(needle)) countries.add(country);
+  const results = [];
+  for (const [kind, field] of Object.entries(NAMED)) {
+    const names = new Set();
+    for (const battle of battles) {
+      for (const name of battle[field] ?? []) {
+        if (name.toLowerCase().includes(needle)) names.add(name);
+      }
     }
+    results.push(...[...names].sort((a, b) => a.localeCompare(b, "nl")).slice(0, MAX_NAMES)
+      .map((value) => suggestion({ kind, value })));
   }
-  const results = [...countries].sort((a, b) => a.localeCompare(b, "nl")).slice(0, MAX_COUNTRIES)
-    .map((value) => suggestion({ kind: "land", value }));
   for (const [kind, names] of Object.entries(FIXED)) {
     for (const [value, name] of Object.entries(names)) {
       if (name.toLowerCase().includes(needle) || KIND_NAMES[kind].toLowerCase().startsWith(needle)) {
@@ -106,4 +118,19 @@ export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur" };
 
 export function sortBattles(battles, sort = "datum") {
   return [...battles].sort(SORTS[sort] ?? SORTS.datum);
+}
+
+export function isTrackLabel(label) {
+  return TRACKS.has(label.kind);
+}
+
+// The Spoor of an Eenheid or Bevelhebber: its battles with a position, by start date. A battle
+// that holds a shorter one of the same Spoor (a campaign around its battles) is left out, so
+// that the Spoor follows the smallest battles.
+export function track(battles, label) {
+  const placed = battles.filter((b) => b.lat != null && b.lng != null && matchesLabels(b, [label]));
+  const kept = placed.filter((outer) =>
+    !placed.some((inner) => inner !== outer && inner.start >= outer.start && inner.end <= outer.end
+      && durationDays(inner) < durationDays(outer)));
+  return sortBattles(kept, "datum");
 }

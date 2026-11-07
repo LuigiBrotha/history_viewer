@@ -1,0 +1,51 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+
+import { TRACK_COLORS, createTrackLayer, trackSegments } from "../js/track-layer.js";
+
+test("trackSegments puts an arrow halfway each step, pointing the way the track goes", () => {
+  const [east, north] = trackSegments([{ lat: 0, lng: 0 }, { lat: 0, lng: 10 }, { lat: 10, lng: 10 }]);
+  assert.deepEqual(east.mid, [0, 5]);
+  assert.equal(Math.round(east.angle), 0);
+  assert.equal(east.mid.length, 2);
+  assert.ok(Math.abs(north.angle - -90) < 1);
+  assert.deepEqual(trackSegments([{ lat: 1, lng: 1 }]), []);
+});
+
+function fakeLeaflet() {
+  const added = [];
+  const group = {
+    addTo() { return this; },
+    addLayer(layer) { added.push(layer); },
+    removeLayer(layer) { added.splice(added.indexOf(layer), 1); },
+  };
+  globalThis.L = {
+    layerGroup: () => group,
+    polyline: (latlngs, options) => ({ kind: "line", latlngs, options }),
+    marker: (latlng, options) => ({ kind: "marker", latlng, options }),
+    divIcon: (options) => options,
+  };
+  globalThis.document = {
+    createElement: (tag) => ({ tag, style: {}, className: "", textContent: "" }),
+  };
+  return added;
+}
+
+test("each track is a coloured line with an arrow per step and a number per battle", () => {
+  const added = fakeLeaflet();
+  const layer = createTrackLayer({});
+  layer.setTracks([
+    { battles: [{ lat: 0, lng: 0, title: "A" }, { lat: 0, lng: 10, title: "B" }], color: TRACK_COLORS[0] },
+    { battles: [{ lat: 5, lng: 5, title: "C" }], color: TRACK_COLORS[1] },
+  ]);
+  const lines = added.filter((l) => l.kind === "line");
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].options.color, TRACK_COLORS[0]);
+  const icons = added.filter((l) => l.kind === "marker").map((m) => m.options.icon.className);
+  assert.deepEqual(icons.sort(), ["track-arrow", "track-number", "track-number", "track-number"]);
+  const numbers = added.filter((l) => l.kind === "marker" && l.options.icon.className === "track-number")
+    .map((m) => m.options.icon.html.textContent);
+  assert.deepEqual(numbers, ["1", "2", "1"]);
+  layer.setTracks([]);
+  assert.equal(added.length, 0);
+});

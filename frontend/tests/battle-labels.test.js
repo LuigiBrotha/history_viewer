@@ -77,3 +77,41 @@ test("sortBattles orders by date, name or duration", () => {
   assert.deepEqual(titles("naam"), ["a", "B", "C"]);
   assert.deepEqual(titles("duur"), ["B", "C", "a"]);
 });
+
+import { isTrackLabel, track } from "../js/battle-labels.js";
+
+test("units and commanders are labels too, found in the search", () => {
+  const rommel = battle({ commanders: ["Erwin Rommel"], units: ["Afrika Korps"] });
+  assert.equal(matchesLabels(rommel, [{ kind: "bevelhebber", value: "Erwin Rommel" }]), true);
+  assert.equal(matchesLabels(rommel, [{ kind: "eenheid", value: "Afrika Korps" }]), true);
+  assert.equal(matchesLabels(rommel, [{ kind: "eenheid", value: "7th Panzer Division" }]), false);
+  assert.equal(labelText({ kind: "bevelhebber", value: "Erwin Rommel" }), "Bevelhebber: Erwin Rommel");
+  assert.equal(labelText({ kind: "eenheid", value: "Afrika Korps" }), "Eenheid: Afrika Korps");
+  assert.deepEqual(readLabels("bevelhebber:Erwin%20Rommel"), [{ kind: "bevelhebber", value: "Erwin Rommel" }]);
+  const found = searchLabels([rommel], "rom").map((r) => r.label);
+  assert.deepEqual(found, ["Bevelhebber: Erwin Rommel"]);
+  assert.deepEqual(searchLabels([rommel], "afrika").map((r) => r.label), ["Eenheid: Afrika Korps"]);
+  assert.equal(isTrackLabel({ kind: "eenheid", value: "x" }), true);
+  assert.equal(isTrackLabel({ kind: "land", value: "x" }), false);
+});
+
+test("a track follows the battles by start date and skips one that holds a shorter one", () => {
+  const label = { kind: "bevelhebber", value: "Erwin Rommel" };
+  const of = (title, start, end, over = {}) => battle({ title, start, end, commanders: ["Erwin Rommel"], ...over });
+  const battles = [
+    of("Western Desert campaign", "1940-06-11", "1943-02-04"),
+    of("Gazala", "1942-05-26", "1942-06-21"),
+    of("Tobruk", "1941-04-10", "1941-11-27"),
+    of("Late", "1941-11-20", "1941-11-30"),
+    of("No position", "1941-01-01", "1941-01-02", { lat: null, lng: null }),
+    battle({ title: "Other", start: "1941-05-01", end: "1941-05-02" }),
+  ];
+  assert.deepEqual(track(battles, label).map((b) => b.title), ["Tobruk", "Late", "Gazala"]);
+});
+
+test("a battle that holds only battles without a position stays in the track", () => {
+  const label = { kind: "eenheid", value: "U" };
+  const of = (title, start, end, over = {}) => battle({ title, start, end, units: ["U"], ...over });
+  const battles = [of("Campaign", "1940-01-01", "1940-12-31"), of("Unplaced", "1940-03-01", "1940-03-02", { lat: null, lng: null })];
+  assert.deepEqual(track(battles, label).map((b) => b.title), ["Campaign"]);
+});

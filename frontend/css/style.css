@@ -1698,3 +1698,33 @@ html, body {
   align-items: center;
   gap: 6px;
 }
+
+/* A Spoor: arrows halfway each step and the number of each battle in date order. */
+.track-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.track-arrow span {
+  display: block;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+.track-number span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
