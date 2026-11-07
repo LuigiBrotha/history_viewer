@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.export.uboats import ShipHitOut
 from app.services.scraping.uboat_net.types import ShipHitRef
-from app.services.storage.models import Boat, ShipDetail, ShipHit
+from app.services.storage.models import Boat, ShipDetail, ShipHit, ShipListState
 
 _SLUG_RE = re.compile(r"^([a-z]+)(\d+)$")
 
@@ -47,6 +47,18 @@ class ShipHitRepository:
                 where=or_(*(ShipHit.__table__.c[c].is_not(stmt.excluded[c]) for c in _REF_COLUMNS)),
             )
             await self._session.execute(stmt)
+        await self._session.commit()
+
+    async def listed_slugs(self) -> set[str]:
+        """Boats whose list was read: recorded as listed, or holding hits from before that record."""
+        recorded = await self._session.execute(select(ShipListState.boat_slug))
+        with_hits = await self._session.execute(select(ShipHit.boat_slug).distinct())
+        return set(recorded.scalars()) | set(with_hits.scalars())
+
+    async def mark_listed(self, slug: str) -> None:
+        stmt = insert(ShipListState).values(boat_slug=slug, listed_at=datetime.now(timezone.utc))
+        stmt = stmt.on_conflict_do_update(index_elements=["boat_slug"], set_={"listed_at": stmt.excluded.listed_at})
+        await self._session.execute(stmt)
         await self._session.commit()
 
     async def pending_pages(self, force: bool = False, slugs: list[str] | None = None) -> list[ShipHit]:

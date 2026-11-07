@@ -186,7 +186,9 @@ command, because their positions and details are only on the page of each ship:
 poetry run python -m app.crawl_ships [--limit N] [--slugs u99,u100] [--force] [--delay N]
 ```
 
-- Without `--slugs` it uses the boats in the database.
+- Without `--slugs` it uses the boats in the database that sailed at least one patrol.
+- A boat's list is read once: a later run skips the boats already listed and goes on
+  with the ship pages.
 - It reads each boat's list of successes (one request per boat) and stores the
   hits at once, so they show on the maps before their positions are known. Then it
   fetches the page of every hit whose position is unchecked or whose ship has no
@@ -194,7 +196,7 @@ poetry run python -m app.crawl_ships [--limit N] [--slugs u99,u100] [--force] [-
   position and the details, so a database from an earlier version gets its details
   on the next run.
 - `--limit N` — fetch the page of at most N ships in this run, for a small sample.
-- `--force` — fetch pages again, also for ships that already have one
+- `--force` — read every list again and fetch every page again, also for ships that already have one
   (a page without a position is otherwise not retried; ships that failed on the network always are).
 - Requests are made one at a time with the same delay as the main crawl (10 s by
   default), so a boat with 40 ships takes about 7 minutes. Stopping loses at most

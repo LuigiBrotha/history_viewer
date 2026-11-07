@@ -199,3 +199,12 @@ class BattleRedirect(Base):
 
     alias: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, ForeignKey("battle_articles.title"), nullable=False)
+
+
+class ShipListState(Base):
+    """A boat whose list of ships hit has been read, so a resumed crawl can skip it."""
+
+    __tablename__ = "ship_list_state"
+
+    boat_slug: Mapped[str] = mapped_column(String, primary_key=True)
+    listed_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)

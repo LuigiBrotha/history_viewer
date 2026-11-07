@@ -7,7 +7,6 @@ from app.core.config import settings
 from app.services.scraping.uboat_net.http_client import PoliteHttpClient, build_user_agent
 from app.services.scraping.uboat_net.ship import fetch_ship_page
 from app.services.scraping.uboat_net.successes import fetch_successes
-from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.models import Boat, Patrol
 from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.ship_detail_repository import ShipDetailRepository
@@ -22,23 +21,33 @@ async def crawl_ships(slugs, session_factory, fetch_successes, fetch_ship_page, 
     One request gives both; a ship hit more than once is fetched once per run. Each page is stored
     on its own: stopping loses at most the ship in flight. A failed request leaves the hit pending
     so the next run retries it; a page that loaded without a position counts as checked and is only
-    fetched again with force. `limit` caps the pages fetched in this run.
+    fetched again with force. `limit` caps the pages fetched in this run. A boat's list is read once:
+    a resumed run skips boats already listed, unless forced.
     """
     stored = 0
     failed_boats = 0
-    for i, slug in enumerate(slugs, start=1):
-        print(f"[{i}/{len(slugs)}] {slug}")
+    listed = set()
+    if not force:
+        async with session_factory() as session:
+            listed = await ShipHitRepository(session).listed_slugs()
+    to_list = [slug for slug in slugs if slug not in listed]
+    if len(to_list) < len(slugs):
+        print(f"{len(slugs) - len(to_list)} boat list(s) already read, skipped.")
+    for i, slug in enumerate(to_list, start=1):
+        print(f"[{i}/{len(to_list)}] {slug}")
         try:
             refs = await asyncio.to_thread(fetch_successes, slug)
             async with session_factory() as session:
-                await ShipHitRepository(session).upsert_refs(refs)
+                repository = ShipHitRepository(session)
+                await repository.upsert_refs(refs)
+                await repository.mark_listed(slug)
             stored += len(refs)
         except Exception as exc:
             print(f"  FAILED {slug}: {exc}")
             failed_boats += 1
 
     if lists_only:
-        print(f"{stored} hit(s) stored for {len(slugs) - failed_boats} boat(s), {failed_boats} failed.")
+        print(f"{stored} hit(s) stored for {len(to_list) - failed_boats} boat(s), {failed_boats} failed.")
         return
 
     async with session_factory() as session:
@@ -74,7 +83,7 @@ async def crawl_ships(slugs, session_factory, fetch_successes, fetch_ship_page, 
         print(f"{label}: {'no position' if position is None else position}")
 
     print(
-        f"{stored} hit(s) stored for {len(slugs) - failed_boats} boat(s), {failed_boats} boat(s) failed; "
+        f"{stored} hit(s) stored for {len(to_list) - failed_boats} boat(s), {failed_boats} boat(s) failed; "
         f"positions: {found} found, {unknown} unknown, {failed} failed."
     )
 
@@ -94,13 +103,20 @@ async def top_boats_by_tonnage(session_factory, count):
         return list((await session.execute(stmt)).scalars())
 
 
+async def boats_with_patrols(session_factory):
+    """The boats that sailed at least one patrol, by slug: only they can have hit a ship."""
+    stmt = select(Boat.slug).join(Patrol, Patrol.boat_id == Boat.id).distinct().order_by(Boat.slug)
+    async with session_factory() as session:
+        return list((await session.execute(stmt)).scalars())
+
+
 def _parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Crawl uboat.net for the ships hit by U-boats, their positions and details.")
     parser.add_argument("--limit", type=int, default=None, help="Fetch the page of at most N ships in this run.")
     parser.add_argument("--slugs", type=str, default=None, help="Comma-separated boat slugs, e.g. u99,u100.")
     parser.add_argument("--top-tonnage", type=int, default=None, help="Only the N boats with the most tonnage.")
     parser.add_argument("--lists-only", action="store_true", help="Read each boat's list of ships, no ship pages.")
-    parser.add_argument("--force", action="store_true", help="Fetch pages again, also for ships that already have one.")
+    parser.add_argument("--force", action="store_true", help="Read every boat's list again and fetch every ship page again.")
     parser.add_argument("--delay", type=float, default=None, help="Override CRAWL_DELAY_SECONDS.")
     return parser.parse_args(argv)
 
@@ -118,8 +134,7 @@ async def main(argv=None) -> None:
     elif args.top_tonnage:
         slugs = await top_boats_by_tonnage(session_factory, args.top_tonnage)
     else:
-        async with session_factory() as session:
-            slugs = [boat.slug for boat in await BoatRepository(session).list_summaries()]
+        slugs = await boats_with_patrols(session_factory)
 
     client = PoliteHttpClient(delay_seconds=delay, user_agent=build_user_agent(settings.CRAWLER_CONTACT))
     print(f"Crawling ships hit by {len(slugs)} boat(s) with a {delay}s delay between requests...")
