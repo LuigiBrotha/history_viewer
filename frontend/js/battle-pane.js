@@ -31,7 +31,9 @@ function percent(value) {
 // Rows are built once; a new date or period only changes the classes of the rows whose
 // state changed. In mode "date" the rows active on the date are highlighted; in mode
 // "period" the rows overlapping the period are, and the others are dimmed.
-export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
+// While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
+// a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
+export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNoposChange }) {
   let rows = [];
   let editable = false;
   let actionsEl = null;
@@ -138,6 +140,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
     const unplaced = withoutPosition(battles, mode, selection, search.value);
     noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
     const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
+    if (noposBox.checked && revealed !== null) shown.add(revealed.battle);
     for (const row of rows) {
       row.el.hidden = !shown.has(row.battle);
     }
@@ -146,7 +149,10 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
   }
 
   search.addEventListener("input", applyFilter);
-  noposBox.addEventListener("change", applyFilter);
+  noposBox.addEventListener("change", () => {
+    applyFilter();
+    onNoposChange?.(noposBox.checked);
+  });
 
   function applySelection() {
     if (selection === null) return;
@@ -198,13 +204,13 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
     reveal(battle) {
       const row = rows.find((r) => r.battle === battle);
       if (!row) return;
-      if (row.el.hidden) {
-        search.value = "";
-        noposBox.checked = false;
-        applyFilter();
-      }
       if (revealed !== null) revealed.el.classList.toggle("selected", false);
       revealed = row;
+      applyFilter();
+      if (row.el.hidden) {
+        search.value = "";
+        applyFilter();
+      }
       row.el.classList.toggle("selected", true);
       refreshActions();
       row.el.scrollIntoView?.({ block: "center" });
@@ -212,6 +218,11 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear }) {
     setEditable(next) {
       editable = next;
       refreshActions();
+    },
+    // Ticks or unticks "Alleen zonder positie" without reporting it, as when restoring a URL.
+    setOnlyWithoutPosition(on) {
+      noposBox.checked = on;
+      applyFilter();
     },
     showError() {
       rootEl.replaceChildren(element("p", "battle-error", LOAD_FAILED), source);

@@ -34,12 +34,14 @@ function safeStorage(win) {
 // which shows those overlapping it. The page tells the selection through setDate or
 // setPeriod and the rest follows. Selecting a battle, in the list, on the map or through a
 // link in an article, opens its article beside the list; onBattleChange hears the title, or
-// null when the article is closed. The page keeps working if the file cannot be loaded.
+// null when the article is closed; onNoposChange hears the "Alleen zonder positie" box being
+// ticked or unticked. The page keeps working if the file cannot be loaded.
 export function initBattles({
   map,
   mode,
   onPickDate = null,
   onBattleChange = () => {},
+  onNoposChange = () => {},
   doc = document,
   win = window,
   load = loadBattles,
@@ -51,7 +53,14 @@ export function initBattles({
   const splitEl = doc.getElementById("battle-split");
   const paneEl = doc.getElementById("battle-pane");
   if (splitEl === null || paneEl === null) {
-    return { setDate() {}, setPeriod() {}, setEditable() {}, selectBattle: () => false, selectedBattle: () => null };
+    return {
+      setDate() {},
+      setPeriod() {},
+      setEditable() {},
+      setOnlyWithoutPosition() {},
+      selectBattle: () => false,
+      selectedBattle: () => null,
+    };
   }
   const storage = safeStorage(win);
   let articleSplit = null;
@@ -109,6 +118,7 @@ export function initBattles({
     onEdit: (battle) => startEdit(battle),
     onClear: (battle) => clearOwn(battle),
     onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
+    onNoposChange,
   });
 
   // Editing is only offered once the positions are known: saving over positions that
@@ -296,6 +306,7 @@ export function initBattles({
       editable = next;
       applyEditable();
     },
+    setOnlyWithoutPosition: (on) => pane.setOnlyWithoutPosition(on),
     selectBattle,
     selectedBattle: () => selected,
   };

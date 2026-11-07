@@ -238,6 +238,10 @@ function main() {
       if (initialView.date !== undefined) {
         timeline.setDate(parseDate(initialView.date));
       }
+      if (initialView.nopos) {
+        urlSync.update({ nopos: true });
+        battles.setOnlyWithoutPosition(true);
+      }
       if (initialView.battle !== undefined) {
         pinnedBattle = initialView.battle;
         pinnedMap = initialView.map ?? null;
@@ -309,6 +313,7 @@ function main() {
           mode: "date",
           onPickDate: (iso) => timeline?.setDate(parseDate(iso)),
           onBattleChange,
+          onNoposChange: (on) => urlSync.update({ nopos: on || null }),
         });
         mapState.map.on("moveend", () => {
           const center = mapState.map.getCenter();

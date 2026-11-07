@@ -1,5 +1,5 @@
-// The view of a page (date or period, Veldslag, Gevolgde boot, Kaartuitsnede) as a URL
-// search string. Pure: no DOM, no history; the pages decide when to read and write.
+// The view of a page (date or period, Veldslag, Gevolgde boot, Kaartuitsnede, Alleen zonder
+// positie) as a URL search string. Pure: no DOM, no history; the pages decide when to read and write.
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const BOAT_PATTERN = /^[a-z0-9-]+$/;
@@ -45,6 +45,7 @@ export function readView(search, kind) {
     ["battle", validBattle(params.get("veldslag"))],
     ["boat", validBoat(params.get("boot"))],
     ["map", validMap(params.get("kaart"))],
+    ["nopos", params.get("zonderpositie") === "1" ? true : undefined],
   );
   return Object.fromEntries(fields.filter(([, value]) => value !== undefined));
 }
@@ -67,13 +68,14 @@ export function writeView(view, kind) {
     const { lat, lng, zoom } = view.map;
     add("kaart", `${lat.toFixed(MAP_DECIMALS)},${lng.toFixed(MAP_DECIMALS)},${zoom}`);
   }
+  add("zonderpositie", view.nopos === true && "1");
   return pairs.length ? `?${pairs.join("&")}` : "";
 }
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, map } = view;
+  const { battle, boat, map, nopos } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, map }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, map, nopos }).filter(([, value]) => value !== undefined),
   );
 }

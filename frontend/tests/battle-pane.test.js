@@ -322,14 +322,49 @@ test("in period mode the filter follows the period, and the search text counts",
   assert.equal(label.textContent, "Alleen zonder positie (1)");
 });
 
-test("reveal of a row the filter hides unticks the box and clears the search", () => {
-  const { pane, rootEl, box, tick, shown } = nopos("period");
+test("reveal of a row the filter hides keeps the box ticked and shows only that extra row", () => {
+  const { pane, box, tick, shown } = nopos("period");
   pane.setSelection({ from: null, to: null });
   tick(true);
   pane.reveal(NOPOS[0]);
-  assert.equal(box.checked, false);
-  assert.equal(shown().length, 3);
-  assert.equal(rootEl.byClass("battle-search")[0].value, "");
+  assert.equal(box.checked, true);
+  assert.deepEqual(shown(), ["Lost early", "Placed", "Lost 1942"]);
+  pane.reveal(NOPOS[1]);
+  assert.deepEqual(shown(), ["Lost early", "Lost 1942"]);
+});
+
+test("a saved Eigen positie keeps the box ticked and the battle listed until another is chosen", () => {
+  const { pane, label, box, tick, shown } = nopos("period");
+  pane.setSelection({ from: null, to: null });
+  tick(true);
+  pane.reveal(NOPOS[2]);
+  const placed = { ...NOPOS[2], lat: 3, lng: 4, own: true };
+  pane.setBattles([NOPOS[0], NOPOS[1], placed]);
+  pane.reveal(placed);
+  assert.equal(box.checked, true);
+  assert.deepEqual(shown(), ["Lost early", "Lost 1942"]);
+  assert.equal(label.textContent, "Alleen zonder positie (1)");
+  pane.reveal(NOPOS[1]);
+  assert.deepEqual(shown(), ["Lost early"]);
+});
+
+test("ticking by hand is reported, setting it from outside ticks and filters without a report", () => {
+  installDom();
+  const rootEl = new Element("aside");
+  const heard = [];
+  const pane = createBattlePane({ rootEl, mode: "period", onNoposChange: (on) => heard.push(on) });
+  pane.setBattles(NOPOS);
+  pane.setSelection({ from: null, to: null });
+  const box = rootEl.byClass("battle-nopos-filter")[0];
+  pane.setOnlyWithoutPosition(true);
+  assert.equal(box.checked, true);
+  assert.equal(rootEl.byClass("battle-row").filter((r) => !r.hidden).length, 2);
+  assert.deepEqual(heard, []);
+  box.checked = false;
+  box.dispatch("change");
+  box.checked = true;
+  box.dispatch("change");
+  assert.deepEqual(heard, [false, true]);
 });
 
 test("reveal of a row the filter shows keeps the box ticked", () => {

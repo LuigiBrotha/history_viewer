@@ -83,11 +83,23 @@ test("a leap day is real only in a leap year", () => {
   assert.deepEqual(readView("?datum=1943-02-29", "date"), {});
 });
 
-test("carriedView keeps only battle, boat and map", () => {
-  assert.deepEqual(carriedView({ ...FULL, from: "1941-01-01", to: "1942-01-01" }), {
+test("Alleen zonder positie is zonderpositie=1, last, on both kinds of page", () => {
+  assert.equal(
+    writeView({ ...FULL, nopos: true }, "date"),
+    "?datum=1942-03-14&veldslag=Second_Happy_Time&boot=u99&kaart=48.5000,-20.1000,5&zonderpositie=1",
+  );
+  assert.deepEqual(readView("?zonderpositie=1", "date"), { nopos: true });
+  assert.deepEqual(readView("?van=1941-01-01&zonderpositie=1", "period"), { from: "1941-01-01", nopos: true });
+  for (const bad of ["0", "true", "", "2"]) assert.deepEqual(readView(`?zonderpositie=${bad}`, "date"), {});
+  assert.equal(writeView({ nopos: false }, "date"), "");
+});
+
+test("carriedView keeps only battle, boat, map and Alleen zonder positie", () => {
+  assert.deepEqual(carriedView({ ...FULL, from: "1941-01-01", to: "1942-01-01", nopos: true }), {
     battle: "Second Happy Time",
     boat: "u99",
     map: { lat: 48.5, lng: -20.1, zoom: 5 },
+    nopos: true,
   });
   assert.deepEqual(carriedView({ date: "1942-03-14" }), {});
 });
