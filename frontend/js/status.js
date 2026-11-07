@@ -6,6 +6,8 @@ import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
 import { createMapSearch } from "./map-search.js";
+import { createShortcutHelp } from "./shortcut-help.js";
+import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles } from "./search-model.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
@@ -116,6 +118,7 @@ function main() {
     fetchPlaces,
   });
   battles.placeToggle();
+  installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   const slider = initPeriodSlider({
     trackEl,

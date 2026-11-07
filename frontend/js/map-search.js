@@ -1,10 +1,18 @@
+import { parseCoordinates } from "./search-model.js";
+
 // The search field at the top left of the map: app data straight away, places after a pause.
 const MIN_PLACE_CHARS = 3;
 const PLACE_ZOOM = 10;
 const PLACES = "Plaatsen";
+// Nominatim's data is OpenStreetMap's, whose licence asks for this credit.
+const PLACES_CREDIT = "Gegevens © OpenStreetMap-bijdragers";
 
-export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = document, win = window, delayMs = 400, markerMs = 30000 }) {
+// Nominatim's usage policy allows no search-as-you-type, so places wait for a real pause.
+const PLACES_DELAY_MS = 1500;
+
+export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = document, win = window, delayMs = PLACES_DELAY_MS, markerMs = 30000 }) {
   let appGroups = [];
+  let coordinate = null;
   let places = { state: "idle", items: [] };
   let rows = [];
   let active = -1;
@@ -56,9 +64,9 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     }
     rows = [];
     const nodes = [];
-    const addGroup = (group, entries, note) => {
+    const addGroup = (group, entries, note, heading = group) => {
       if (!entries.length && !note) return;
-      nodes.push(el("div", "map-search-group", group));
+      nodes.push(el("div", "map-search-group", heading));
       for (const entry of entries) {
         const row = el("div", "map-search-row");
         row.append(el("span", "map-search-label", entry.label));
@@ -70,10 +78,15 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
       }
       if (note) nodes.push(el("div", "map-search-note", note));
     };
+    // Typed coordinates come first and are picked like a place.
+    if (coordinate) {
+      const name = `${coordinate.lat}, ${coordinate.lng}`;
+      addGroup(PLACES, [{ label: name, sub: "", item: { name, sub: "", ...coordinate, bbox: null } }], null, "Coördinaten");
+    }
     for (const { group, results } of appGroups) addGroup(group, results);
     const placeEntries = places.items.map((place) => ({ label: place.name, sub: place.sub, item: place }));
     const note = places.state === "loading" ? "Plaatsen zoeken…" : places.state === "error" ? "Plaatsen zoeken mislukt." : null;
-    addGroup(PLACES, placeEntries, note);
+    addGroup(PLACES, placeEntries, note ?? (placeEntries.length ? PLACES_CREDIT : null));
     if (!nodes.length && places.state !== "loading") nodes.push(el("div", "map-search-note", "Niets gevonden."));
     rows.forEach((row, i) => row.node.classList.toggle("is-active", i === active));
     list.replaceChildren(...nodes);
@@ -116,13 +129,15 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
     active = -1;
     if (!q) {
       appGroups = [];
+      coordinate = null;
       open = false;
       render();
       return;
     }
     appGroups = sources.map(({ group, search }) => ({ group, results: search(q) })).filter((g) => g.results.length);
+    coordinate = parseCoordinates(q);
     open = true;
-    if (q.length >= MIN_PLACE_CHARS) {
+    if (q.length >= MIN_PLACE_CHARS && !coordinate) {
       places = { state: "loading", items: [] };
       timer = win.setTimeout(loadPlaces, delayMs);
     }
@@ -184,6 +199,9 @@ export function createMapSearch({ map, sources, onPick, fetchPlaces, doc = docum
   }
 
   return {
+    focus() {
+      input.focus();
+    },
     showPlace(place) {
       removeMarker();
       if (place.bbox) {

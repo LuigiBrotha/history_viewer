@@ -17,7 +17,7 @@ function deferred() {
   return d;
 }
 
-function setup({ sources, answer = async () => [NARVIK] } = {}) {
+function setup({ sources, answer = async () => [NARVIK], delayMs = 400 } = {}) {
   mock.timers.enable(["setTimeout"]);
   const doc = new Element("document");
   doc.createElement = (tag) => new Element(tag);
@@ -53,6 +53,7 @@ function setup({ sources, answer = async () => [NARVIK] } = {}) {
     return answer(query, options);
   };
   const search = createMapSearch({
+    ...(delayMs === null ? {} : { delayMs }),
     map,
     sources: sources ?? [
       { group: "Boten", search: (q) => (q.toLowerCase().startsWith("n") ? [{ label: "U-1", sub: "Nar", item: { slug: "u1" } }] : []) },
@@ -319,3 +320,43 @@ for (const how of ["choose", "Escape"]) {
     assert.equal(t.calls[0].options.signal.aborted, true);
   });
 }
+
+
+test("places are looked up after a pause of 1.5 s by default, as Nominatim allows no search-as-you-type", async () => {
+  const t = setup({ delayMs: null });
+  t.type("nar");
+  mock.timers.tick(1499);
+  assert.equal(t.calls.length, 0);
+  mock.timers.tick(1);
+  assert.equal(t.calls.length, 1);
+});
+
+test("found places credit OpenStreetMap", async () => {
+  const t = setup();
+  t.type("nar");
+  mock.timers.tick(400);
+  await t.flush();
+  assert.match(text(t), /© OpenStreetMap-bijdragers/);
+});
+
+
+test("focus puts the cursor in the search field", () => {
+  const t = setup();
+  let focused = 0;
+  t.input.focus = () => (focused += 1);
+  t.search.focus();
+  assert.equal(focused, 1);
+});
+
+test("typed coordinates are offered first, picked like a place and never sent to the place search", () => {
+  const t = setup();
+  t.type("52.37, 4.89");
+  assert.match(text(t), /Coördinaten/);
+  mock.timers.tick(5000);
+  assert.equal(t.calls.length, 0);
+  t.key("ArrowDown");
+  t.key("Enter");
+  assert.equal(t.picks.length, 1);
+  assert.equal(t.picks[0].group, "Plaatsen");
+  assert.deepEqual([t.picks[0].item.lat, t.picks[0].item.lng], [52.37, 4.89]);
+});

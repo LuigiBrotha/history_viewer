@@ -5,6 +5,8 @@ import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { createMapSearch } from "./map-search.js";
+import { createShortcutHelp } from "./shortcut-help.js";
+import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import {
@@ -69,6 +71,8 @@ function main() {
   let currentDate = null;
   let atlas = { setDate() {} };
   let battles = { setDate() {}, setEditable() {}, allBattles: () => [] };
+  let mapSearch = null;
+  installShortcuts({ actions: pageActions({ battles: () => battles, search: () => mapSearch, help: createShortcutHelp() }) });
   let ships = [];
   let shipLayer = null;
   let editable = false;
@@ -219,6 +223,7 @@ function main() {
       fetchPlaces,
     });
     battles.placeToggle();
+    mapSearch = search;
   }
 
   function onBoatSelect(slug) {

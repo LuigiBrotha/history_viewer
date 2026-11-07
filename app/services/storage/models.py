@@ -211,7 +211,7 @@ class ShipListState(Base):
 
 
 class PlaceSearch(Base):
-    """A Photon answer kept for ever, keyed on the lowercased, trimmed query. An empty list is an answer too."""
+    """A place search answer kept for ever, keyed on its source and the lowercased, trimmed query. An empty list is an answer too."""
 
     __tablename__ = "place_searches"
 

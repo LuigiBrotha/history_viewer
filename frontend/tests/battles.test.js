@@ -574,3 +574,97 @@ test("placeToggle puts the Veldslagen button in the top-left row of map controls
   assert.equal(controls[0].options.position, "topleft");
   assert.equal(controls[0].el, elements["battle-toggle"]);
 });
+
+const WITH_DIEPPE = async () => [...BATTLES, battle({ title: "Dieppe", start: "1942-08-19", end: "1942-08-19", lat: null, lng: null })];
+
+test("step selects the next and previous visible battle", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  ctx.controller.step(1);
+  assert.equal(ctx.controller.selectedBattle(), "Atlantic");
+  ctx.controller.step(1);
+  assert.equal(ctx.controller.selectedBattle(), "Midway");
+  ctx.controller.step(-1);
+  assert.equal(ctx.controller.selectedBattle(), "Atlantic");
+  ctx.controller.step(-1);
+  assert.equal(ctx.controller.selectedBattle(), "Atlantic");
+});
+
+test("editSelected starts Positie aanpassen on the selected battle, only when editing is offered", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  ctx.controller.editSelected();
+  ctx.controller.selectBattle("Midway");
+  ctx.controller.editSelected();
+  assert.equal(ctx.controls.length, 0);
+  ctx.controller.setEditable(true);
+  ctx.controller.editSelected();
+  assert.equal(ctx.controls.length, 1);
+  assert.equal(ctx.controls[0].el.byClass("battle-edit-title")[0].textContent, "Midway");
+});
+
+test("Bewaar en volgende saves and starts editing the next battle without a position", async () => {
+  const saved = [];
+  const { controller, button, drag, controls, ready } = await startEditing({
+    load: WITH_DIEPPE, savePosition: async (...args) => saved.push(args),
+  });
+  drag(10, 20);
+  assert.equal(button("battle-edit-save-next").textContent, "Bewaar en volgende");
+  button("battle-edit-save-next").dispatch("click");
+  await ready();
+  assert.deepEqual(saved, [["Midway", 10, 20]]);
+  assert.equal(controller.selectedBattle(), "Dieppe");
+  assert.equal(controls.at(-1).removed, false);
+  assert.equal(controls.at(-1).el.byClass("battle-edit-title")[0].textContent, "Dieppe");
+});
+
+test("save and saveAndNext do what the buttons do, and nothing without an edit", async () => {
+  const saved = [];
+  const { controller, drag, ready } = await startEditing({
+    load: WITH_DIEPPE, savePosition: async (...args) => saved.push(args),
+  });
+  drag(10, 20);
+  controller.saveAndNext();
+  await ready();
+  controller.save();
+  await ready();
+  assert.deepEqual(saved, [["Midway", 10, 20], ["Dieppe", 10, 20]]);
+  controller.save();
+  await ready();
+  assert.equal(saved.length, 2);
+});
+
+test("clearSelected wipes the Eigen positie of the selected battle only", async () => {
+  const cleared = [];
+  const ctx = setup({
+    mode: "period", loadPositions: async () => [{ title: "Midway", lat: 1, lng: 2 }],
+    clearPosition: async (title) => cleared.push(title),
+  });
+  await ctx.ready();
+  ctx.controller.setEditable(true);
+  ctx.controller.selectBattle("Atlantic");
+  ctx.controller.clearSelected(() => true);
+  ctx.controller.selectBattle("Midway");
+  const asked = [];
+  ctx.controller.clearSelected((question) => (asked.push(question), false));
+  await ctx.ready();
+  assert.deepEqual(cleared, []);
+  assert.deepEqual(asked, ["Eigen positie van Midway wissen?"]);
+  ctx.controller.clearSelected(() => true);
+  await ctx.ready();
+  assert.deepEqual(cleared, ["Midway"]);
+});
+
+test("toggleArticle and togglePane open and close the article and the list", async () => {
+  const ctx = setup({ mode: "period" });
+  await ctx.ready();
+  ctx.controller.selectBattle("Midway");
+  const hidden = (id) => ctx.elements[id].classes.has("pane-hidden");
+  ctx.controller.toggleArticle();
+  assert.equal(hidden("article-split"), true);
+  ctx.controller.toggleArticle();
+  assert.equal(hidden("article-split"), false);
+  const before = hidden("battle-split");
+  ctx.controller.togglePane();
+  assert.equal(hidden("battle-split"), !before);
+});
