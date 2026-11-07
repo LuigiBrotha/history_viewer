@@ -75,9 +75,11 @@ def test_run_fills_english_battles_and_adds_new_ones(files):
 def test_run_stores_the_wikitext_of_each_language(files):
     other, battles_path, database_url = files
     run(other, battles_path, database_url, languages=("nl", "de"))
-    stored = rows(database_url, "SELECT lang, title FROM foreign_battle_articles ORDER BY lang, title")
-    assert stored == [("de", "Schlacht um Arnheim"), ("de", "Schlacht um Kornwerderzand"),
-                      ("nl", "Slag om Arnhem"), ("nl", "Slag om Kornwerderzand")]
+    stored = rows(database_url, "SELECT lang, title, battle FROM foreign_battle_articles ORDER BY lang, title")
+    assert stored == [("de", "Schlacht um Arnheim", "Battle of Arnhem"),
+                      ("de", "Schlacht um Kornwerderzand", "Slag om Kornwerderzand"),
+                      ("nl", "Slag om Arnhem", "Battle of Arnhem"),
+                      ("nl", "Slag om Kornwerderzand", "Slag om Kornwerderzand")]
 
 
 def test_a_second_run_reuses_the_scanned_battles_without_reading_the_dump(files):

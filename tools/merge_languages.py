@@ -71,11 +71,13 @@ def _groups(others, links):
     return list(groups.values())
 
 
-def merge_languages(battles, others, links):
+def merge_languages(battles, others, links, owners=None):
     """English Veldslagen with gaps filled from other languages, followed by the new Veldslagen.
 
     battles: the records of battles.json; others: language → records of that language;
-    links: (language, title) → {language: title} of its language links."""
+    links: (language, title) → {language: title} of its language links. When given, `owners`
+    is filled with (language, title) → the title of the Veldslag that article belongs to."""
+    owners = {} if owners is None else owners
     english = _english_only(battles)
     by_title = {b["title"]: b for b in english}
     records = {(lang, b["title"]): b for lang in ORDER for b in others.get(lang, [])}
@@ -85,6 +87,8 @@ def merge_languages(battles, others, links):
         target = next((links.get(node, {}).get("en") for node in group
                        if links.get(node, {}).get("en") in by_title), None)
         members = [records[node] for node in group]
+        owner = target if target is not None else members[0]["title"]
+        owners.update({node: owner for node in group})
         if target is not None:
             battle = by_title[target]
             filled = {}

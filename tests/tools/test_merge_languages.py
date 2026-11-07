@@ -95,3 +95,12 @@ def test_merging_with_fewer_languages_takes_back_what_they_filled():
     links = {("de", "Schlacht um Arnheim"): {"en": "Battle of Arnhem"}}
     filled = merge_languages(battles, others, links)
     assert merge_languages(filled, {}, {}) == battles
+
+
+def test_owners_names_the_veldslag_of_each_article():
+    owners = {}
+    others = {"nl": [other("nl", "Slag om Arnhem"), other("nl", "Slag om K")], "de": [other("de", "Schlacht um K")]}
+    links = {("nl", "Slag om Arnhem"): {"en": "Battle of Arnhem"}, ("de", "Schlacht um K"): {"nl": "Slag om K"}}
+    merge_languages([en("Battle of Arnhem")], others, links, owners)
+    assert owners == {("nl", "Slag om Arnhem"): "Battle of Arnhem", ("nl", "Slag om K"): "Slag om K",
+                      ("de", "Schlacht um K"): "Slag om K"}

@@ -227,6 +227,8 @@ class ForeignBattleArticle(Base):
 
     lang: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, primary_key=True)
+    # The Veldslag this article belongs to: an English title, or its own for a new Veldslag.
+    battle: Mapped[str | None] = mapped_column(String, nullable=True)
     wikitext: Mapped[str] = mapped_column(Text, nullable=False)
     dump_name: Mapped[str] = mapped_column(String, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)

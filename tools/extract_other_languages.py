@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import create_engine, delete
+from sqlalchemy import create_engine, delete, update
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import ForeignBattleArticle
@@ -109,9 +109,16 @@ def run(directory=DEFAULT_DIR, battles_path=DEFAULT_OUTPUT, database_url=DEFAULT
             for item in items:
                 links[(lang, item["record"]["title"])] = by_id.get(item["id"], {})
         print(f"{lang}: {len(items)} battles")
-    engine.dispose()
     battles = json.loads(battles_path.read_text(encoding="utf-8"))
-    merged = merge_languages(battles, others, links)
+    owners = {}
+    merged = merge_languages(battles, others, links, owners)
+    with Session(engine) as session, session.begin():
+        session.execute(update(ForeignBattleArticle).values(battle=None))
+        for (lang, title), battle in owners.items():
+            session.execute(update(ForeignBattleArticle)
+                            .where(ForeignBattleArticle.lang == lang, ForeignBattleArticle.title == title)
+                            .values(battle=battle))
+    engine.dispose()
     _write_atomically(battles_path, json.dumps(merged, ensure_ascii=False, separators=(",", ":")))
     new = sum(1 for b in merged if b.get("lang", "en") != "en")
     filled = sum(1 for b in merged if b.get("filled"))
