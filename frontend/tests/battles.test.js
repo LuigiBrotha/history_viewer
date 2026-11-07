@@ -643,9 +643,14 @@ test("clearSelected wipes the Eigen positie of the selected battle only", async 
   await ctx.ready();
   ctx.controller.setEditable(true);
   ctx.controller.selectBattle("Atlantic");
-  ctx.controller.clearSelected();
+  ctx.controller.clearSelected(() => true);
   ctx.controller.selectBattle("Midway");
-  ctx.controller.clearSelected();
+  const asked = [];
+  ctx.controller.clearSelected((question) => (asked.push(question), false));
+  await ctx.ready();
+  assert.deepEqual(cleared, []);
+  assert.deepEqual(asked, ["Eigen positie van Midway wissen?"]);
+  ctx.controller.clearSelected(() => true);
   await ctx.ready();
   assert.deepEqual(cleared, ["Midway"]);
 });

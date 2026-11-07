@@ -96,7 +96,7 @@ by the server and kept in the image cache folder (`WIKI_IMAGE_DIR`).
 
 Keyboard shortcuts on the map pages (press `?` for the overview): `↑`/`↓` previous or next
 battle in the list, `P` Positie aanpassen, `Enter` Bewaar, `Shift+Enter` Bewaar en volgende
-(on to the next battle without a position), `Esc` cancel, `W` wipe the Eigen positie, `A`
+(on to the next battle without a position), `Esc` cancel, `W` wipe the Eigen positie (after confirming), `A`
 article open or closed, `V` battle list open or closed, `/` or `Ctrl+K` search. Coordinates
 typed into the search field (`52.37, 4.89`, `51°59′N 5°55′E`) can be chosen like a place.
 

@@ -9,7 +9,7 @@ export const SHORTCUTS = [
   { keys: ["Enter"], text: "Bewaar de positie" },
   { keys: ["Shift+Enter"], text: "Bewaar en ga naar de volgende Veldslag zonder positie" },
   { keys: ["Esc"], text: "Annuleer het aanpassen, of sluit de zoeklijst" },
-  { keys: ["W"], text: "Eigen positie wissen" },
+  { keys: ["W"], text: "Eigen positie wissen (na bevestiging)" },
   { keys: ["A"], text: "Artikel open / dicht" },
   { keys: ["V"], text: "Veldslagenlijst open / dicht" },
   { keys: ["/", "Ctrl+K"], text: "Zoeken op de kaart" },

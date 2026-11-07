@@ -352,9 +352,12 @@ export function initBattles({
     },
     save: () => editing?.store(false),
     saveAndNext: () => editing?.store(true),
-    clearSelected() {
+    // The W key asks first, since a wiped Eigen positie cannot be brought back.
+    clearSelected(ask = (question) => win.confirm(question)) {
       const battle = battles.find((b) => b.title === selected);
-      if (battle?.own && editable && positionsLoaded) clearOwn(battle);
+      if (battle?.own && editable && positionsLoaded && ask(`Eigen positie van ${battle.title} wissen?`)) {
+        clearOwn(battle);
+      }
     },
     toggleArticle() {
       if (articleSplit.isOpen()) {
