@@ -1,9 +1,25 @@
+import { readLabels, writeLabels } from "./battle-labels.js";
 import { readView } from "./url-state.js";
 
 // The view of a period page (/status, /heatmap) in its URL: the period, the Veldslag, the
 // Kaartuitsnede and "Alleen zonder positie". restore() applies the URL once the slider and
 // the battles exist; the on* hooks report changes. Showing the restored battle pans the
 // map, so a pinned Kaartuitsnede is applied again when that battle shows.
+// Applies the labels and sort order of a URL view, and keeps their later changes in the URL.
+// Shared by the map page (main.js) and the period pages.
+export function restoreLabels(initial, urlSync, battles) {
+  if (initial.filter !== undefined) {
+    urlSync.update({ filter: initial.filter });
+    battles.setLabels?.(readLabels(initial.filter));
+  }
+  if (initial.sort !== undefined) {
+    urlSync.update({ sort: initial.sort });
+    battles.setSort?.(initial.sort);
+  }
+  battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
+  battles.onSortChange?.((sort) => urlSync.update({ sort: sort === "datum" ? null : sort }));
+}
+
 export function createPeriodView({ search, urlSync, map }) {
   const initial = readView(search, "period");
   let pinnedBattle = null;
@@ -33,6 +49,7 @@ export function createPeriodView({ search, urlSync, map }) {
         urlSync.update({ nopos: true });
         battles.setOnlyWithoutPosition(true);
       }
+      restoreLabels(initial, urlSync, battles);
       if (initial.battle !== undefined) {
         pinnedBattle = initial.battle;
         pinnedMap = initial.map ?? null;

@@ -90,3 +90,27 @@ test("reports period, battle, filter and map moves to the URL", () => {
     { map: { lat: 10, lng: 20, zoom: 4 } },
   ]);
 });
+
+test("labels and the sort order are restored, and their changes reach the URL", () => {
+  const { view, writes, slider, battles } = fakes("?filter=land%3APolen%2Cwinnaar%3Aas&sorteer=duur");
+  const calls = [];
+  let labelListener;
+  let sortListener;
+  Object.assign(battles, {
+    setLabels: (labels) => calls.push(["labels", labels]),
+    setSort: (sort) => calls.push(["sort", sort]),
+    onLabelsChange: (fn) => (labelListener = fn),
+    onSortChange: (fn) => (sortListener = fn),
+  });
+  view.restore({ slider, battles });
+  assert.deepEqual(calls, [
+    ["labels", [{ kind: "land", value: "Polen" }, { kind: "winnaar", value: "as" }]],
+    ["sort", "duur"],
+  ]);
+  writes.length = 0;
+  labelListener([{ kind: "taal", value: "nl" }]);
+  labelListener([]);
+  sortListener("datum");
+  sortListener("naam");
+  assert.deepEqual(writes, [{ filter: "taal:nl" }, { filter: null }, { sort: null }, { sort: "naam" }]);
+});

@@ -5,6 +5,8 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const BOAT_PATTERN = /^[a-z0-9-]+$/;
 const MAP_DECIMALS = 4;
 const MAX_ZOOM = 18;
+// The sort orders other than the default (by date).
+const SORTS = new Set(["naam", "duur"]);
 
 function validDate(text) {
   if (!text || !DATE_PATTERN.test(text)) return undefined;
@@ -46,6 +48,8 @@ export function readView(search, kind) {
     ["boat", validBoat(params.get("boot"))],
     ["map", validMap(params.get("kaart"))],
     ["nopos", params.get("zonderpositie") === "1" ? true : undefined],
+    ["filter", params.get("filter") || undefined],
+    ["sort", SORTS.has(params.get("sorteer")) ? params.get("sorteer") : undefined],
   );
   return Object.fromEntries(fields.filter(([, value]) => value !== undefined));
 }
@@ -69,13 +73,15 @@ export function writeView(view, kind) {
     add("kaart", `${lat.toFixed(MAP_DECIMALS)},${lng.toFixed(MAP_DECIMALS)},${zoom}`);
   }
   add("zonderpositie", view.nopos === true && "1");
+  add("filter", view.filter && encode(view.filter));
+  add("sorteer", SORTS.has(view.sort) && view.sort);
   return pairs.length ? `?${pairs.join("&")}` : "";
 }
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, map, nopos } = view;
+  const { battle, boat, map, nopos, filter, sort } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, map, nopos }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, map, nopos, filter, sort }).filter(([, value]) => value !== undefined),
   );
 }

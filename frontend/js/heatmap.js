@@ -7,6 +7,7 @@ import { createMapSearch } from "./map-search.js";
 import { createShortcutHelp } from "./shortcut-help.js";
 import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles } from "./search-model.js";
+import { searchLabels } from "./battle-labels.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, gridMax, heatColor, patrolCells, ROWS, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
@@ -146,10 +147,15 @@ function main() {
 
   const search = createMapSearch({
     map: map,
-    sources: [{ group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) }],
+    sources: [
+      { group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) },
+      { group: "Filters", search: (q) => searchLabels(battles.allBattles(), q) },
+    ],
     onPick: ({ group, item }) => {
       if (group === "Plaatsen") {
         if (!battles.moveEditTo(item.lat, item.lng)) search.showPlace(item);
+      } else if (group === "Filters") {
+        battles.addLabel(item);
       } else {
         battles.selectBattle(item.title);
       }

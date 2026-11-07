@@ -1,0 +1,109 @@
+import { durationDays } from "./battle-model.js";
+
+// Labels: filters on the Veldslagen chosen through the search field, such as "Land: Polen".
+// A battle must match every label. Pure: the pane and the pages decide what to show.
+
+const KAMP_NAMES = { as: "As", westers: "Westerse geallieerden", sovjet: "Sovjet-Unie", overig: "Overig" };
+const WINNER_NAMES = { ...KAMP_NAMES, onbeslist: "onbeslist", onbekend: "onbekend" };
+const LANGUAGE_NAMES = { en: "Engels", nl: "Nederlands", de: "Duits", pl: "Pools" };
+const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie" };
+const KIND_NAMES = { land: "Land", winnaar: "Winnaar", taal: "Taal", positie: "Positie" };
+const FIXED = { winnaar: WINNER_NAMES, taal: LANGUAGE_NAMES, positie: POSITION_NAMES };
+const MAX_COUNTRIES = 8;
+
+function matches(battle, { kind, value }) {
+  const winner = Array.isArray(battle.winner) ? battle.winner : [];
+  switch (kind) {
+    case "land":
+      return Array.isArray(battle.countries) && battle.countries.includes(value);
+    case "winnaar":
+      if (value === "onbeslist") return winner.length === 2;
+      if (value === "onbekend") return winner.length === 0;
+      return winner.length === 1 && winner[0] === value;
+    case "taal":
+      return (battle.lang ?? "en") === value;
+    case "positie":
+      if (value === "eigen") return Boolean(battle.own);
+      return !battle.own && battle.lat != null && battle.lng != null;
+    default:
+      return true;
+  }
+}
+
+export function matchesLabels(battle, labels) {
+  return labels.every((label) => matches(battle, label));
+}
+
+export function labelText({ kind, value }) {
+  const name = kind === "land" ? value : FIXED[kind]?.[value] ?? value;
+  return `${KIND_NAMES[kind]}: ${name}`;
+}
+
+export function labelKey({ kind, value }) {
+  return `${kind}:${value}`;
+}
+
+function valid({ kind, value }) {
+  if (kind === "land") return value.length > 0;
+  return kind in FIXED && value in FIXED[kind];
+}
+
+// "land:Polen,winnaar:as" in the URL; each value is encoded, so commas inside stay.
+export function writeLabels(labels) {
+  return labels.map(({ kind, value }) => `${kind}:${encodeURIComponent(value)}`).join(",");
+}
+
+export function readLabels(text) {
+  if (!text) return [];
+  const labels = [];
+  for (const part of String(text).split(",")) {
+    const colon = part.indexOf(":");
+    if (colon < 0) continue;
+    let value;
+    try {
+      value = decodeURIComponent(part.slice(colon + 1));
+    } catch {
+      continue;
+    }
+    const label = { kind: part.slice(0, colon), value };
+    if (valid(label) && !labels.some((l) => labelKey(l) === labelKey(label))) labels.push(label);
+  }
+  return labels;
+}
+
+function suggestion(label) {
+  return { label: labelText(label), sub: "", item: label };
+}
+
+// The labels a query could mean: countries that occur in the battles, then the fixed ones.
+export function searchLabels(battles, query) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  const countries = new Set();
+  for (const battle of battles) {
+    for (const country of battle.countries ?? []) {
+      if (country.toLowerCase().includes(needle)) countries.add(country);
+    }
+  }
+  const results = [...countries].sort((a, b) => a.localeCompare(b, "nl")).slice(0, MAX_COUNTRIES)
+    .map((value) => suggestion({ kind: "land", value }));
+  for (const [kind, names] of Object.entries(FIXED)) {
+    for (const [value, name] of Object.entries(names)) {
+      if (name.toLowerCase().includes(needle) || KIND_NAMES[kind].toLowerCase().startsWith(needle)) {
+        results.push(suggestion({ kind, value }));
+      }
+    }
+  }
+  return results;
+}
+
+const SORTS = {
+  datum: (a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.title.localeCompare(b.title, "nl")),
+  naam: (a, b) => a.title.localeCompare(b.title, "nl", { sensitivity: "base" }),
+  duur: (a, b) => durationDays(b) - durationDays(a) || SORTS.datum(a, b),
+};
+export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur" };
+
+export function sortBattles(battles, sort = "datum") {
+  return [...battles].sort(SORTS[sort] ?? SORTS.datum);
+}

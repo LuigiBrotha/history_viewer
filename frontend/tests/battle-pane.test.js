@@ -415,3 +415,50 @@ test("nextUnplaced finds the next visible battle without a position after the gi
   assert.equal(pane.nextUnplaced("C"), null);
   assert.equal(pane.nextUnplaced("B").title, "C");
 });
+
+const LABELLED = [
+  battle({ title: "Bzura", start: "1939-09-09", end: "1939-09-22", countries: ["Polen", "Duitsland"], winner: ["as"] }),
+  battle({ title: "Arnhem", start: "1944-09-17", end: "1944-09-25", countries: ["Verenigd Koninkrijk", "Duitsland"], winner: ["as"] }),
+  battle({ title: "Kursk", start: "1943-07-05", end: "1943-08-23", countries: ["Duitsland", "Sovjet-Unie"], winner: ["sovjet"] }),
+];
+
+function labelled() {
+  installDom();
+  const rootEl = new Element("aside");
+  const removed = [];
+  const sorts = [];
+  const pane = createBattlePane({ rootEl, mode: "period", onLabelRemove: (l) => removed.push(l), onSortChange: (s) => sorts.push(s) });
+  pane.setBattles(LABELLED);
+  pane.setSelection({ from: null, to: null });
+  const shown = () => rootEl.byClass("battle-list")[0].children.filter((r) => !r.hidden)
+    .map((r) => r.byClass("battle-row-title")[0].textContent);
+  return { pane, rootEl, removed, sorts, shown };
+}
+
+test("labels filter the list, show as removable chips and count", () => {
+  const { pane, rootEl, removed, shown } = labelled();
+  pane.setLabels([{ kind: "land", value: "Duitsland" }, { kind: "winnaar", value: "as" }]);
+  assert.deepEqual(shown(), ["Bzura", "Arnhem"]);
+  assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (2)");
+  const chips = rootEl.byClass("battle-label");
+  assert.deepEqual(chips.map((c) => c.byClass("battle-label-text")[0].textContent), ["Land: Duitsland", "Winnaar: As"]);
+  chips[1].byClass("battle-label-remove")[0].dispatch("click");
+  assert.deepEqual(removed, [{ kind: "winnaar", value: "as" }]);
+  pane.setLabels([]);
+  assert.equal(shown().length, 3);
+  assert.equal(rootEl.byClass("battle-label").length, 0);
+});
+
+test("the sort choice orders the rows and the arrow keys follow that order", () => {
+  const { pane, rootEl, sorts, shown } = labelled();
+  assert.deepEqual(shown(), ["Bzura", "Kursk", "Arnhem"]);
+  const select = rootEl.byClass("battle-sort")[0];
+  select.value = "naam";
+  select.dispatch("change");
+  assert.deepEqual(sorts, ["naam"]);
+  assert.deepEqual(shown(), ["Arnhem", "Bzura", "Kursk"]);
+  assert.equal(pane.neighbour(1).title, "Arnhem");
+  pane.setSort("duur");
+  assert.equal(select.value, "duur");
+  assert.deepEqual(shown(), ["Kursk", "Bzura", "Arnhem"]);
+});

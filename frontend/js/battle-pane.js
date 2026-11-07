@@ -10,6 +10,7 @@ import {
   withoutPosition,
   yearMarks,
 } from "./battle-model.js";
+import { SORT_NAMES, labelText, matchesLabels, sortBattles } from "./battle-labels.js";
 
 const WIKIPEDIA_PREFIX = "https://en.wikipedia.org/";
 const LOAD_FAILED = "Veldslagen konden niet worden geladen.";
@@ -33,8 +34,12 @@ function percent(value) {
 // "period" the rows overlapping the period are, and the others are dimmed.
 // While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
-export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNoposChange }) {
+export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange }) {
   let rows = [];
+  // The rows in the chosen sort order; rows itself stays in date order.
+  let order = [];
+  let labels = [];
+  let sort = "datum";
   let editable = false;
   let actionsEl = null;
   let selection = null;
@@ -54,6 +59,17 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
   const noposText = element("span", "battle-nopos-text");
   const noposRow = element("label", "battle-nopos-row");
   noposRow.append(noposBox, noposText);
+  const labelsEl = element("div", "battle-labels");
+  labelsEl.hidden = true;
+  const sortSelect = element("select", "battle-sort");
+  sortSelect.setAttribute("aria-label", "Sorteer de veldslagen");
+  for (const [value, name] of Object.entries(SORT_NAMES)) {
+    const option = element("option", "", `Sorteer: ${name.toLowerCase()}`);
+    option.setAttribute("value", value);
+    sortSelect.appendChild(option);
+  }
+  sortSelect.value = sort;
+  noposRow.appendChild(sortSelect);
 
   const axis = element("div", "battle-axis");
   for (const { year, fraction } of yearMarks(AXIS_BOUNDS)) {
@@ -75,7 +91,26 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
   scroll.append(empty, track);
   const source = element("p", "battle-source", SOURCE);
 
-  rootEl.replaceChildren(head, noposRow, axis, scroll, source);
+  rootEl.replaceChildren(head, noposRow, labelsEl, axis, scroll, source);
+
+  function renderLabels() {
+    labelsEl.replaceChildren(...labels.map((label) => {
+      const chip = element("span", "battle-label");
+      const remove = element("button", "battle-label-remove", "✕");
+      remove.setAttribute("type", "button");
+      remove.setAttribute("aria-label", `Verwijder ${labelText(label)}`);
+      remove.addEventListener("click", () => onLabelRemove?.(label));
+      chip.append(element("span", "battle-label-text", labelText(label)), remove);
+      return chip;
+    }));
+    labelsEl.hidden = labels.length === 0;
+  }
+
+  function applyOrder() {
+    const byBattle = new Map(rows.map((r) => [r.battle, r]));
+    order = sortBattles(rows.map((r) => r.battle), sort).map((battle) => byBattle.get(battle));
+    list.replaceChildren(...order.map((r) => r.el));
+  }
 
   function buildRow(battle, index) {
     const row = element("li", "battle-row");
@@ -139,7 +174,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
   });
 
   function applyFilter() {
-    const battles = rows.map((r) => r.battle);
+    const battles = rows.map((r) => r.battle).filter((battle) => matchesLabels(battle, labels));
     const unplaced = withoutPosition(battles, mode, selection, search.value);
     noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
     const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
@@ -152,6 +187,11 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
   }
 
   search.addEventListener("input", applyFilter);
+  sortSelect.addEventListener("change", () => {
+    sort = sortSelect.value;
+    applyOrder();
+    onSortChange?.(sort);
+  });
   noposBox.addEventListener("change", () => {
     applyFilter();
     onNoposChange?.(noposBox.checked);
@@ -192,7 +232,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
     setBattles(battles) {
       const sorted = [...battles].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
       rows = sorted.map(buildRow);
-      list.replaceChildren(...rows.map((r) => r.el));
+      applyOrder();
       revealed = null;
       actionsEl = null;
       applyFilter();
@@ -220,7 +260,7 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
     },
     // The visible battle before (-1) or after (1) the selected one; without one, the last or first.
     neighbour(direction) {
-      const visible = rows.filter((r) => !r.el.hidden);
+      const visible = order.filter((r) => !r.el.hidden);
       if (!visible.length) return null;
       const index = revealed === null ? -1 : visible.indexOf(revealed);
       if (index === -1) return (direction > 0 ? visible[0] : visible[visible.length - 1]).battle;
@@ -228,13 +268,24 @@ export function createBattlePane({ rootEl, mode, onSelect, onEdit, onClear, onNo
     },
     // The first visible battle without a position after the one with this title.
     nextUnplaced(title) {
-      const visible = rows.filter((r) => !r.el.hidden);
+      const visible = order.filter((r) => !r.el.hidden);
       const index = visible.findIndex((r) => r.battle.title === title);
       return visible.slice(index + 1).find((r) => r.battle.lat == null || r.battle.lng == null)?.battle ?? null;
     },
     setEditable(next) {
       editable = next;
       refreshActions();
+    },
+    // The labels every listed battle must match.
+    setLabels(next) {
+      labels = next;
+      renderLabels();
+      applyFilter();
+    },
+    setSort(next) {
+      sort = next in SORT_NAMES ? next : "datum";
+      sortSelect.value = sort;
+      applyOrder();
     },
     // Ticks or unticks "Alleen zonder positie" without reporting it, as when restoring a URL.
     setOnlyWithoutPosition(on) {

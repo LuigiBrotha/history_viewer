@@ -100,9 +100,16 @@ battle in the list, `P` Positie aanpassen, `Enter` Bewaar, `Shift+Enter` Bewaar 
 article open or closed, `V` battle list open or closed, `/` or `Ctrl+K` search. Coordinates
 typed into the search field (`52.37, 4.89`, `51°59′N 5°55′E`) can be chosen like a place.
 
+The search field also offers *Labels* under "Filters": a Land (`Polen`), a Winnaar (`As`,
+`onbeslist`, `onbekend`), a language (`Duits`) or a kind of position (`eigen positie`,
+`Wikipedia-positie`). Chosen labels appear above the battle list with a ✕ and narrow the list and
+the squares on the map; a battle must match all of them. The list can be sorted by date, name or
+duration. The Landen come from `poetry run python -m tools.enrich_battles`, which reads the
+stored articles.
+
 Every map page keeps its view in its URL, so a bookmark or copied link (a *Pin*) opens the
 same view again: `datum` on `/`, `van` and `tot` on `/status` and `/heatmap`, and on all three
-`veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`) and `zonderpositie=1`. The links between
+`veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`), `zonderpositie=1`, `filter` and `sorteer`. The links between
 the map pages carry the Veldslag, the Kaartuitsnede, the boat and `zonderpositie` along, not
 the date or period.
 

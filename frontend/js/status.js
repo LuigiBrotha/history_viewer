@@ -9,6 +9,7 @@ import { createMapSearch } from "./map-search.js";
 import { createShortcutHelp } from "./shortcut-help.js";
 import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles } from "./search-model.js";
+import { searchLabels } from "./battle-labels.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
@@ -107,10 +108,15 @@ function main() {
 
   const search = createMapSearch({
     map: state.map,
-    sources: [{ group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) }],
+    sources: [
+      { group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) },
+      { group: "Filters", search: (q) => searchLabels(battles.allBattles(), q) },
+    ],
     onPick: ({ group, item }) => {
       if (group === "Plaatsen") {
         if (!battles.moveEditTo(item.lat, item.lng)) search.showPlace(item);
+      } else if (group === "Filters") {
+        battles.addLabel(item);
       } else {
         battles.selectBattle(item.title);
       }

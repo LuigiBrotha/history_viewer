@@ -103,3 +103,13 @@ test("carriedView keeps only battle, boat, map and Alleen zonder positie", () =>
   });
   assert.deepEqual(carriedView({ date: "1942-03-14" }), {});
 });
+
+
+test("the labels and the sort order are kept and carried, the date sort is the default", () => {
+  const view = { battle: "Kursk", filter: "land:Polen,winnaar:as", sort: "naam" };
+  assert.equal(writeView(view, "period"), "?veldslag=Kursk&filter=land%3APolen%2Cwinnaar%3Aas&sorteer=naam");
+  assert.deepEqual(readView(writeView(view, "period"), "period"), view);
+  assert.deepEqual(readView("?sorteer=datum&filter=", "date"), {});
+  assert.deepEqual(readView("?sorteer=onzin", "date"), {});
+  assert.deepEqual(carriedView({ date: "1942-01-01", filter: "taal:nl", sort: "duur" }), { filter: "taal:nl", sort: "duur" });
+});

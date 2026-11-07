@@ -8,6 +8,8 @@ import { createMapSearch } from "./map-search.js";
 import { createShortcutHelp } from "./shortcut-help.js";
 import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles, matchBoats, matchShips } from "./search-model.js";
+import { searchLabels } from "./battle-labels.js";
+import { restoreLabels } from "./period-view.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
 import {
   beginEdit,
@@ -206,6 +208,7 @@ function main() {
         { group: "Boten", search: (q) => matchBoats([...boatsBySlug.values()], q) },
         { group: "Schepen", search: (q) => matchShips(ships, q) },
         { group: "Veldslagen", search: (q) => matchBattles(battles.allBattles(), q) },
+        { group: "Filters", search: (q) => searchLabels(battles.allBattles(), q) },
       ],
       onPick: ({ group, item }) => {
         if (group === "Boten") {
@@ -216,6 +219,8 @@ function main() {
           if (item.lat != null && item.lng != null) map.setView([item.lat, item.lng], Math.max(map.getZoom(), 6));
         } else if (group === "Veldslagen") {
           battles.selectBattle(item.title);
+        } else if (group === "Filters") {
+          battles.addLabel(item);
         } else if (!battles.moveEditTo(item.lat, item.lng)) {
           search.showPlace(item);
         }
@@ -276,6 +281,7 @@ function main() {
         urlSync.update({ nopos: true });
         battles.setOnlyWithoutPosition(true);
       }
+      restoreLabels(initialView, urlSync, battles);
       if (initialView.battle !== undefined) {
         pinnedBattle = initialView.battle;
         pinnedMap = initialView.map ?? null;

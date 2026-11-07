@@ -1,5 +1,6 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
+import { labelKey, matchesLabels } from "./battle-labels.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -70,6 +71,12 @@ export function initBattles({
       clearSelected() {},
       toggleArticle() {},
       togglePane() {},
+      addLabel() {},
+      setLabels() {},
+      labels: () => [],
+      onLabelsChange() {},
+      setSort() {},
+      onSortChange() {},
     };
   }
   const storage = safeStorage(win);
@@ -106,6 +113,9 @@ export function initBattles({
   let positionsLoaded = false;
   let selected = null;
   let lastSelected = null;
+  let labels = [];
+  const labelListeners = [];
+  const sortListeners = [];
   let requested = null;
 
   const layer = createBattleLayer(map, {
@@ -133,7 +143,21 @@ export function initBattles({
     onClear: (battle) => clearOwn(battle),
     onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
     onNoposChange,
+    onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
+    onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
   });
+
+  function applyLabels() {
+    pane.setLabels(labels);
+    layer.setBattles(shown());
+  }
+
+  // A change made in the app is reported, so the page can keep it in the URL.
+  function changeLabels(next) {
+    labels = next;
+    applyLabels();
+    labelListeners.forEach((listener) => listener(labels));
+  }
 
   // Editing is only offered once the positions are known: saving over positions that
   // could not be read would hide them.
@@ -288,7 +312,8 @@ export function initBattles({
 
   function shown() {
     if (selection === null) return [];
-    return mode === "date" ? activeOn(battles, selection.date) : battles.filter((b) => overlaps(b, selection.from, selection.to));
+    const labelled = battles.filter((b) => matchesLabels(b, labels));
+    return mode === "date" ? activeOn(labelled, selection.date) : labelled.filter((b) => overlaps(b, selection.from, selection.to));
   }
 
   function select(next) {
@@ -341,6 +366,18 @@ export function initBattles({
     selectBattle,
     selectedBattle: () => selected,
     allBattles: () => battles,
+    addLabel(label) {
+      if (!labels.some((l) => labelKey(l) === labelKey(label))) changeLabels([...labels, label]);
+    },
+    // Labels from the URL: applied without being reported back.
+    setLabels(next) {
+      labels = next;
+      applyLabels();
+    },
+    labels: () => labels,
+    onLabelsChange: (listener) => labelListeners.push(listener),
+    setSort: (next) => pane.setSort(next),
+    onSortChange: (listener) => sortListeners.push(listener),
     // The keyboard's actions (see shortcuts.js).
     step(direction) {
       const battle = pane.neighbour(direction);
