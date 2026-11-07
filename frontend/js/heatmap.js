@@ -7,6 +7,8 @@ import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, gridMax, heatColor, patrolCells, ROWS, smooth } from "./heat-model.js";
 import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { initPeriodSlider } from "./period-slider.js";
+import { createPeriodView } from "./period-view.js";
+import { createUrlSync } from "./url-sync.js";
 import { historyRange } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -64,7 +66,8 @@ function main() {
   let lastStatus = null;
   let history = null;
   let period = { from: null, to: null };
-  let fitted = false;
+  const periodView = createPeriodView({ search: location.search, urlSync: createUrlSync({ kind: "period" }), map });
+  let fitted = periodView.mapPinned();
   // The colour scale: the busiest area over the whole war, whatever period is shown.
   let scale = { smoothed: 0, raw: 0 };
   let atlas = { setDate() {} };
@@ -120,6 +123,7 @@ function main() {
     labelEl: document.getElementById("period-label"),
     resetEl: document.getElementById("period-reset"),
     onChange: (next) => {
+      periodView.onPeriod(next);
       period = next;
       battles.setPeriod(next.from, next.to);
       renderHeat();
@@ -127,8 +131,14 @@ function main() {
     },
   });
 
-  const battles = initBattles({ map, mode: "period" });
+  const battles = initBattles({
+    map,
+    mode: "period",
+    onBattleChange: periodView.onBattleChange,
+    onNoposChange: periodView.onNoposChange,
+  });
   battles.setPeriod(null, null);
+  periodView.restore({ slider, battles });
 
   initAtlas(map).then((loaded) => {
     atlas = loaded;

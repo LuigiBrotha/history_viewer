@@ -8,6 +8,8 @@ import { initBattles } from "./battles.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
+import { createPeriodView } from "./period-view.js";
+import { createUrlSync } from "./url-sync.js";
 import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -24,6 +26,13 @@ function main() {
     liveStatusEl.textContent = MAP_FAILED;
     return;
   }
+
+  const periodView = createPeriodView({
+    search: location.search,
+    urlSync: createUrlSync({ kind: "period" }),
+    map: state.map,
+  });
+  if (periodView.mapPinned()) state.fitted = true;
 
   const shipLayer = createShipLayer(state.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
   let ships = [];
@@ -84,7 +93,12 @@ function main() {
     renderAtlas();
   });
 
-  const battles = initBattles({ map: state.map, mode: "period" });
+  const battles = initBattles({
+    map: state.map,
+    mode: "period",
+    onBattleChange: periodView.onBattleChange,
+    onNoposChange: periodView.onNoposChange,
+  });
   battles.setPeriod(null, null);
 
   const slider = initPeriodSlider({
@@ -96,6 +110,7 @@ function main() {
     labelEl: document.getElementById("period-label"),
     resetEl: document.getElementById("period-reset"),
     onChange: ({ from, to }) => {
+      periodView.onPeriod({ from, to });
       setPeriod(state, from, to);
       battles.setPeriod(from, to);
       renderShips();
@@ -104,6 +119,7 @@ function main() {
     },
   });
   renderCount();
+  periodView.restore({ slider, battles });
 
   const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
 

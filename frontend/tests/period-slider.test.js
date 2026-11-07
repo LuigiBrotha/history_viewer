@@ -12,7 +12,10 @@ import {
   selectionToPeriod,
   growSelection,
   yearTicks,
+  periodSelection,
+  initPeriodSlider,
 } from "../js/period-slider.js";
+import { Element, installDom } from "./battle-dom.js";
 
 const bounds = { min: dayNumber("1940-01-01"), max: dayNumber("1945-01-01") };
 const day = dayNumber;
@@ -96,4 +99,51 @@ test("yearTicks marks each January first inside the bounds", () => {
   const ticks = yearTicks({ min: day("1939-08-19"), max: day("1942-03-12") });
   assert.deepEqual(ticks.map((tick) => tick.year), [1940, 1941, 1942]);
   assert.ok(ticks.every((tick) => tick.fraction > 0 && tick.fraction < 1));
+});
+
+
+test("periodSelection opens a missing end on the bound, clamps and swaps", () => {
+  assert.deepEqual(periodSelection("1941-01-01", "1942-01-01", bounds), { from: day("1941-01-01"), to: day("1942-01-01") });
+  assert.deepEqual(periodSelection(null, null, bounds), { from: bounds.min, to: bounds.max });
+  assert.deepEqual(periodSelection("1930-01-01", "1950-01-01", bounds), { from: bounds.min, to: bounds.max });
+  assert.deepEqual(periodSelection("1942-01-01", "1941-01-01", bounds), { from: day("1941-01-01"), to: day("1942-01-01") });
+});
+
+function sliderSetup() {
+  installDom();
+  globalThis.requestAnimationFrame = (callback) => {
+    callback();
+    return 1;
+  };
+  const changes = [];
+  const parts = ["trackEl", "windowEl", "fromHandleEl", "toHandleEl", "ticksEl", "labelEl", "resetEl"];
+  const els = Object.fromEntries(parts.map((name) => [name, new Element("div")]));
+  const slider = initPeriodSlider({ ...els, onChange: (period) => changes.push(period) });
+  return { slider, changes, els };
+}
+
+test("setPeriod after setBounds moves the handles and reports the period once", () => {
+  const { slider, changes, els } = sliderSetup();
+  slider.setBounds({ min: "1940-01-01", max: "1945-01-01" });
+  slider.setPeriod("1941-01-01", "1942-01-01");
+  assert.deepEqual(changes, [{ from: "1941-01-01", to: "1942-01-01" }]);
+  assert.equal(els.labelEl.textContent, "1941-01-01 t/m 1942-01-01");
+});
+
+test("setPeriod before setBounds is applied when the bounds arrive", () => {
+  const { slider, changes, els } = sliderSetup();
+  slider.setPeriod("1942-01-01", "1941-01-01");
+  assert.deepEqual(changes, []);
+  slider.setBounds({ min: "1940-01-01", max: "1945-01-01" });
+  assert.deepEqual(changes, [{ from: "1941-01-01", to: "1942-01-01" }]);
+  slider.setBounds({ min: "1940-01-01", max: "1945-06-01" });
+  assert.equal(changes.length, 1);
+  assert.equal(els.labelEl.textContent, "1941-01-01 t/m 1942-01-01");
+});
+
+test("setPeriod clamps values outside the bounds", () => {
+  const { slider, changes } = sliderSetup();
+  slider.setBounds({ min: "1940-01-01", max: "1945-01-01" });
+  slider.setPeriod("1930-01-01", "1943-01-01");
+  assert.deepEqual(changes, [{ from: null, to: "1943-01-01" }]);
 });

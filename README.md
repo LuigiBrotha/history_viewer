@@ -79,6 +79,22 @@ On this machine a battle's position can be corrected: select its row (or square)
 the Wikipedia position, is drawn dashed, and can be removed again with `Eigen positie wissen`.
 A battle without a position can be given one this way too.
 
+`Alleen zonder positie (N)` in the pane lists only the battles without any position under the
+selected date or period. While it is ticked, the selected battle stays in the list even after
+it gets a position, until another one is chosen.
+
+Selecting a battle opens its *Artikel*: the Wikipedia article, rendered by the app itself from
+the stored wikitext, in a resizable column beside the list. The articles are filled by the
+extraction (`tools/extract_battles.py`, or `tools/fill_battle_articles.py` for the battles
+already known; see `frontend/battles/README.md`). Images in an article are fetched once
+by the server and kept in the image cache folder (`WIKI_IMAGE_DIR`).
+
+Every map page keeps its view in its URL, so a bookmark or copied link (a *Pin*) opens the
+same view again: `datum` on `/`, `van` and `tot` on `/status` and `/heatmap`, and on all three
+`veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`) and `zonderpositie=1`. The links between
+the map pages carry the Veldslag, the Kaartuitsnede, the boat and `zonderpositie` along, not
+the date or period.
+
 Maps open on a background of ocean depth (Esri Ocean). A layer button switches to the
 street map; the choice is remembered in the browser.
 

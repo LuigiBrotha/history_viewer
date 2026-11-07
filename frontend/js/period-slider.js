@@ -49,6 +49,14 @@ export function selectionToPeriod(selection, bounds) {
   };
 }
 
+// The selection for a { from, to } period of ISO dates: a missing end opens on the bound,
+// values are clamped to the bounds and a reversed pair is swapped.
+export function periodSelection(from, to, bounds) {
+  const first = from ? clamp(dayNumber(from), bounds.min, bounds.max) : bounds.min;
+  const last = to ? clamp(dayNumber(to), bounds.min, bounds.max) : bounds.max;
+  return { from: Math.min(first, last), to: Math.max(first, last) };
+}
+
 export function growSelection(selection, oldBounds, newBounds) {
   return {
     from: selection.from <= oldBounds.min ? newBounds.min : selection.from,
@@ -77,6 +85,7 @@ export function initPeriodSlider({ trackEl, windowEl, fromHandleEl, toHandleEl, 
   let selection = null;
   let drag = null;
   let frame = null;
+  let pending = null;
 
   function render() {
     const left = fractionForDay(selection.from, bounds) * 100;
@@ -186,10 +195,24 @@ export function initPeriodSlider({ trackEl, windowEl, fromHandleEl, toHandleEl, 
   });
 
   return {
+    // Sets the period, as when restoring a URL. Before the bounds are known it is kept and
+    // applied when they arrive.
+    setPeriod(from, to) {
+      if (bounds === null) {
+        pending = { from, to };
+        return;
+      }
+      update(periodSelection(from, to, bounds));
+    },
     setBounds(history) {
       const next = { min: dayNumber(history.min), max: dayNumber(history.max) };
       selection = selection === null ? { from: next.min, to: next.max } : growSelection(selection, bounds, next);
       bounds = next;
+      if (pending !== null) {
+        selection = periodSelection(pending.from, pending.to, bounds);
+        pending = null;
+        notify();
+      }
       ticksEl.replaceChildren(
         ...yearTicks(bounds).map(({ year, fraction }) => {
           const tick = document.createElement("span");
