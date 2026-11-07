@@ -218,3 +218,15 @@ class PlaceSearch(Base):
     query: Mapped[str] = mapped_column(String, primary_key=True)
     results_json: Mapped[str] = mapped_column(Text, nullable=False)
     fetched_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class ForeignBattleArticle(Base):
+    """The wikitext of a battle article in another language than English, as in that dump."""
+
+    __tablename__ = "foreign_battle_articles"
+
+    lang: Mapped[str] = mapped_column(String, primary_key=True)
+    title: Mapped[str] = mapped_column(String, primary_key=True)
+    wikitext: Mapped[str] = mapped_column(Text, nullable=False)
+    dump_name: Mapped[str] = mapped_column(String, nullable=False)
+    extracted_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
