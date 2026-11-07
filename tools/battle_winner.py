@@ -19,7 +19,9 @@ kingdom of romania, romania, kingdom of bulgaria, bulgaria, slovak republic, slo
 first slovak republic, independent state of croatia, croatia, finland, thailand,
 vichy france, french state, manchukuo, mengjiang, reorganized national government of china,
 wang jingwei regime, azad hind, indian national army, kingdom of albania, albania,
-italian east africa, italian libya, italian somaliland, italian eritrea
+italian east africa, italian libya, italian somaliland, italian eritrea, ger,
+second philippine republic, government of national salvation, hellenic state,
+protectorate of bohemia and moravia, albanian kingdom
 """
 
 _WESTERS = """
@@ -34,12 +36,16 @@ polish armed forces in the west, netherlands, dutch east indies, belgium, norway
 kingdom of greece, greece, kingdom of yugoslavia, yugoslavia, czechoslovakia,
 czechoslovak government-in-exile, brazil, vargas era, philippines,
 commonwealth of the philippines, southern rhodesia, burma, british burma, malaya,
-straits settlements, hong kong, british hong kong
+straits settlements, hong kong, british hong kong, uk, ukgbni, us, united states of america,
+pol, free french, dutch government-in-exile, greek government-in-exile, gold coast, kenya,
+northern rhodesia, fiji, nigeria, nyasaland, british somaliland, uganda, belgian congo,
+gilbert and ellice islands, british ceylon, ceylon, jordan, emirate of transjordan,
+mandatory palestine, anglo-egyptian sudan, french lebanon
 """
 
 _SOVJET = """
 soviet union, ussr, red army, soviet navy, soviet air forces, mongolian people's republic,
-mongolia, tuvan people's republic
+mongolia, tuvan people's republic, ukrainian ssr, byelorussian ssr
 """
 
 _OVERIG = """
@@ -48,7 +54,8 @@ eighth route army, new fourth army, yugoslav partisans, chetniks, ethiopian empi
 mexico, iran, imperial state of iran, kingdom of iraq, iraq, spain, francoist spain, turkey,
 ireland, kingdom of egypt, egypt, denmark, sweden, switzerland, portugal, vietnam, viet minh,
 indonesia, polish underground state, home army, greek resistance, french resistance,
-italian resistance movement, kingdom of afghanistan, saudi arabia, siam
+italian resistance movement, kingdom of afghanistan, saudi arabia, siam,
+democratic federal yugoslavia, north vietnam, panama, nepal, pahlavi iran
 """
 
 

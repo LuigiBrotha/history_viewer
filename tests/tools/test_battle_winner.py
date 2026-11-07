@@ -129,3 +129,11 @@ def test_side_kamp():
 )
 def test_real_result_shapes(result, combatant1, combatant2, expected):
     assert winner(fields(result, combatant1, combatant2)) == expected
+
+
+def test_flag_codes_colonies_and_puppet_states():
+    assert side_kamp("{{flagicon|Free French}} [[French Resistance]]") == "westers"
+    assert side_kamp("{{flag|UK}}") == "westers"
+    assert side_kamp("{{flagicon|Gold Coast}}") == "westers"
+    assert side_kamp("{{flag|Second Philippine Republic}}") == "as"
+    assert side_kamp("{{flag|Democratic Federal Yugoslavia}}") == "overig"
