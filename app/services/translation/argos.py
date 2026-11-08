@@ -34,15 +34,14 @@ LOADED = 2  # models kept in memory; an Argos model takes a few hundred MB, NLLB
 MAX_PIECE = 400  # characters; longer sentences are cut at a semicolon or comma
 SENTENCE = re.compile(r"(?<=[.!?])\s+(?=\S)|(?<=[。！？])")
 DASH = re.compile(r"[–—]")
+INITIAL = re.compile(r"(?:^|[\s(.\"«])[^\W\d_]\.$")
 CUT = re.compile(r"(?<=[;,，、])\s*")
 
 
 def split_sentences(text: str) -> list[str]:
     """The sentences of a text, none longer than MAX_PIECE where a comma allows it."""
     pieces = []
-    for sentence in SENTENCE.split(text):
-        if not sentence.strip():
-            continue
+    for sentence in _whole_sentences(SENTENCE.split(text)):
         while len(sentence) > MAX_PIECE:
             cuts = [m.end() for m in CUT.finditer(sentence, 0, MAX_PIECE) if m.end() > MAX_PIECE // 4]
             if not cuts:
@@ -51,6 +50,20 @@ def split_sentences(text: str) -> list[str]:
             sentence = sentence[cuts[-1]:]
         pieces.append(sentence.strip())
     return pieces
+
+
+def _whole_sentences(parts):
+    """The parts, joined again where one ends in a single letter and a stop: an initial ("K. E.
+    Voroshilov") or an abbreviation ("1941 г."), not the end of a sentence."""
+    joined = []
+    for part in parts:
+        if not part.strip():
+            continue
+        if joined and INITIAL.search(joined[-1]):
+            joined[-1] = f"{joined[-1]} {part}"
+        else:
+            joined.append(part)
+    return joined
 
 
 def nllb_code(lang: str, text: str) -> str:

@@ -44,6 +44,12 @@ def test_sentences_are_split_and_long_ones_cut_at_a_comma():
     assert " ".join(pieces).split() == long.split()
 
 
+def test_initials_and_one_letter_abbreviations_do_not_end_a_sentence():
+    assert split_sentences("Брыгада імя К. Е. Варашылава. Другая.") == ["Брыгада імя К. Е. Варашылава.", "Другая."]
+    assert split_sentences("Было в 1941 г. Немцы ушли.") == ["Было в 1941 г. Немцы ушли."]
+    assert split_sentences("Plan B. Next one.") == ["Plan B. Next one."]
+
+
 def test_which_languages_reach_dutch(tmp_path):
     for name in ("translate-en_nl-1_8", "translate-ru_en-1_9", "translate-nb_en-1_9"):
         (tmp_path / name / "inner" / "model").mkdir(parents=True)
