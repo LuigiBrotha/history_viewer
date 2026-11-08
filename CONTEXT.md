@@ -41,12 +41,16 @@ Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum
 _Avoid_: Succes, slachtoffer
 
 **Veldslag**:
-Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen artikel op de Engelse, Nederlandse, Duitse of Poolse Wikipedia, met een begin- en einddatum en soms een positie. Artikelen in meerdere talen over dezelfde slag (verbonden door taallinks) vormen één Veldslag.
+Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen artikel op een Wikipedia, met een begin- en einddatum en soms een positie. Artikelen in meerdere talen over dezelfde slag (verbonden door taallinks) vormen één Veldslag.
 _Avoid_: Operatie, gevecht
 
 **Artikel**:
 De tekst van het Wikipedia-artikel van een Veldslag, zoals de app die zelf weergeeft naast de lijst met Veldslagen.
 _Avoid_: Wikipedia-pagina (als de weergave in de app wordt bedoeld)
+
+**Nederlandse versie**:
+Het Artikel in het Nederlands: het artikel van de Nederlandse Wikipedia over dezelfde slag als dat er is, anders een machinevertaling van het origineel. Tegenover het origineel (het Artikel in zijn eigen taal).
+_Avoid_: Vertaling (als het ook een Nederlands Wikipedia-artikel kan zijn)
 
 **Kaartuitsnede**:
 Het deel van de kaart dat in beeld is: middelpunt en zoomniveau.
