@@ -440,13 +440,16 @@ test("labels filter the list, show as removable chips and count", () => {
   pane.setLabels([{ kind: "land", value: "Duitsland" }, { kind: "winnaar", value: "as" }]);
   assert.deepEqual(shown(), ["Bzura", "Arnhem"]);
   assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (2)");
-  const chips = rootEl.byClass("battle-label");
-  assert.deepEqual(chips.map((c) => c.byClass("battle-label-text")[0].textContent), ["Land: Duitsland", "Winnaar: As"]);
-  chips[1].byClass("battle-label-remove")[0].dispatch("click");
+  const chips = rootEl.byClass("battle-filter");
+  // Not the classes of the names beside the squares, whose styles would lay the chip out wrong.
+  assert.equal(rootEl.byClass("battle-label").length, 0);
+  assert.equal(rootEl.byClass("battle-label-text").length, 0);
+  assert.deepEqual(chips.map((c) => c.byClass("battle-filter-text")[0].textContent), ["Land: Duitsland", "Winnaar: As"]);
+  chips[1].byClass("battle-filter-remove")[0].dispatch("click");
   assert.deepEqual(removed, [{ kind: "winnaar", value: "as" }]);
   pane.setLabels([]);
   assert.equal(shown().length, 3);
-  assert.equal(rootEl.byClass("battle-label").length, 0);
+  assert.equal(rootEl.byClass("battle-filter").length, 0);
 });
 
 test("the sort choice orders the rows and the arrow keys follow that order", () => {

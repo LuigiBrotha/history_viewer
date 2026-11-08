@@ -681,7 +681,7 @@ test("labels filter the list and the squares, and changes are reported", async (
   ctx.controller.addLabel({ kind: "land", value: "Japan" });
   assert.deepEqual(ctx.squares(), ["Midway"]);
   assert.deepEqual(ctx.rows().filter((r) => !r.hidden).map(ctx.titleOf), ["Midway"]);
-  ctx.elements["battle-pane"].byClass("battle-label-remove")[0].dispatch("click");
+  ctx.elements["battle-pane"].byClass("battle-filter-remove")[0].dispatch("click");
   assert.equal(ctx.squares().length, 2);
   assert.deepEqual(heard, [["Japan"], []]);
   ctx.controller.setLabels([{ kind: "land", value: "Duitsland" }]);

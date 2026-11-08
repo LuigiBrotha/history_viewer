@@ -1667,7 +1667,7 @@ html, body {
   display: none;
 }
 
-.battle-label {
+.battle-filter {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -1679,7 +1679,7 @@ html, body {
   font-size: 13px;
 }
 
-.battle-label-remove {
+.battle-filter-remove {
   min-width: 28px;
   min-height: 28px;
   border: none;

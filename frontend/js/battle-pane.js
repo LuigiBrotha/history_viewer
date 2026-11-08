@@ -126,12 +126,12 @@ export function createBattlePane({
 
   function renderLabels() {
     labelsEl.replaceChildren(...labels.map((label) => {
-      const chip = element("span", "battle-label");
-      const remove = element("button", "battle-label-remove", "✕");
+      const chip = element("span", "battle-filter");
+      const remove = element("button", "battle-filter-remove", "✕");
       remove.setAttribute("type", "button");
       remove.setAttribute("aria-label", `Verwijder ${labelText(label)}`);
       remove.addEventListener("click", () => onLabelRemove?.(label));
-      chip.append(element("span", "battle-label-text", labelText(label)), remove);
+      chip.append(element("span", "battle-filter-text", labelText(label)), remove);
       return chip;
     }));
     labelsEl.hidden = labels.length === 0;
