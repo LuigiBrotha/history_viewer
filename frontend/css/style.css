@@ -1812,3 +1812,622 @@ html, body {
 .battle-square.outside-filter {
   opacity: 0.35;
 }
+
+/* ── Archief ───────────────────────────────────────────────────────────────────────────
+   The look of the site (chosen 2026-11-08): paper and ink, a serif for headings, a mono for
+   dates. Only colours, type, borders and corners; the layout above stays as it is. Rules
+   here repeat a selector from above, so they win by coming later. */
+:root {
+  color-scheme: light;
+  --paper: #f2ede3;
+  --paper-light: #fbf8f2;
+  --paper-dark: #ebe3d3;
+  --rule: #d8cfbf;
+  --rail: #ddd4c4;
+  --ink: #2a2521;
+  --ink-soft: #6d6359;
+  --accent: #7a2a1c;
+  --accent-dark: #4f1a10;
+  --accent-wash: rgba(122, 42, 28, 0.12);
+  --unknown: #c8962e;
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent-dark);
+}
+
+button,
+input,
+select {
+  accent-color: var(--accent);
+}
+
+/* The map: the tiles toned towards an old print, controls in ink on paper. */
+#map,
+#status-map {
+  background: #d6dcd6;
+}
+
+.leaflet-container {
+  font-family: var(--sans);
+}
+
+.leaflet-tile-pane {
+  filter: sepia(0.35) saturate(0.75) contrast(0.95);
+}
+
+.leaflet-container .leaflet-bar {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.leaflet-container .leaflet-bar a,
+.leaflet-container .leaflet-bar a:first-child,
+.leaflet-container .leaflet-bar a:last-child {
+  border-radius: 0;
+  border-bottom-color: var(--ink);
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.leaflet-container .leaflet-bar a:hover {
+  background: var(--paper-dark);
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(251, 248, 242, 0.85);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: var(--accent);
+}
+
+.leaflet-tooltip {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.leaflet-tooltip-top::before {
+  border-top-color: var(--ink);
+}
+
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--ink);
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: 0 0 0 1px var(--ink);
+  color: var(--ink);
+}
+
+.atlas-legend {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: rgba(251, 248, 242, 0.94);
+  color: var(--ink);
+}
+
+.atlas-label,
+.atlas-legend-heading {
+  font-family: var(--serif);
+}
+
+/* Boats and their panel. */
+#sidebar,
+#boat-panel {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: none;
+}
+
+#sidebar h2,
+#boat-panel h2,
+#boat-panel h3 {
+  font-family: var(--serif);
+}
+
+#boat-date-label,
+#ship-totals,
+#live-status,
+#ship-unknown,
+.boat-panel-summary,
+#boat-panel dt {
+  color: var(--ink-soft);
+}
+
+#follow-status {
+  color: var(--accent);
+}
+
+#boat-list li,
+.boat-panel-patrol {
+  border-bottom-color: var(--rule);
+}
+
+#boat-list li:hover,
+.boat-panel-patrol.clickable:hover {
+  background: var(--paper-dark);
+}
+
+#boat-list li.following {
+  background: var(--paper-dark);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.boat-panel-patrol.selected {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.boat-panel-close {
+  border-radius: 0;
+  background: var(--paper-dark);
+  color: var(--ink);
+}
+
+.boat-panel-ship {
+  border-color: var(--rule);
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+#reset-follow,
+#excluded-points button,
+#period-reset,
+.battle-tools button {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+/* The date line under the map and the period header of the other pages. */
+#timeline,
+#status-header {
+  border-top: 1px solid var(--ink);
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+#status-header {
+  border-top: 0;
+  border-bottom: 1px solid var(--ink);
+}
+
+#status-header a {
+  color: var(--ink);
+}
+
+#status-header #live-status {
+  color: var(--ink-soft);
+}
+
+#page-links a {
+  font-weight: 500;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+#page-links a:hover {
+  border-bottom-color: var(--accent);
+}
+
+#date-slider {
+  accent-color: var(--accent);
+}
+
+#date-slider::-webkit-slider-thumb {
+  background: var(--accent);
+}
+
+#timeline-controls button {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  color: var(--ink);
+}
+
+#date-display,
+#period-summary,
+.slider-tick,
+#slider-ticks,
+#legend {
+  font-family: var(--mono);
+  color: var(--ink-soft);
+}
+
+#date-display,
+#period-label {
+  color: var(--ink);
+}
+
+#slider-track {
+  border-radius: 0;
+  background: var(--rail);
+}
+
+.slider-window {
+  border-top-color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.slider-handle::after {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+}
+
+.slider-handle:focus-visible::after {
+  outline-color: var(--accent);
+}
+
+#load-indicator {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.load-percent {
+  font-family: var(--serif);
+}
+
+.load-bar {
+  border-radius: 0;
+  background: var(--rail);
+}
+
+.load-bar > div {
+  background: var(--accent);
+}
+
+/* Veldslagen on the map: the Kampen in the hues of the atlas, darkened to ink. */
+.battle-square span,
+.winner-swatch {
+  background: linear-gradient(135deg, var(--win1, var(--unknown)) 50%, var(--win2, var(--win1, var(--unknown))) 50%);
+  border-color: var(--ink);
+}
+
+.win1-as { --win1: #3d3a37; }
+.win1-westers { --win1: #2f63b5; }
+.win1-sovjet { --win1: #b8322a; }
+.win1-overig { --win1: #3c7d46; }
+.win2-as { --win2: #3d3a37; }
+.win2-westers { --win2: #2f63b5; }
+.win2-sovjet { --win2: #b8322a; }
+.win2-overig { --win2: #3c7d46; }
+
+.battle-square.selected span {
+  box-shadow: 0 0 0 2px var(--paper-light), 0 0 0 4px var(--accent);
+}
+
+.battle-label-text {
+  color: var(--ink);
+  font-family: var(--serif);
+  text-shadow: 0 0 2px var(--paper-light), 0 0 2px var(--paper-light), 0 0 3px var(--paper-light);
+}
+
+.track-arrow span {
+  text-shadow: 0 0 2px var(--paper-light), 0 0 2px var(--paper-light);
+}
+
+.track-number span {
+  border-color: var(--paper-light);
+  font-family: var(--sans);
+}
+
+#battle-toggle {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+#battle-toggle[aria-expanded="true"] {
+  background: var(--ink);
+  color: var(--paper-light);
+}
+
+/* The list and the Artikel. */
+#battle-divider,
+#article-divider {
+  border-left: 1px solid var(--ink);
+  border-right: 1px solid var(--ink);
+  background: var(--paper-dark);
+}
+
+#battle-divider::before,
+#article-divider::before {
+  border-radius: 0;
+  background: var(--ink-soft);
+}
+
+#battle-divider:hover::before,
+#battle-divider:focus-visible::before,
+#article-divider:hover::before,
+#article-divider:focus-visible::before {
+  background: var(--accent);
+}
+
+#battle-pane {
+  background: #f7f3ea;
+  color: var(--ink);
+}
+
+.battle-pane-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.battle-search {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.map-search {
+  --search-bg: var(--paper-light);
+  --search-text: var(--ink);
+  --search-muted: var(--ink-soft);
+  --search-line: var(--ink);
+  --search-active: var(--paper-dark);
+}
+
+.map-search-input {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+}
+
+.map-search-list {
+  border-radius: 0;
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.map-search-group {
+  font-family: var(--mono);
+  letter-spacing: 1px;
+}
+
+.battle-axis {
+  border-bottom-color: var(--rule);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+}
+
+.battle-year {
+  border-left-color: var(--rule);
+}
+
+.battle-marker {
+  background: var(--accent);
+}
+
+.battle-band {
+  background: var(--accent-wash);
+}
+
+.battle-row {
+  border-bottom-color: var(--rule);
+}
+
+.battle-row.active {
+  background: var(--paper-dark);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.battle-row.selected {
+  outline-color: var(--accent);
+}
+
+.battle-row-title {
+  color: var(--ink);
+}
+
+.battle-row-meta {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.battle-nopos,
+.battle-ownpos {
+  color: var(--accent);
+}
+
+.battle-bar-track {
+  border-radius: 0;
+  background: var(--rail);
+}
+
+.battle-bar {
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+}
+
+.battle-empty,
+.battle-error,
+.battle-source {
+  color: var(--ink-soft);
+}
+
+.battle-source {
+  border-top-color: var(--ink);
+}
+
+.battle-row-actions button,
+.battle-edit-bar button {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.battle-edit-bar {
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.battle-edit-error {
+  color: var(--accent);
+}
+
+.battle-filter {
+  border-color: var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.battle-filter-mode {
+  border-color: var(--ink);
+  border-radius: 0;
+  background: var(--ink);
+  color: var(--paper-light);
+  font-family: var(--mono);
+}
+
+.battle-sort {
+  border: 1px solid var(--ink);
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+#article-pane {
+  background: var(--paper-light);
+  color: var(--ink);
+}
+
+.article-head {
+  border-bottom-color: var(--ink);
+}
+
+.article-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.article-close {
+  color: var(--ink);
+}
+
+.article-winner {
+  display: inline-block;
+  padding: 6px 10px;
+  border: 1px solid var(--ink);
+  font-size: 0.85em;
+}
+
+.article-body {
+  font-family: var(--serif);
+  font-size: 1.05em;
+  line-height: 1.6;
+}
+
+.article-body h2,
+.article-body h3,
+.article-body h4 {
+  font-family: var(--serif);
+}
+
+.article-body a {
+  color: var(--accent);
+}
+
+.article-body figcaption,
+.article-status,
+.article-source {
+  color: var(--ink-soft);
+}
+
+.article-body table.article-infobox {
+  font-family: var(--sans);
+}
+
+.article-body table.article-infobox th,
+.article-body table.article-infobox td {
+  border-top: 1px solid var(--rule);
+}
+
+.article-source {
+  border-top-color: var(--ink);
+}
+
+.shortcut-help {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: var(--paper-light);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+.shortcut-help-title {
+  font-family: var(--serif);
+}
+
+.shortcut-help-close {
+  color: var(--ink);
+}
+
+.shortcut-row {
+  border-top-color: var(--rule);
+}
+
+.shortcut-keys {
+  font-family: var(--mono);
+}
+
+/* The tonnage chart keeps its validated series colours on paper. */
+.tonnage-page {
+  --surface: var(--paper);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-soft);
+  --grid: var(--rule);
+  --context: #b9ad98;
+}
+
+#tonnage-main h1 {
+  font-family: var(--serif);
+  font-size: 24px;
+}
+
+#tonnage-search,
+#tonnage-unit button,
+#tonnage-tooltip {
+  border-radius: 0;
+}
+
+#tonnage-tooltip {
+  border: 1px solid var(--ink);
+  box-shadow: none;
+}

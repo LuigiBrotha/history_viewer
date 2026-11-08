@@ -3,7 +3,7 @@
 
 // Strong colours, one per Spoor, unlike those of the Kampen on the squares (grey, blue, red,
 // green, amber), so a Spoor never looks like a Winnaar.
-export const TRACK_COLORS = ["#7b2ff7", "#ff6a00", "#00838f", "#c2185b", "#111111", "#8d5524"];
+export const TRACK_COLORS = ["#6b2fbf", "#ff6a00", "#00838f", "#c2185b", "#111111", "#8d5524"];
 
 // The colour of a Spoor label: its place among the Spoor labels picks it, so the line on the
 // map and the chip above the list agree. Null for a label that draws no Spoor.
