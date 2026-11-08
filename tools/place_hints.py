@@ -36,16 +36,29 @@ from tools.wiki_languages import LANGUAGES
 
 ENGLISH_DIR = Path("~/.cache/uboats/wikipedia")
 OTHER_DIR = Path("~/.cache/uboats/wikipedia/other")
-MAX_DISTANCE_KM = 1000
+MAX_DISTANCE_KM = 1000  # a name without a link, from the anchors
+MAX_LINKED_KM = 2000  # a place linked in the text, from the anchors
+CORE_KM = 1500  # without other anchors: the linked places this near their middle
 MAX_HINTS = 200
 # geo_tags types that are no place to fight at, for any hint.
-NOT_PLACES = {"country", "event"}
+NOT_PLACES = {"country", "event", "edu", "adm1st"}
+# A page whose position stands for an area wider than this (metres) is a region, not a place.
+MAX_SIZE_M = 300_000
+# Headings after which an article lists sources, not places.
+_END_SECTIONS = re.compile(
+    r"^==+\s*(?:references|notes|citations|sources|bibliography|further reading|external links|see also|"
+    r"literatur|einzelnachweise|weblinks|anmerkungen|siehe auch|bronnen|referenties|literatuur|externe links|"
+    r"zie ook|przypisy|bibliografia|linki zewnętrzne|zobacz też|примечания|литература|ссылки|см\. также|"
+    r"notes et références|bibliographie|liens externes|voir aussi|note|collegamenti esterni|voci correlate|"
+    r"脚注|参考文献|関連項目|外部リンク)\s*==+\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 # The types a name without a link may stand for (None: the page did not say).
 NAMED_TYPES = {None, "city", "isle", "mountain", "pass", "waterbody", "river", "adm2nd", "adm3rd"}
 # Languages whose names start with a capital, so that unlinked names can be found.
 CAPITALISED = {"en", "nl", "de", "pl", "ru", "fr", "it"}
 _LINK = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
-_GEO_ROW = re.compile(r"\((\d+),(\d+),'earth',1,(-?[\d.]+),(-?[\d.]+),[^,]*,(NULL|'[^']*')")
+_GEO_ROW = re.compile(r"\((\d+),(\d+),'earth',1,(-?[\d.]+),(-?[\d.]+),(NULL|\d+),(NULL|'[^']*')")
 _WORD = r"[A-ZÀ-ÖØ-ÞĄĆĘŁŃÓŚŹŻА-ЯЁ][\w'’.-]*"
 _CONNECTOR = r"(?:de|di|del|della|du|des|la|le|al|el|am|an|der|von|van|op|aan|nad|pod|на|под|-)"
 _PHRASE = re.compile(rf"{_WORD}(?:\s+(?:{_CONNECTOR}\s+)?{_WORD}){{0,3}}")
@@ -88,6 +101,13 @@ def _without_infobox(lang, text):
     return text[:match.start()] + text[i:]
 
 
+def _body(lang, text):
+    """The article without its infobox and without what follows the first sources heading."""
+    text = _without_infobox(lang, text)
+    end = _END_SECTIONS.search(text)
+    return text[:end.start()] if end else text
+
+
 def _links(text):
     found = []
     for target in _LINK.findall(text):
@@ -104,7 +124,7 @@ def linked_places(lang, wikitext):
     fields = find_infobox(text, _infobox_pattern(lang)) or {}
     result = [(title, "infobox") for title in _links(fields.get(_place_field(lang), ""))]
     seen = {title for title, _ in result}
-    for title in _links(_without_infobox(lang, text)):
+    for title in _links(_body(lang, text)):
         if title not in seen:
             seen.add(title)
             result.append((title, "artikel"))
@@ -129,7 +149,7 @@ def name_candidates(lang, wikitext):
     if lang not in CAPITALISED:
         return set()
     keys = set()
-    for match in _PHRASE.finditer(_plain(_without_infobox(lang, strip_comments(wikitext)))):
+    for match in _PHRASE.finditer(_plain(_body(lang, strip_comments(wikitext)))):
         words = match.group(0).split()
         for start in range(len(words)):
             for end in range(start + 1, len(words) + 1):
@@ -144,9 +164,9 @@ def read_geotags(path):
     found = {}
     with gzip.open(path, "rt", encoding="utf-8", errors="replace") as lines:
         for line in lines:
-            for _, page_id, lat, lng, kind in _GEO_ROW.findall(line):
+            for _, page_id, lat, lng, size, kind in _GEO_ROW.findall(line):
                 kind = None if kind == "NULL" else kind.strip("'")
-                if kind not in NOT_PLACES:
+                if kind not in NOT_PLACES and (size == "NULL" or int(size) <= MAX_SIZE_M):
                     found[int(page_id)] = (float(lat), float(lng), kind)
     return found
 
@@ -203,7 +223,9 @@ def lookup_names(db_path, keys):
         marks = ",".join("?" * len(chunk))
         for key, title, lat, lng, kind in db.execute(
                 f"SELECT key, title, lat, lng, type FROM places WHERE key IN ({marks})", chunk):
-            if kind in NAMED_TYPES:
+            # "Western" is no name for "Western, New York": a one-word name only means a place
+            # whose title is exactly that word.
+            if kind in NAMED_TYPES and (" " in key or title.lower() == key):
                 found.setdefault(key, []).append((title, lat, lng))
     db.close()
     return found
@@ -215,28 +237,53 @@ def distance_km(a, b):
     return 6371 * 2 * math.asin(math.sqrt(min(1.0, h)))
 
 
+def _nearest_km(point, anchors):
+    return min(distance_km(point, anchor) for anchor in anchors)
+
+
 def choose(candidates, anchors):
     """The place a name without a link stands for: nearest to the anchors (at most
     MAX_DISTANCE_KM away), or, without anchors, the only one. None when unsure."""
     if anchors:
-        best = min(candidates, key=lambda c: min(distance_km((c[1], c[2]), a) for a in anchors))
-        near = min(distance_km((best[1], best[2]), a) for a in anchors)
-        return best if near <= MAX_DISTANCE_KM else None
+        best = min(candidates, key=lambda c: _nearest_km((c[1], c[2]), anchors))
+        return best if _nearest_km((best[1], best[2]), anchors) <= MAX_DISTANCE_KM else None
     return candidates[0] if len(candidates) == 1 else None
 
 
-def hints_for(links, positions, names, named):
+def _core(points):
+    """The points near the middle of most of them (the median), dropping far-off strays."""
+    if not points:
+        return []
+    middle = (sorted(p[0] for p in points)[len(points) // 2], sorted(p[1] for p in points)[len(points) // 2])
+    return [p for p in points if distance_km(p, middle) <= CORE_KM]
+
+
+def hints_for(links, positions, names, named, position=None):
     """The Plaatshints of one Veldslag.
 
     links: [(lang, title, kind)] of its linked places; positions: {(lang, title): (lat, lng, type)};
-    names: [(lang, key)] of its names without a link; named: {(lang, key): [(title, lat, lng)]}."""
-    hints, seen = [], set()
+    names: [(lang, key)] of its names without a link; named: {(lang, key): [(title, lat, lng)]};
+    position: the battle's own (lat, lng), if it has one.
+
+    Where the battle was is anchored on its infobox's places, else its own position, else the
+    core of its linked places; places linked in the text and names without a link must lie
+    near those anchors."""
+    infobox, linked, seen = [], [], set()
     for lang, title, kind in links:
-        position = positions.get((lang, title))
-        if position and title not in seen:
+        found = positions.get((lang, title))
+        if found and title not in seen:
             seen.add(title)
-            hints.append({"name": title, "lat": position[0], "lng": position[1], "kind": kind})
-    anchors = [(h["lat"], h["lng"]) for h in hints]
+            hint = {"name": title, "lat": found[0], "lng": found[1], "kind": kind}
+            (infobox if kind == "infobox" else linked).append(hint)
+    if infobox:
+        anchors = [(h["lat"], h["lng"]) for h in infobox]
+    elif position is not None:
+        anchors = [position]
+    else:
+        anchors = _core([(h["lat"], h["lng"]) for h in linked])
+    if anchors:
+        linked = [h for h in linked if _nearest_km((h["lat"], h["lng"]), anchors) <= MAX_LINKED_KM]
+    hints = infobox + linked
     for lang, key in names:
         candidates = named.get((lang, key))
         if not candidates:
@@ -245,7 +292,6 @@ def hints_for(links, positions, names, named):
         if chosen and chosen[0] not in seen:
             seen.add(chosen[0])
             hints.append({"name": chosen[0], "lat": chosen[1], "lng": chosen[2], "kind": "artikel"})
-    hints.sort(key=lambda hint: hint["kind"] != "infobox")
     return hints[:MAX_HINTS]
 
 
@@ -301,8 +347,13 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
     now = datetime.now(timezone.utc)
     with_hints = 0
     rows = []
+    done = set()
     for battle in battles:
-        hints = hints_for(links[battle["title"]], positions, names[battle["title"]], named)
+        if battle["title"] in done:  # a title twice in battles.json: its hints once
+            continue
+        done.add(battle["title"])
+        own = (battle["lat"], battle["lng"]) if battle.get("lat") is not None and battle.get("lng") is not None else None
+        hints = hints_for(links[battle["title"]], positions, names[battle["title"]], named, own)
         if hints:
             with_hints += 1
             rows.append(BattleHints(battle=battle["title"], hints_json=json.dumps(hints, ensure_ascii=False),
