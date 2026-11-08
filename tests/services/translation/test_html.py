@@ -77,3 +77,16 @@ def test_a_name_is_only_found_as_a_whole_word():
     html = '<p>The <a href="p">Polish</a> army</p>'
     out = translate_html(html, lambda texts: ["Het Poolse leger" if "army" in t else "Pools" for t in texts])
     assert out == "<p>Het Poolse leger</p>"
+
+
+def test_field_names_of_another_infobox_get_dutch_labels_without_the_model():
+    html = "<table><tr><th>Дата</th><td>1942</td></tr><tr><th>Командир1</th><td>Paulus</td></tr></table>"
+    asked = []
+
+    def translate(texts):
+        asked.extend(texts)
+        return [t.upper() for t in texts]
+
+    out = translate_html(html, translate)
+    assert out == "<table><tr><th>Datum</th><td>1942</td></tr><tr><th>Bevelhebber 1</th><td>PAULUS</td></tr></table>"
+    assert "Дата" not in asked

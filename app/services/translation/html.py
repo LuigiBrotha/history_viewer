@@ -18,6 +18,43 @@ from app.services.wiki.infobox import ROWS
 INLINE = {"a", "b", "i", "em", "strong", "span", "sup", "sub"}
 VOID = {"br", "img"}
 LABELS = {label for label, _ in ROWS}
+# The field names other Wikipedias' infoboxes show as labels, as Dutch labels: a word without
+# context is translated badly (Дата became "Afspraakje"). A number after it is the side.
+FIELD_LABELS = {
+    "Strijdende partij": ("kontrahent", "combattants", "schieramento", "combatant", "strona", "противник"),
+    "Bevelhebber": ("befehlshaber", "commandant", "comandante", "commander", "dowódca", "командир"),
+    "Sterkte": ("truppenstärke", "forces", "effettivi", "strength", "siły", "силы"),
+    "Verliezen": ("verluste", "pertes", "perdite", "casualties", "straty", "потери"),
+    "Burgerslachtoffers": ("zivilverluste",),
+    "Totale verliezen": ("общие потери",),
+    "Datum": ("datum", "date", "data", "czas", "дата"),
+    "Tot": ("datumbis",),
+    "Plaats": ("ort", "lieu", "luogo", "place", "miejsce", "место"),
+    "Resultaat": ("ausgang", "issue", "esito", "result", "wynik", "итог"),
+    "Gevolgen": ("folgen",),
+    "Onderdeel van": ("teilvon", "teil von", "guerre", "parte di", "partof", "campaign", "konflikt", "часть",
+                      "conflit", "conflitto"),
+    "Conflict": ("conflict", "конфликт", "nome del conflitto", "battle name", "nazwa"),
+    "Aanleiding": ("casus", "przyczyna", "причина"),
+    "Gebied": ("gebiete", "territoires", "mutamenti territoriali", "territory", "terytorium", "изменения"),
+    "Eenheden": ("unités", "units"),
+    "Veldslagen": ("batailles",),
+    "Tijdperk": ("epoka",),
+    "Type": ("tipo",),
+    "Overzicht": ("überblick",),
+    "Opmerkingen": ("notizen", "notes", "note"),
+}
+_FIELD_LABEL = {name: label for label, names in FIELD_LABELS.items() for name in names}
+_FIELD = re.compile(r"^(.*?)\s*(\d*)$")
+
+
+def field_label(text: str) -> str | None:
+    """The Dutch label of another language's infobox field name ("Командир1" → "Bevelhebber 1")."""
+    match = _FIELD.match(text.strip().lower().replace("_", " "))
+    label = _FIELD_LABEL.get(match.group(1)) if match else None
+    if label is None:
+        return None
+    return f"{label} {match.group(2)}" if match.group(2) else label
 LETTER = re.compile(r"[^\W\d_]")
 SPACE = re.compile(r"\s+")
 
@@ -160,8 +197,10 @@ def translate_html(html: str, translate: Translate) -> str:
         parts.append(line)
         lines.append((element, start, end, parts))
     wanted = []
-    for _, _, _, parts in lines:
+    for element, _, _, parts in lines:
         for part in parts:
+            if element.tag == "th" and field_label(_html_text(part)):
+                continue
             if _needs_translation(part):
                 wanted.append(SPACE.sub(" ", _html_text(part)).strip())
                 wanted += [SPACE.sub(" ", n.text()).strip() for n in part if not isinstance(n, str)]
@@ -173,6 +212,9 @@ def translate_html(html: str, translate: Translate) -> str:
         for number, part in enumerate(parts):
             if number:
                 new.append(_Element("br", []))
+            if element.tag == "th" and (label := field_label(_html_text(part))):
+                new.append(label)
+                continue
             if not _needs_translation(part):
                 new += part
                 continue
