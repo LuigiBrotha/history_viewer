@@ -392,12 +392,15 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
                     if owned or battle.get("lang") == lang]
         links[battle["title"]] = [(lang, title, kind) for lang, text in sources for title, kind in linked_places(lang, text)]
         names[battle["title"]] = [(lang, key) for lang, text in sources for key in sorted(name_candidates(lang, text))]
+    # The texts are read; only their titles still count, and the geo_tags need the memory.
+    english_titles = set(english)
+    del english, foreign
     positions, named = {}, {}
     scratch = Path(other_dir).expanduser() / "places.sqlite"
     english_files = _files(english_dir, "en")
     regions = english_regions(english_files[2], english_files[0]) if english_files else frozenset()
     # Other Veldslagen are no place to pin, under any of their titles.
-    skip = {b["title"] for b in battles} | set(english) | foreign_titles
+    skip = {b["title"] for b in battles} | english_titles | foreign_titles
     for lang in sorted({lang for found in links.values() for lang, _, _ in found}):
         files = _files(english_dir if lang == "en" else other_dir, lang)
         if files is None:
