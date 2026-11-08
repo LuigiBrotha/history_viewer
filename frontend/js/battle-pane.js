@@ -39,6 +39,8 @@ export function createBattlePane({
   rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
 }) {
   let rows = [];
+  // The step numbers of the Sporen per battle title: [{ number, color }].
+  let steps = new Map();
   // The rows in the chosen sort order; rows itself stays in date order.
   let order = [];
   let labels = [];
@@ -157,6 +159,8 @@ export function createBattlePane({
     const name = element("button", "battle-row-title", battle.title);
     name.setAttribute("type", "button");
     const meta = element("div", "battle-row-meta");
+    const stepsEl = element("span", "battle-row-steps");
+    meta.appendChild(stepsEl);
     if (battle.lang && battle.lang !== "en") {
       meta.appendChild(element("span", "battle-lang", battle.lang.toUpperCase()));
     }
@@ -181,7 +185,17 @@ export function createBattlePane({
       link.setAttribute("rel", "noopener noreferrer");
       row.appendChild(link);
     }
-    return { battle, el: row, active: false, dimmed: false };
+    const entry = { battle, el: row, stepsEl, active: false, dimmed: false };
+    renderSteps(entry);
+    return entry;
+  }
+
+  function renderSteps({ battle, stepsEl }) {
+    stepsEl.replaceChildren(...(steps.get(battle.title) ?? []).map(({ number, color }) => {
+      const step = element("span", "battle-row-step", String(number));
+      step.style.background = color;
+      return step;
+    }));
   }
 
   // The buttons of the selected row, only while editing is offered.
@@ -317,6 +331,17 @@ export function createBattlePane({
     },
     // The listed battles, in the order shown.
     visibleBattles: () => order.filter((r) => !r.el.hidden).map((r) => r.battle),
+    // The Sporen drawn on the map: [{ battles (in order), color }]; each battle shows its number.
+    setTracks(tracks) {
+      steps = new Map();
+      for (const { battles, color } of tracks) {
+        battles.forEach((battle, index) => {
+          if (!steps.has(battle.title)) steps.set(battle.title, []);
+          steps.get(battle.title).push({ number: index + 1, color });
+        });
+      }
+      rows.forEach(renderSteps);
+    },
     // The labels every listed battle must match.
     setLabels(next) {
       labels = next;

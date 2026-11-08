@@ -158,10 +158,12 @@ export function initBattles({
   // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.
   function drawTracks() {
     const tracked = labels.filter(isTrackLabel);
-    trackLayer.setTracks(tracked.map((label) => ({
+    const tracks = tracked.map((label) => ({
       battles: track(battles, label),
       color: trackColor(labels, label),
-    })));
+    }));
+    trackLayer.setTracks(tracks);
+    pane.setTracks(tracks);
   }
 
   // A file for the viewer to save; the page's own download unless one is given (tests).

@@ -474,3 +474,16 @@ test("a Spoor chip shows the colour of its line on the map", () => {
   assert.equal(land.byClass("battle-filter-swatch").length, 0);
   assert.equal(rommel.byClass("battle-filter-swatch")[0].style.background, TRACK_COLORS[0]);
 });
+
+test("a battle on a Spoor shows its step number in the list, in the colour of the Spoor", () => {
+  const { pane, rootEl } = labelled();
+  const [bzura, arnhem, kursk] = LABELLED;
+  pane.setTracks([{ battles: [bzura, kursk], color: "#7b2ff7" }, { battles: [kursk], color: "#ff6a00" }]);
+  const steps = (title) => rootEl.byClass("battle-row").find((r) => r.byClass("battle-row-title")[0].textContent === title)
+    .byClass("battle-row-step").map((s) => [s.textContent, s.style.background]);
+  assert.deepEqual(steps("Bzura"), [["1", "#7b2ff7"]]);
+  assert.deepEqual(steps("Kursk"), [["2", "#7b2ff7"], ["1", "#ff6a00"]]);
+  assert.deepEqual(steps("Arnhem"), []);
+  pane.setTracks([]);
+  assert.deepEqual(steps("Kursk"), []);
+});
