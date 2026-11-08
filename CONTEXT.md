@@ -73,7 +73,7 @@ Het zoekveld linksboven op de kaartpagina's (Ctrl+K) om een boot, schip, Veldsla
 _Avoid_: kaartzoeker
 
 **Eenheid**:
-Een militaire eenheid met een eigen Wikipedia-artikel, zoals een divisie, brigade, leger, regiment of vloot. Gekoppeld aan de Veldslagen waarin ze vocht, uit de infobox van de Veldslag of uit de infobox van de Eenheid zelf.
+Een militaire eenheid met een eigen Wikipedia-artikel, zoals een divisie, brigade, leger, regiment of vloot. Gekoppeld aan een Veldslag wanneer de infobox van die Veldslag haar noemt.
 _Avoid_: Krijgseenheid, troepen, unit
 
 **Bevelhebber**:
@@ -89,5 +89,9 @@ De Veldslagen van één Eenheid of Bevelhebber op volgorde van datum, op de kaar
 _Avoid_: Route (dat is van een boot), pad
 
 **Label**:
-Een filter boven de Veldslagenlijst, gekozen via het zoekveld, zoals 'Land: Polen' of 'Winnaar: As'. Labels gelden samen: een Veldslag moet aan alle labels voldoen.
+Een filter boven de Veldslagenlijst, gekozen via het zoekveld, zoals 'Land: Polen' of 'Winnaar: As'. Met EN moet een Veldslag aan alle labels voldoen, met OF aan minstens één.
 _Avoid_: Tag, chip
+
+**Plaatshint**:
+Een plaats die in een artikel over een Veldslag genoemd wordt, als driehoekje op de kaart zodra die Veldslag geselecteerd is. Komt uit het plaatsveld van de infobox (eigen kleur) of uit de tekst, gelinkt of niet. Een hint, geen positie: het vierkantje van de Veldslag blijft waar het is tot de gebruiker een Eigen positie bewaart.
+_Avoid_: Locatie, kandidaat-positie
