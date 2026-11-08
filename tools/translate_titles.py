@@ -73,7 +73,9 @@ class ArgosTranslator:
         self.loaded = {}
 
     def _model(self, lang):
+        # One model in memory at a time: each takes a few hundred MB.
         if lang not in self.loaded:
+            self.loaded.clear()
             import ctranslate2
             import sentencepiece
 
@@ -95,7 +97,7 @@ class ArgosTranslator:
         return {title: tidy_translation(pieces.decode(r.hypotheses[0])) for title, r in zip(titles, results)}
 
 
-def english_titles(battles, wikipedia, labels_cache, translate, fetch=None):
+def english_titles(battles, wikipedia, labels_cache, translate, fetch=None, save=None):
     """Sets title_en and title_source on each Veldslag of another language. `wikipedia` is
     {lang: {title: English article}}, `labels_cache` {"lang|title": label or None} (filled in)."""
     by_lang = {}
@@ -110,6 +112,8 @@ def english_titles(battles, wikipedia, labels_cache, translate, fetch=None):
             print(f"{lang}: asking Wikidata for {len(unknown)} titles", file=sys.stderr, flush=True)
             for title, label in wikidata_labels(lang, unknown, fetch).items():
                 labels_cache[f"{lang}|{title}"] = label
+            if save:
+                save()
         rest = [b["title"] for b in group if b["title"] not in wikipedia.get(lang, {})
                 and not labels_cache.get(f"{lang}|{b['title']}")]
         translated = translate(lang, rest) if rest else {}
@@ -133,10 +137,13 @@ def run(battles_path=DEFAULT_OUTPUT, directory=DEFAULT_DIR, models=DEFAULT_MODEL
     cache_path = directory / "wikidata-labels.json"
     cache = json.loads(cache_path.read_text(encoding="utf-8")) if cache_path.exists() else {}
     battles = json.loads(battles_path.read_text(encoding="utf-8"))
-    try:
-        english_titles(battles, read_names(directory), cache, ArgosTranslator(models))
-    finally:
+    def save():
         _write_atomically(cache_path, json.dumps(cache, ensure_ascii=False))
+
+    try:
+        english_titles(battles, read_names(directory), cache, ArgosTranslator(models), save=save)
+    finally:
+        save()
     _write_atomically(battles_path, json.dumps(battles, ensure_ascii=False, separators=(",", ":")))
     counts = {}
     for battle in battles:
