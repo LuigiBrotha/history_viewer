@@ -59,7 +59,7 @@ test("searchLabels offers countries of the battles and the fixed labels that mat
   const labels = (q) => searchLabels(battles, q).map((r) => r.label);
   assert.deepEqual(labels("pol"), ["Land: Polen"]);
   assert.deepEqual(labels("po"), ["Land: Polen", "Land: Portugal", "Taal: Pools", "Positie: eigen positie",
-    "Positie: Wikipedia-positie"]);
+    "Positie: Wikipedia-positie", "Positie: nog te verfijnen"]);
   assert.ok(labels("sovjet").includes("Winnaar: Sovjet-Unie"));
   assert.ok(labels("duits").includes("Taal: Duits"));
   assert.ok(labels("duits").includes("Land: Duitsland"));
@@ -140,4 +140,13 @@ test("any language code is a Taal label, named by its code when there is no Dutc
   assert.deepEqual(readLabels("taal:Not a code"), []);
   const found = searchLabels([{ title: "Оборона Києва", lang: "uk" }], "taal");
   assert.ok(found.some((s) => s.label === "Taal: UK"));
+});
+
+test("Nog te verfijnen is a sort order and a Positie label", () => {
+  const refining = { title: "b", start: "1941-01-01", end: "1941-01-02", voorzet: { lat: 1, lng: 2 } };
+  const placed = { title: "a", start: "1940-01-01", end: "1940-01-02", lat: 1, lng: 2 };
+  assert.deepEqual(sortBattles([placed, refining], "verfijnen").map((b) => b.title), ["b", "a"]);
+  assert.equal(matchesLabels(refining, [{ kind: "positie", value: "verfijnen" }]), true);
+  assert.equal(matchesLabels(placed, [{ kind: "positie", value: "verfijnen" }]), false);
+  assert.equal(labelText({ kind: "positie", value: "verfijnen" }), "Positie: nog te verfijnen");
 });

@@ -103,3 +103,11 @@ _Avoid_: Locatie, kandidaat-positie
 **Spreiding**:
 Hoe ver de Plaatshints van een Veldslag uit elkaar liggen: hun standaardafwijking rond hun midden, in km. Een kleine Spreiding betekent dat de artikelen dicht bij elkaar liggende plaatsen noemen, dus dat de positie preciezer te bepalen is. Een Veldslag zonder Plaatshints heeft geen Spreiding.
 _Avoid_: Spread, afwijking (dat is de afstand van de positie tot het midden)
+
+**Voorzet**:
+Een voorlopige positie voor een Veldslag: het zwaartepunt van de 90% van zijn Plaatshints die het dichtst bij elkaar liggen. Een voorstel, geen positie.
+_Avoid_: Schatting, voorstel
+
+**Nog te verfijnen**:
+Een Veldslag die alleen een Voorzet heeft: geen positie uit Wikipedia en geen Eigen positie. Zodra de gebruiker een Eigen positie bewaart, is hij definitief geplaatst.
+_Avoid_: Concept, voorlopig

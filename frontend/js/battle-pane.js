@@ -9,6 +9,7 @@ import {
   filterBattles,
   overlaps,
   titleNote,
+  isRefining,
   withoutPosition,
   yearMarks,
 } from "./battle-model.js";
@@ -209,6 +210,8 @@ export function createBattlePane({
     const placesEl = element("span", "battle-row-places");
     if (battle.own) {
       meta.appendChild(element("span", "battle-ownpos", "eigen positie"));
+    } else if (isRefining(battle)) {
+      meta.appendChild(element("span", "battle-nopos battle-refine", "nog te verfijnen"));
     } else if (battle.lat == null || battle.lng == null) {
       meta.appendChild(element("span", "battle-nopos", "geen positie"));
     }

@@ -2623,3 +2623,14 @@ select {
   font-size: 13px;
   font-style: italic;
 }
+
+/* Only a Voorzet: where the articles point, still to be refined by hand. */
+.battle-square.refine:not(.selected) span {
+  border-style: dotted;
+  border-color: #7a2a1c;
+  opacity: 0.8;
+}
+
+.battle-refine {
+  color: #7a2a1c;
+}

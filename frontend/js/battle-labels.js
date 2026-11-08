@@ -1,4 +1,4 @@
-import { displayTitle, durationDays } from "./battle-model.js";
+import { displayTitle, durationDays, isRefining } from "./battle-model.js";
 
 // Labels: filters on the Veldslagen chosen through the search field, such as "Land: Polen".
 // A battle must match every label. Pure: the pane and the pages decide what to show.
@@ -8,7 +8,7 @@ const WINNER_NAMES = { ...KAMP_NAMES, onbeslist: "onbeslist", onbekend: "onbeken
 export const LANGUAGE_NAMES = {
   en: "Engels", nl: "Nederlands", de: "Duits", pl: "Pools", ru: "Russisch", fr: "Frans", it: "Italiaans", ja: "Japans",
 };
-const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie" };
+const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie", verfijnen: "nog te verfijnen" };
 const KIND_NAMES = {
   land: "Land", bevelhebber: "Bevelhebber", eenheid: "Eenheid", winnaar: "Winnaar", taal: "Taal", positie: "Positie",
 };
@@ -34,6 +34,7 @@ function matches(battle, { kind, value }) {
       return (battle.lang ?? "en") === value;
     case "positie":
       if (value === "eigen") return Boolean(battle.own);
+      if (value === "verfijnen") return isRefining(battle);
       return !battle.own && battle.lat != null && battle.lng != null;
     default:
       return true;
@@ -125,8 +126,9 @@ const SORTS = {
   datum: (a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : displayTitle(a).localeCompare(displayTitle(b), "nl")),
   naam: (a, b) => displayTitle(a).localeCompare(displayTitle(b), "nl", { sensitivity: "base" }),
   duur: (a, b) => durationDays(b) - durationDays(a) || SORTS.datum(a, b),
+  verfijnen: (a, b) => Number(isRefining(b)) - Number(isRefining(a)) || SORTS.datum(a, b),
 };
-export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur" };
+export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur", verfijnen: "Nog te verfijnen" };
 
 export function sortBattles(battles, sort = "datum") {
   return [...battles].sort(SORTS[sort] ?? SORTS.datum);

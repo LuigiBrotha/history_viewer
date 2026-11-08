@@ -86,15 +86,11 @@ export function barPosition(battle, bounds) {
 // viewBounds is { south, west, north, east }. Every battle in view is drawn, the longest
 // first, so that shorter ones lie on top and stay clickable.
 export function squaresToDraw(battles, viewBounds) {
-  const inView = battles.filter(
-    (battle) =>
-      battle.lat != null &&
-      battle.lng != null &&
-      battle.lat >= viewBounds.south &&
-      battle.lat <= viewBounds.north &&
-      battle.lng >= viewBounds.west &&
-      battle.lng <= viewBounds.east,
-  );
+  const inView = battles.filter((battle) => {
+    const place = placeOf(battle);
+    return place !== null && place.lat >= viewBounds.south && place.lat <= viewBounds.north
+      && place.lng >= viewBounds.west && place.lng <= viewBounds.east;
+  });
   inView.sort((a, b) => durationDays(b) - durationDays(a) || (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
   return inView;
 }
@@ -147,6 +143,25 @@ export function applyPositions(battles, positions) {
     const merged = { ...battle, wikiLat: battle.lat ?? null, wikiLng: battle.lng ?? null };
     return own ? { ...merged, lat: own.lat, lng: own.lng, own: true } : merged;
   });
+}
+
+// Each battle with Plaatshints gets its Voorzet, from the summary per title.
+export function applyVoorzet(battles, summary) {
+  return battles.map((battle) => {
+    const found = summary[battle.title];
+    return found?.voorzet_lat != null ? { ...battle, voorzet: { lat: found.voorzet_lat, lng: found.voorzet_lng } } : battle;
+  });
+}
+
+// "Nog te verfijnen": only a Voorzet, no position from Wikipedia and no Eigen positie.
+export function isRefining(battle) {
+  return (battle.lat == null || battle.lng == null) && battle.voorzet != null;
+}
+
+// Where a battle stands on the map: its position, else its Voorzet, else nowhere (null).
+export function placeOf(battle) {
+  if (battle.lat != null && battle.lng != null) return { lat: battle.lat, lng: battle.lng };
+  return battle.voorzet ?? null;
 }
 
 // The equivalent longitude in [-180, 180], for a marker dragged past the date line.

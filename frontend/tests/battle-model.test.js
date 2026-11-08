@@ -1,3 +1,4 @@
+import * as model from "../js/battle-model.js";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -273,4 +274,28 @@ test("filterBattles also finds a Veldslag by its English title", async () => {
   const battles = [{ title: "Ржевская битва", title_en: "Battles of Rzhev" }];
   assert.equal(filterBattles(battles, "rzhev").length, 1);
   assert.equal(filterBattles(battles, "Ржев").length, 1);
+});
+
+test("a battle with only a Voorzet is Nog te verfijnen and stands there on the map", () => {
+  const summary = { a: { voorzet_lat: 10, voorzet_lng: 20 }, b: { voorzet_lat: 1, voorzet_lng: 2 } };
+  const [a, b, c] = model.applyVoorzet([{ title: "a" }, { title: "b", lat: 5, lng: 6 }, { title: "c" }], summary);
+  assert.equal(model.isRefining(a), true);
+  assert.deepEqual(model.placeOf(a), { lat: 10, lng: 20 });
+  assert.equal(model.isRefining(b), false);
+  assert.deepEqual(model.placeOf(b), { lat: 5, lng: 6 });
+  assert.equal(model.isRefining(c), false);
+  assert.equal(model.placeOf(c), null);
+  assert.equal(a.lat, undefined);
+});
+
+test("an Eigen positie ends Nog te verfijnen, wiping it brings the Voorzet back", () => {
+  const voorzet = { title: "a", voorzet: { lat: 10, lng: 20 } };
+  assert.equal(model.isRefining({ ...voorzet, lat: 1, lng: 2, own: true }), false);
+  assert.equal(model.isRefining({ ...voorzet, lat: null, lng: null, own: false }), true);
+});
+
+test("squaresToDraw draws a Voorzet too", () => {
+  const view = { south: 0, north: 30, west: 0, east: 30 };
+  const list = [{ title: "a", start: "1940-01-01", end: "1940-01-02", voorzet: { lat: 10, lng: 20 } }];
+  assert.deepEqual(model.squaresToDraw(list, view).map((b) => b.title), ["a"]);
 });

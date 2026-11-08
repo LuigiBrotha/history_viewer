@@ -1,5 +1,5 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
-import { activeOn, applyPositions, overlaps } from "./battle-model.js";
+import { activeOn, applyPositions, applyVoorzet, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
 import { createHintLayer } from "./hint-layer.js";
@@ -504,6 +504,10 @@ export function initBattles({
   loadHintSummary().then(
     (summary) => {
       hintSummary = summary ?? {};
+      if (loaded) {
+        battles = applyVoorzet(battles, hintSummary);
+        pane.setBattles(battles);
+      }
       pane.setPlaceSummary(hintSummary);
       layer.setSizes((battle) => squareSize(hintSummary[battle.title]));
       drawSquares();
@@ -514,7 +518,7 @@ export function initBattles({
   let loaded = false;
   load().then(
     async (result) => {
-      battles = applyPositions(result, await positions);
+      battles = applyVoorzet(applyPositions(result, await positions), hintSummary);
       loaded = true;
       pane.setBattles(battles);
       drawSquares();
