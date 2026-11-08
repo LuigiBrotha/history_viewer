@@ -28,37 +28,14 @@ test("mergeRoutes replaces a patrol by external_id and appends new ones", () => 
   assert.equal(routes[1].v, 1);
 });
 
-test("statusLine shows progress and the last boat", () => {
-  const status = { listing_total: 1153, boats_crawled: 47, boats_failed: 0, last_patrol: last() };
-  assert.equal(statusLine(status, NOW), "47 van 1153 boten · laatste: U-99, 12 sec geleden");
+test("statusLine leaves out the crawl progress and the last boat, which are no longer needed", () => {
+  const status = { listing_total: 1153, boats_crawled: 1153, boats_failed: 0, last_patrol: last() };
+  assert.equal(statusLine(status, NOW), "");
 });
 
-test("statusLine adds failures only when there are any", () => {
+test("statusLine still reports failures, only when there are any", () => {
   const status = { listing_total: 1153, boats_crawled: 47, boats_failed: 2, last_patrol: last() };
-  assert.equal(
-    statusLine(status, NOW),
-    "47 van 1153 boten · laatste: U-99, 12 sec geleden · 2 mislukt",
-  );
-});
-
-test("statusLine without a total", () => {
-  const status = { listing_total: null, boats_crawled: 47, boats_failed: 0, last_patrol: last() };
-  assert.equal(statusLine(status, NOW), "47 boten · laatste: U-99, 12 sec geleden");
-  assert.equal(statusLine({ ...status, last_patrol: null }, NOW), "47 boten");
-});
-
-test("statusLine with no last patrol", () => {
-  const status = { listing_total: null, boats_crawled: 0, boats_failed: 0, last_patrol: null };
-  assert.equal(statusLine(status, NOW), "0 boten");
-});
-
-test("statusLine age units and negative clamp", () => {
-  const at = (iso) => ({ listing_total: null, boats_crawled: 1, boats_failed: 0, last_patrol: last(iso) });
-  assert.match(statusLine(at("2026-11-04T11:56:12Z"), NOW), /4 min geleden$/);
-  assert.match(statusLine(at("2026-11-04T10:00:12Z"), NOW), /2 uur geleden$/);
-  assert.match(statusLine(at("2026-10-31T12:00:12Z"), NOW), /4 dagen geleden$/);
-  assert.match(statusLine(at("2026-11-03T12:00:12Z"), NOW), /1 dag geleden$/);
-  assert.match(statusLine(at("2026-11-04T12:05:00Z"), NOW), /0 sec geleden$/);
+  assert.equal(statusLine(status, NOW), "2 mislukt");
 });
 
 function harness({ statuses, routesResult = [], hidden = false, failStatus = false, failRoutes = false }) {
@@ -214,18 +191,11 @@ test("uncomputedLegs counts the not_computed legs over all patrols", () => {
   assert.equal(uncomputedLegs([]), 0);
 });
 
-test("statusLine appends the number of uncomputed legs at the very end", () => {
+test("statusLine reports the uncomputed legs after the failures", () => {
   const status = { boats_crawled: 3, listing_total: 10, boats_failed: 2, last_patrol: last() };
-  assert.equal(
-    statusLine(status, NOW, 4),
-    "3 van 10 boten · laatste: U-99, 12 sec geleden · 2 mislukt · 4 trajecten nog niet berekend",
-  );
-  assert.equal(
-    statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 1),
-    "3 boten · 1 traject nog niet berekend",
-  );
-  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 0), "3 boten");
-  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW), "3 boten");
+  assert.equal(statusLine(status, NOW, 4), "2 mislukt · 4 trajecten nog niet berekend");
+  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW, 1), "1 traject nog niet berekend");
+  assert.equal(statusLine({ boats_crawled: 3, boats_failed: 0, last_patrol: null }, NOW), "");
 });
 
 test("ship loader fetches once per revision", async () => {

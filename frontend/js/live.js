@@ -27,33 +27,15 @@ export function uncomputedLegs(routes) {
   return count;
 }
 
-function ageText(crawledAt, now) {
-  const seconds = Math.max(0, Math.floor((now - new Date(crawledAt)) / 1000));
-  if (seconds < 60) return `${seconds} sec geleden`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min geleden`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} uur geleden`;
-  const days = Math.floor(hours / 24);
-  return days === 1 ? "1 dag geleden" : `${days} dagen geleden`;
-}
-
+// What still asks for attention: boats that failed and legs not yet computed. The crawl's
+// progress and its last boat are left out (the user no longer needs them); "" when all is well.
 export function statusLine(status, now, uncomputed = 0) {
-  const progress =
-    status.listing_total == null
-      ? `${status.boats_crawled} boten`
-      : `${status.boats_crawled} van ${status.listing_total} boten`;
-  let line = progress;
-  if (status.last_patrol) {
-    line += ` · laatste: ${status.last_patrol.boat_number}, ${ageText(status.last_patrol.crawled_at, now)}`;
-  }
-  if (status.boats_failed > 0) {
-    line += ` · ${status.boats_failed} mislukt`;
-  }
+  const parts = [];
+  if (status.boats_failed > 0) parts.push(`${status.boats_failed} mislukt`);
   if (uncomputed > 0) {
-    line += uncomputed === 1 ? " · 1 traject nog niet berekend" : ` · ${uncomputed} trajecten nog niet berekend`;
+    parts.push(uncomputed === 1 ? "1 traject nog niet berekend" : `${uncomputed} trajecten nog niet berekend`);
   }
-  return line;
+  return parts.join(" · ");
 }
 
 // Two writers can commit out of order, so a patrol can land just behind the revision

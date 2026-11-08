@@ -217,6 +217,10 @@ html, body {
   }
 }
 
+#live-status:empty {
+  display: none;
+}
+
 #live-status {
   font-size: 12px;
   color: #666;
