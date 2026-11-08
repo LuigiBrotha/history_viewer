@@ -27,7 +27,8 @@ DEFAULT_DIR = Path("~/.cache/uboats/wikipedia/other")
 DEFAULT_MODELS = Path("~/.cache/uboats/argos")
 USER_AGENT = "uboats-battle-extract/1.0"
 BATCH = 50
-PAUSE_SECONDS = 1.0
+PAUSE_SECONDS = 2.0
+RETRIES = 10
 
 
 def wikidata_labels(lang, titles, fetch=None):
@@ -49,13 +50,25 @@ def wikidata_labels(lang, titles, fetch=None):
     return found
 
 
-def _fetch_json(params):
-    url = "https://www.wikidata.org/w/api.php?" + urllib.parse.urlencode(params)
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(request, timeout=60) as response:
-        data = json.loads(response.read().decode("utf-8"))
-    time.sleep(PAUSE_SECONDS)
-    return data
+def _fetch_json(params, url="https://www.wikidata.org/w/api.php", sleep=time.sleep):
+    """One API answer. Asked too often (429) or busy (503), it waits as long as the server asks,
+    else a minute, and tries again, up to RETRIES times."""
+    import urllib.error
+
+    request = urllib.request.Request(url + "?" + urllib.parse.urlencode(params), headers={"User-Agent": USER_AGENT})
+    for attempt in range(RETRIES):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            sleep(PAUSE_SECONDS)
+            return data
+        except urllib.error.HTTPError as error:
+            if error.code not in (429, 503) or attempt == RETRIES - 1:
+                raise
+            wait = error.headers.get("Retry-After", "") if error.headers else ""
+            seconds = int(wait) if wait.isdigit() else 60
+            print(f"Wikidata: {error.code}, waiting {seconds} s", file=sys.stderr, flush=True)
+            sleep(seconds)
 
 
 def tidy_translation(text):
