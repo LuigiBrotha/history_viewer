@@ -2,7 +2,7 @@ import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from ".
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
-import { TRACK_COLORS, createTrackLayer } from "./track-layer.js";
+import { createTrackLayer, trackColor } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -158,9 +158,9 @@ export function initBattles({
   // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.
   function drawTracks() {
     const tracked = labels.filter(isTrackLabel);
-    trackLayer.setTracks(tracked.map((label, i) => ({
+    trackLayer.setTracks(tracked.map((label) => ({
       battles: track(battles, label),
-      color: TRACK_COLORS[i % TRACK_COLORS.length],
+      color: trackColor(labels, label),
     })));
   }
 

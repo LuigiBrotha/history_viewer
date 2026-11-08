@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { TRACK_COLORS, createTrackLayer, trackSegments } from "../js/track-layer.js";
+import { TRACK_COLORS, createTrackLayer, trackColor, trackSegments } from "../js/track-layer.js";
 
 test("trackSegments puts an arrow halfway each step, pointing the way the track goes", () => {
   const [east, north] = trackSegments([{ lat: 0, lng: 0 }, { lat: 0, lng: 10 }, { lat: 10, lng: 10 }]);
@@ -48,4 +48,15 @@ test("each track is a coloured line with an arrow per step and a number per batt
   assert.deepEqual(numbers, ["1", "2", "1"]);
   layer.setTracks([]);
   assert.equal(added.length, 0);
+});
+
+test("trackColor gives each Spoor label the colour of its line, in label order; other labels none", () => {
+  const labels = [
+    { kind: "land", value: "Polen" },
+    { kind: "bevelhebber", value: "Erwin Rommel" },
+    { kind: "eenheid", value: "7th Panzer Division" },
+  ];
+  assert.equal(trackColor(labels, labels[0]), null);
+  assert.equal(trackColor(labels, labels[1]), TRACK_COLORS[0]);
+  assert.equal(trackColor(labels, { kind: "eenheid", value: "7th Panzer Division" }), TRACK_COLORS[1]);
 });

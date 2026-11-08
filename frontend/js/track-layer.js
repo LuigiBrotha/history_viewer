@@ -5,6 +5,14 @@
 // green, amber), so a Spoor never looks like a Winnaar.
 export const TRACK_COLORS = ["#7b2ff7", "#ff6a00", "#00838f", "#c2185b", "#111111", "#8d5524"];
 
+// The colour of a Spoor label: its place among the Spoor labels picks it, so the line on the
+// map and the chip above the list agree. Null for a label that draws no Spoor.
+export function trackColor(labels, label) {
+  const tracked = labels.filter((l) => l.kind === "bevelhebber" || l.kind === "eenheid");
+  const index = tracked.findIndex((l) => l.kind === label.kind && l.value === label.value);
+  return index < 0 ? null : TRACK_COLORS[index % TRACK_COLORS.length];
+}
+
 const ARROW_SIZE = 16;
 const NUMBER_SIZE = 18;
 

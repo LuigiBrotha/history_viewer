@@ -1679,6 +1679,14 @@ html, body {
   font-size: 13px;
 }
 
+/* The colour of the Spoor this chip draws on the map. */
+.battle-filter-swatch {
+  width: 14px;
+  height: 4px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
 .battle-filter-remove {
   min-width: 28px;
   min-height: 28px;

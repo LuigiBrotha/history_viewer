@@ -11,6 +11,7 @@ import {
   yearMarks,
 } from "./battle-model.js";
 import { SORT_NAMES, labelText, matchesLabels, sortBattles } from "./battle-labels.js";
+import { trackColor } from "./track-layer.js";
 
 const WIKIPEDIA_PREFIX = "https://en.wikipedia.org/";
 const LOAD_FAILED = "Veldslagen konden niet worden geladen.";
@@ -131,6 +132,12 @@ export function createBattlePane({
       remove.setAttribute("type", "button");
       remove.setAttribute("aria-label", `Verwijder ${labelText(label)}`);
       remove.addEventListener("click", () => onLabelRemove?.(label));
+      const color = trackColor(labels, label);
+      if (color) {
+        const swatch = element("span", "battle-filter-swatch");
+        swatch.style.background = color;
+        chip.append(swatch);
+      }
       chip.append(element("span", "battle-filter-text", labelText(label)), remove);
       return chip;
     }));

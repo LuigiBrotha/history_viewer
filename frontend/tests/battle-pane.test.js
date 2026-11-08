@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { createBattlePane } from "../js/battle-pane.js";
 import { Element, installDom } from "./battle-dom.js";
+import { TRACK_COLORS } from "../js/track-layer.js";
 
 const battle = (over = {}) => ({
   title: "Battle of Kursk",
@@ -464,4 +465,12 @@ test("the sort choice orders the rows and the arrow keys follow that order", () 
   pane.setSort("duur");
   assert.equal(select.value, "duur");
   assert.deepEqual(shown(), ["Kursk", "Bzura", "Arnhem"]);
+});
+
+test("a Spoor chip shows the colour of its line on the map", () => {
+  const { pane, rootEl } = labelled();
+  pane.setLabels([{ kind: "land", value: "Duitsland" }, { kind: "bevelhebber", value: "Erwin Rommel" }]);
+  const [land, rommel] = rootEl.byClass("battle-filter");
+  assert.equal(land.byClass("battle-filter-swatch").length, 0);
+  assert.equal(rommel.byClass("battle-filter-swatch")[0].style.background, TRACK_COLORS[0]);
 });
