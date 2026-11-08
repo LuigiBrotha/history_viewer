@@ -37,7 +37,7 @@ from tools.wiki_languages import LANGUAGES
 ENGLISH_DIR = Path("~/.cache/uboats/wikipedia")
 OTHER_DIR = Path("~/.cache/uboats/wikipedia/other")
 MAX_DISTANCE_KM = 1000  # a name without a link, from the anchors
-MAX_LINKED_KM = 2000  # a place linked in the text, from the anchors
+MAX_LINKED_KM = 1500  # a place linked in the text, from the anchors
 CORE_KM = 1500  # without other anchors: the linked places this near their middle
 MAX_HINTS = 100
 SAME_PLACE_KM = 10
@@ -250,7 +250,11 @@ _BATTLE_TITLE = re.compile(
     r"\b(?:battle|battles|siege|operation|campaign|offensive|raid|landing|landings|invasion|uprising|massacre|"
     r"slag|beleg|operatie|veldtocht|schlacht|belagerung|unternehmen|operation|feldzug|offensive|"
     r"bitwa|bój|oblężenie|operacja|obrona|powstanie|bataille|siège|opération|campagne|battaglia|assedio|"
-    r"operazione|campagna|сражение|битва|бой|осада|операция|оборона)\b|(?:の戦い|作戦|海戦|攻防戦|上陸)",
+    r"operazione|campagna|сражение|битва|бой|осада|операция|оборона|"
+    # Units have a position too (their base or memorial), but are no place.
+    r"division|divisie|dywizja|дивизия|corps|korps|korpus|корпус|army|armee|armia|армия|regiment|pułk|полк|"
+    r"brigade|brygada|бригада|fleet|flotte|flota|флот|squadron|geschwader|eskadra)\b|"
+    r"(?:の戦い|作戦|海戦|攻防戦|上陸|師団|連隊|艦隊)",
     re.IGNORECASE,
 )
 

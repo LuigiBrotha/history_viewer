@@ -144,3 +144,11 @@ def test_one_place_named_in_two_languages_is_one_hint():
     links = [("en", "Alexandria", "artikel"), ("pl", "Aleksandria", "artikel")]
     positions = {("en", "Alexandria"): (31.2, 29.92, "city"), ("pl", "Aleksandria"): (31.2, 29.91, None)}
     assert [h["name"] for h in hints_for(links, positions, [], {})] == ["Alexandria"]
+
+
+def test_a_unit_or_battle_title_is_no_place():
+    from tools.place_hints import _BATTLE_TITLE
+
+    assert _BATTLE_TITLE.search("6th Infantry Division (Wehrmacht)")
+    assert _BATTLE_TITLE.search("Slag om Tobroek")
+    assert not _BATTLE_TITLE.search("Prokhorovka, Belgorod Oblast")
