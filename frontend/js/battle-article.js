@@ -9,6 +9,10 @@ const SOURCES = {
   nl: "Bron: Nederlandse Wikipedia, CC BY-SA 4.0",
   de: "Bron: Duitse Wikipedia, CC BY-SA 4.0",
   pl: "Bron: Poolse Wikipedia, CC BY-SA 4.0",
+  ru: "Bron: Russische Wikipedia, CC BY-SA 4.0",
+  fr: "Bron: Franse Wikipedia, CC BY-SA 4.0",
+  it: "Bron: Italiaanse Wikipedia, CC BY-SA 4.0",
+  ja: "Bron: Japanse Wikipedia, CC BY-SA 4.0",
 };
 
 function element(tag, className, content) {

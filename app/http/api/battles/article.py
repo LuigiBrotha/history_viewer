@@ -7,7 +7,7 @@ from wireup.integration.fastapi import WireupRoute
 from app.services.wiki.article_service import ArticleOut, ArticleService
 
 # The Wikipedias whose battle articles are stored.
-LANGUAGES = {"en", "nl", "de", "pl"}
+LANGUAGES = {"en", "nl", "de", "pl", "ru", "fr", "it", "ja"}
 
 
 class RequestHandler:

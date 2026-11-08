@@ -1,3 +1,4 @@
+import pytest
 import json
 from pathlib import Path
 
@@ -352,3 +353,18 @@ def test_real_foreign_articles_render():
             result = render_article(wikitext, battle_index={}, image_src=image_src, lang=lang)
             assert "<table" in result, title
             assert len(result) > 1000, title
+
+
+@pytest.mark.parametrize("lang, wikitext, field", [
+    ("ru", "{{Вооружённый конфликт\n| конфликт = Ржевская битва\n| дата = 8 января 1942\n| место = [[Ржев]]\n}}\nТекст.\n"
+           "== Примечания ==\nСноска.", "8 января 1942"),
+    ("fr", "{{Infobox Conflit militaire\n| conflit = Bataille de Bir Hakeim\n| date = 27 mai 1942\n}}\nTexte.\n"
+           "== Notes et références ==\nNote.", "27 mai 1942"),
+    ("it", "{{conflitto\n|Tipo = Battaglia\n|Data = 26 gennaio 1943\n}}\nTesto.\n== Note ==\nNota.", "26 gennaio 1943"),
+    ("ja", "{{Battlebox\n| battle_name = ミッドウェー海戦\n| date = 1942年6月5日\n}}\n本文。\n== 脚注 ==\n注。", "1942年6月5日"),
+])
+def test_the_new_languages_render_their_infobox_and_drop_their_notes(lang, wikitext, field):
+    result = render_article(wikitext, battle_index={}, image_src=image_src, lang=lang)
+    assert "<table" in result
+    assert field in result
+    assert "Сноска" not in result and "Note." not in result and "Nota." not in result and "注。" not in result

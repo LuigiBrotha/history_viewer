@@ -21,16 +21,22 @@ INFOBOXES = {"infobox military conflict", "infobox military operation", "infobox
 # The conflict infoboxes of the other languages; they are shown as a plain table of their fields.
 FOREIGN_INFOBOXES = {
     "infobox militair conflict", "infobox veldslag", "infobox militärischer konflikt", "wojna infobox",
-    "bitwa infobox", "konflikt zbrojny infobox",
+    "bitwa infobox", "konflikt zbrojny infobox", "вооружённый конфликт", "infobox conflit militaire", "conflitto",
+    "battlebox", "infobox 軍事衝突",
 }
-FILE_NAMESPACES = {"file", "image", "bestand", "afbeelding", "datei", "bild", "plik", "grafika"}
-CATEGORY_NAMESPACES = {"category", "categorie", "kategorie", "kategoria"}
+FILE_NAMESPACES = {"file", "image", "bestand", "afbeelding", "datei", "bild", "plik", "grafika", "файл", "изображение",
+                   "fichier", "immagine", "ファイル", "画像"}
+CATEGORY_NAMESPACES = {"category", "categorie", "kategorie", "kategoria", "категория", "catégorie", "categoria", "カテゴリ"}
 DROPPED_SECTIONS = {
     "references", "notes", "citations", "bibliography", "sources", "further reading", "external links", "see also",
     "footnotes",
     "bronnen", "noten", "referenties", "literatuur", "externe links", "zie ook", "voetnoten", "bronvermelding",
     "einzelnachweise", "literatur", "weblinks", "anmerkungen", "siehe auch", "quellen",
     "przypisy", "bibliografia", "linki zewnętrzne", "zobacz też", "uwagi",
+    "примечания", "литература", "ссылки", "см. также", "комментарии", "источники",
+    "notes et références", "notes", "références", "bibliographie", "liens externes", "voir aussi", "articles connexes",
+    "note", "bibliografia", "collegamenti esterni", "voci correlate", "altri progetti",
+    "脚注", "注釈", "出典", "参考文献", "関連項目", "外部リンク",
 }
 DATE_TEMPLATES = {"start date", "end date", "start date and age", "end date and age"}
 FIRST_ARGUMENT = {"nowrap", "small", "flag", "flagcountry", "navy", "army", "air force", "center"}
