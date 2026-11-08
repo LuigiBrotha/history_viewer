@@ -39,7 +39,8 @@ OTHER_DIR = Path("~/.cache/uboats/wikipedia/other")
 MAX_DISTANCE_KM = 1000  # a name without a link, from the anchors
 MAX_LINKED_KM = 2000  # a place linked in the text, from the anchors
 CORE_KM = 1500  # without other anchors: the linked places this near their middle
-MAX_HINTS = 200
+MAX_HINTS = 100
+SAME_PLACE_KM = 10
 # geo_tags types that are no place to fight at, for any hint.
 NOT_PLACES = {"country", "event", "edu", "adm1st"}
 # A page whose position stands for an area wider than this (metres) is a region, not a place.
@@ -159,16 +160,32 @@ def name_candidates(lang, wikitext):
     return keys
 
 
+_ANY_ROW = re.compile(r"\((\d+),(\d+),'earth',([01]),(-?[\d.]+),(-?[\d.]+),(NULL|\d+),(NULL|'[^']*')")
+
+
 def read_geotags(path):
-    """Page id → (lat, lng, type) of every page's primary position on earth."""
-    found = {}
+    """(places, regions): page id → (lat, lng, type) of every page's primary position on earth
+    that is a place, and the ids of pages that are a country or a wide area. Besides the types
+    and sizes that say so, a page with an untyped position and a second position of type city
+    (its capital, as Chad and Russia have) is a country."""
+    primary, capitals, regions = {}, set(), set()
     with gzip.open(path, "rt", encoding="utf-8", errors="replace") as lines:
         for line in lines:
-            for _, page_id, lat, lng, size, kind in _GEO_ROW.findall(line):
+            for _, page_id, is_primary, lat, lng, size, kind in _ANY_ROW.findall(line):
+                page_id = int(page_id)
                 kind = None if kind == "NULL" else kind.strip("'")
-                if kind not in NOT_PLACES and (size == "NULL" or int(size) <= MAX_SIZE_M):
-                    found[int(page_id)] = (float(lat), float(lng), kind)
-    return found
+                if is_primary == "0":
+                    if kind == "city":
+                        capitals.add(page_id)
+                elif kind in NOT_PLACES or (size != "NULL" and int(size) > MAX_SIZE_M):
+                    regions.add(page_id)
+                else:
+                    primary[page_id] = (float(lat), float(lng), kind)
+    for page_id in capitals:
+        if page_id in primary and primary[page_id][2] is None:
+            regions.add(page_id)
+            del primary[page_id]
+    return primary, regions
 
 
 def _redirect_targets(sql_gz_path, ids):
@@ -181,10 +198,23 @@ def _redirect_targets(sql_gz_path, ids):
     return found
 
 
-def build_places(index, redirects, geotags, link_titles, db_path):
+def build_places(index, redirects, geotags, link_titles, db_path, langlinks=None, english_regions=frozenset(),
+                 skip_titles=frozenset()):
     """Fills db_path with every place (bare name, title, lat, lng, type) and returns the
-    positions of the linked titles, redirects followed: title → (lat, lng, type)."""
-    places = read_geotags(geotags)
+    positions of the linked titles, redirects followed: title → (lat, lng, type).
+
+    A page is no place when its geo_tags say it is a region, when its English counterpart
+    (through langlinks) is one of english_regions, or when its title is in skip_titles or
+    reads as a battle (other Veldslagen are no place to pin)."""
+    places, regions = read_geotags(geotags)
+    for page_id in regions:
+        places.pop(page_id, None)
+    if langlinks is not None and english_regions:
+        from tools.merge_languages import read_langlinks
+
+        for page_id, links in read_langlinks(langlinks, set(places), {"en"}).items():
+            if links.get("en", "").replace("_", " ") in english_regions:
+                places.pop(page_id, None)
     db = sqlite3.connect(db_path)
     db.execute("DROP TABLE IF EXISTS places")
     db.execute("CREATE TABLE places (key TEXT, title TEXT, lat REAL, lng REAL, type TEXT)")
@@ -192,6 +222,8 @@ def build_places(index, redirects, geotags, link_titles, db_path):
     for _, page_id, title in _index_rows(index):
         if title in link_titles:
             link_ids[title] = page_id
+        if page_id in places and (title in skip_titles or _BATTLE_TITLE.search(title)):
+            del places[page_id]
         if page_id in places:
             lat, lng, kind = places[page_id]
             title_ids[title] = page_id
@@ -211,6 +243,22 @@ def build_places(index, redirects, geotags, link_titles, db_path):
         if target_id in places and land_of(target) is None:
             positions[title] = places[target_id]
     return positions
+
+
+# A title that names a battle or an operation: no place to pin, in any language.
+_BATTLE_TITLE = re.compile(
+    r"\b(?:battle|battles|siege|operation|campaign|offensive|raid|landing|landings|invasion|uprising|massacre|"
+    r"slag|beleg|operatie|veldtocht|schlacht|belagerung|unternehmen|operation|feldzug|offensive|"
+    r"bitwa|bój|oblężenie|operacja|obrona|powstanie|bataille|siège|opération|campagne|battaglia|assedio|"
+    r"operazione|campagna|сражение|битва|бой|осада|операция|оборона)\b|(?:の戦い|作戦|海戦|攻防戦|上陸)",
+    re.IGNORECASE,
+)
+
+
+def english_regions(geotags, index):
+    """The English titles of countries and wide areas, to know them in other languages."""
+    _, regions = read_geotags(geotags)
+    return frozenset(title for _, page_id, title in _index_rows(index) if page_id in regions)
 
 
 def lookup_names(db_path, keys):
@@ -283,7 +331,9 @@ def hints_for(links, positions, names, named, position=None):
         anchors = _core([(h["lat"], h["lng"]) for h in linked])
     if anchors:
         linked = [h for h in linked if _nearest_km((h["lat"], h["lng"]), anchors) <= MAX_LINKED_KM]
-    hints = infobox + linked
+    hints = []
+    for hint in infobox + linked:
+        _add_unless_near(hints, hint)
     for lang, key in names:
         candidates = named.get((lang, key))
         if not candidates:
@@ -291,8 +341,16 @@ def hints_for(links, positions, names, named, position=None):
         chosen = choose(candidates, anchors)
         if chosen and chosen[0] not in seen:
             seen.add(chosen[0])
-            hints.append({"name": chosen[0], "lat": chosen[1], "lng": chosen[2], "kind": "artikel"})
+            _add_unless_near(hints, {"name": chosen[0], "lat": chosen[1], "lng": chosen[2], "kind": "artikel"})
     return hints[:MAX_HINTS]
+
+
+def _add_unless_near(hints, hint):
+    """Adds a hint unless one is already within SAME_PLACE_KM: one place named in two languages
+    ("Alexandria", "Aleksandria") is one hint, the first (the infobox's) kept."""
+    point = (hint["lat"], hint["lng"])
+    if all(distance_km(point, (h["lat"], h["lng"])) > SAME_PLACE_KM for h in hints):
+        hints.append(hint)
 
 
 def _files(directory, lang):
@@ -312,12 +370,13 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
     BattleHints.__table__.create(engine, checkfirst=True)
     with Session(engine) as session:
         english = dict(session.execute(select(BattleArticle.title, BattleArticle.wikitext)).all())
-        foreign = {}
+        foreign, foreign_titles = {}, set()
         for lang, title, battle, wikitext in session.execute(select(
                 ForeignBattleArticle.lang, ForeignBattleArticle.title, ForeignBattleArticle.battle,
                 ForeignBattleArticle.wikitext)).all():
             # An article belongs to the Veldslag the merge gave it, or, not merged yet, to the
             # Veldslag of its own language and title; languages this code does not know wait.
+            foreign_titles.add(title)
             if lang in LANGUAGES:
                 foreign.setdefault(battle or title, []).append((lang, wikitext, battle is not None))
     links, names = {}, {}
@@ -331,6 +390,10 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
         names[battle["title"]] = [(lang, key) for lang, text in sources for key in sorted(name_candidates(lang, text))]
     positions, named = {}, {}
     scratch = Path(other_dir).expanduser() / "places.sqlite"
+    english_files = _files(english_dir, "en")
+    regions = english_regions(english_files[2], english_files[0]) if english_files else frozenset()
+    # Other Veldslagen are no place to pin, under any of their titles.
+    skip = {b["title"] for b in battles} | set(english) | foreign_titles
     for lang in sorted({lang for found in links.values() for lang, _, _ in found}):
         files = _files(english_dir if lang == "en" else other_dir, lang)
         if files is None:
@@ -338,7 +401,11 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
             continue
         titles = {title for found in links.values() for link_lang, title, _ in found if link_lang == lang}
         print(f"{lang}: {len(titles)} linked titles…", file=sys.stderr, flush=True)
-        for title, position in build_places(*files, titles, scratch).items():
+        langlinks = None
+        if lang != "en":
+            found = sorted(Path(other_dir).expanduser().glob(f"{lang}wiki-*-langlinks.sql.gz"))
+            langlinks = found[-1] if found else None
+        for title, position in build_places(*files, titles, scratch, langlinks, regions, skip).items():
             positions[(lang, title)] = position
         keys = {key for found in names.values() for name_lang, key in found if name_lang == lang}
         for key, candidates in lookup_names(scratch, keys).items():

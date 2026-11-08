@@ -102,3 +102,45 @@ def test_build_places_follows_redirects_skips_countries_and_events_and_keeps_nam
     assert found["alexandria"] == [("Alexandria", 31.2, 29.92)]
     assert found["tobruk"] == [("Tobruk", 32.08, 23.97)]
     assert "libya" not in found
+
+
+def test_countries_by_their_capital_or_their_english_link_and_battles_are_no_places(tmp_path):
+    from tools.place_hints import english_regions
+
+    index = tmp_path / "nlwiki-index.txt.bz2"
+    index.write_bytes(bz2.compress("\n".join([
+        "1:1:Tsjaad", "1:2:Libië", "1:3:Tobroek", "1:4:Slag om Tobroek", "1:5:Bir Hakeim (oase)",
+    ]).encode() + b"\n"))
+    redirects = tmp_path / "nlwiki-redirect.sql.gz"
+    redirects.write_bytes(gzip.compress(b"-- none\n"))
+    geotags = tmp_path / "nlwiki-geo_tags.sql.gz"
+    geotags.write_bytes(gzip.compress("\n".join([
+        "(1,1,'earth',1,15.0,19.0,1000,NULL,NULL,NULL,NULL,15,19),",
+        "(2,1,'earth',0,12.1,15.04,10000,'city',NULL,NULL,NULL,12,15),",
+        "(3,2,'earth',1,26.05,18.2,NULL,NULL,NULL,NULL,NULL,26,18),",
+        "(4,3,'earth',1,32.08,23.97,NULL,NULL,NULL,NULL,NULL,32,23),",
+        "(5,4,'earth',1,32.08,23.97,NULL,NULL,NULL,NULL,NULL,32,23),",
+        "(6,5,'earth',1,31.6,23.48,NULL,NULL,NULL,NULL,NULL,31,23);",
+    ]).encode()))
+    langlinks = tmp_path / "nlwiki-langlinks.sql.gz"
+    langlinks.write_bytes(gzip.compress(b"INSERT INTO `langlinks` VALUES (2,'en','Libya'),(3,'en','Tobruk');\n"))
+    positions = build_places(index, redirects, geotags, {"Tsjaad", "Libië", "Tobroek", "Slag om Tobroek", "Bir Hakeim (oase)"},
+                             tmp_path / "places.sqlite", langlinks, frozenset({"Libya"}), frozenset({"Bir Hakeim (oase)"}))
+    assert set(positions) == {"Tobroek"}
+
+    en_index = tmp_path / "enwiki-index.txt.bz2"
+    en_index.write_bytes(bz2.compress(b"1:7:Libya\n1:8:Chad\n1:9:Tobruk\n"))
+    en_geotags = tmp_path / "enwiki-geo_tags.sql.gz"
+    en_geotags.write_bytes(gzip.compress("\n".join([
+        "(7,7,'earth',1,27.0,17.0,1500000,'country',NULL,'LY',NULL,27,17),",
+        "(8,8,'earth',1,15.0,19.0,1000,NULL,NULL,NULL,NULL,15,19),",
+        "(9,8,'earth',0,12.1,15.04,10000,'city',NULL,NULL,NULL,12,15),",
+        "(10,9,'earth',1,32.08,23.97,NULL,'city',NULL,NULL,NULL,32,23);",
+    ]).encode()))
+    assert english_regions(en_geotags, en_index) == {"Libya", "Chad"}
+
+
+def test_one_place_named_in_two_languages_is_one_hint():
+    links = [("en", "Alexandria", "artikel"), ("pl", "Aleksandria", "artikel")]
+    positions = {("en", "Alexandria"): (31.2, 29.92, "city"), ("pl", "Aleksandria"): (31.2, 29.91, None)}
+    assert [h["name"] for h in hints_for(links, positions, [], {})] == ["Alexandria"]
