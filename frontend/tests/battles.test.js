@@ -811,5 +811,8 @@ test("a selected battle shows its Plaatshints; only one without a position zooms
   ctx.controller.selectBattle("Placed");
   await ctx.ready();
   assert.deepEqual(hintMarkers().map((m) => m.options.title), ["Gazala"]);
+  const places = ctx.elements["article-pane"].byClass("article-places")[0];
+  assert.match(places.textContent, /^Positie \d+ km van het midden van 1 Plaatshint · spreiding 0 km$/);
+  assert.equal(places.hidden, false);
   assert.equal(ctx.map.fits.length, 1);
 });

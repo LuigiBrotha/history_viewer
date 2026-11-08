@@ -40,3 +40,19 @@ test("show draws a ring per hint by kind, fits the map to them and reports a cli
   layer.clear();
   assert.equal(layers.size, 0);
 });
+
+test("placeStats gives the distance of the position from the middle of the hints and their spread", async () => {
+  const { placeStats, placeStatsText } = await import("../js/hint-layer.js");
+  const hints = [{ lat: 0, lng: -1 }, { lat: 0, lng: 1 }];
+  const stats = placeStats({ lat: 0, lng: 0 }, hints);
+  assert.equal(stats.count, 2);
+  assert.ok(Math.abs(stats.offsetKm) < 0.01);
+  assert.ok(Math.abs(stats.spreadKm - 111.2) < 0.5);
+  const off = placeStats({ lat: 1, lng: 0 }, hints);
+  assert.ok(Math.abs(off.offsetKm - 111.2) < 0.5);
+  assert.equal(placeStats({ lat: null, lng: null }, hints).offsetKm, null);
+  assert.equal(placeStats({ lat: 0, lng: 0 }, []), null);
+  assert.equal(placeStatsText(off), "Positie 111 km van het midden van 2 Plaatshints · spreiding 111 km");
+  assert.equal(placeStatsText(placeStats({ lat: null, lng: null }, hints)), "2 Plaatshints · spreiding 111 km");
+  assert.equal(placeStatsText(null), "");
+});

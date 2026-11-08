@@ -2,7 +2,7 @@ import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from ".
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
-import { createHintLayer } from "./hint-layer.js";
+import { createHintLayer, placeStats, placeStatsText } from "./hint-layer.js";
 import { createTrackLayer, trackColor } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
@@ -189,8 +189,13 @@ export function initBattles({
   const hintCache = new Map();
   let hintsFor = null;
   function showHints(battle) {
-    // Selected again (to place it, or after saving): its hints stay as they are.
-    if (battle && battle.title === hintsFor) return;
+    // Selected again (to place it, or after saving): its hints stay, the numbers follow the position.
+    if (battle && battle.title === hintsFor) {
+      hintCache.get(battle.title)?.then((hints) => {
+        if (selected === battle.title) articlePane.setPlaceStats(placeStatsText(placeStats(battle, hints)));
+      });
+      return;
+    }
     hintLayer.clear();
     hintsFor = battle ? battle.title : null;
     if (!battle) return;
@@ -202,7 +207,9 @@ export function initBattles({
     });
     request.then(
       (hints) => {
-        if (selected === battle.title) hintLayer.show(hints, { fit: unplaced });
+        if (selected !== battle.title) return;
+        hintLayer.show(hints, { fit: unplaced });
+        articlePane.setPlaceStats(placeStatsText(placeStats(battle, hints)));
       },
       (error) => console.error(error),
     );

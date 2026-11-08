@@ -2484,3 +2484,11 @@ select {
   text-shadow: 0 0 2px var(--paper-light), 0 0 2px var(--paper-light), 0 0 3px var(--paper-light);
   pointer-events: none;
 }
+
+/* How the chosen position lies among the Plaatshints, under the Winnaar. */
+.article-places {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.8em;
+}
