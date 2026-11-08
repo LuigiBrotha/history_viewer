@@ -22,8 +22,11 @@ from tools.wiki_languages import LANGUAGES, ORDER
 
 ENGLISH_SIDES = ("combatant1", "combatant2", "combatant3")
 PEOPLE_FIELDS = {"en": ("commander1", "commander2", "commander3"), "nl": ("commander1", "commander2"),
-                 "de": ("befehlshaber1", "befehlshaber2"), "pl": ("dowódca1", "dowódca2")}
-UNIT_FIELDS = {"en": ("units1", "units2", "units3"), "nl": ("units1", "units2"), "de": (), "pl": ()}
+                 "de": ("befehlshaber1", "befehlshaber2"), "pl": ("dowódca1", "dowódca2"),
+                 "ru": ("командир1", "командир2", "командир3"), "fr": ("commandant1", "commandant2", "commandant3"),
+                 "it": ("comandante1", "comandante2", "comandante3"), "ja": ("commander1", "commander2", "commander3")}
+UNIT_FIELDS = {"en": ("units1", "units2", "units3"), "nl": ("units1", "units2"), "fr": ("unités1", "unités2"),
+               "ja": ("units1", "units2")}
 _LINK = re.compile(r"\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]")
 
 
@@ -102,6 +105,7 @@ def countries_of(lang, wikitext):
     return found
 
 
+DEFAULT_NAMES_DIR = Path("~/.cache/uboats/wikipedia/other")
 DEFAULT_UNIT_BATTLES = Path("~/.cache/uboats/wikipedia/unit_battles.json")
 
 
@@ -113,8 +117,14 @@ def _unit_battles(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles=DEFAULT_UNIT_BATTLES):
+def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles=DEFAULT_UNIT_BATTLES,
+        names_dir=DEFAULT_NAMES_DIR):
+    from tools.english_names import read_names
+
     battles_path = Path(battles_path)
+    # A Bevelhebber or Eenheid linked in another language goes by its English article's title,
+    # so that "Жуков, Георгий Константинович" and "Georgy Zhukov" are one label.
+    english_names = read_names(names_dir)
     known = _unit_battles(unit_battles)
     # Only the other names of units and people (Rommel → Erwin Rommel); the Veldslagen their own
     # articles name do not count, only who the infobox of the Veldslag itself names (user's choice).
@@ -141,7 +151,11 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles
         sources += foreign.get(title, [])
         # Each field from the first article that has it: English, then the others in order.
         battle["countries"] = next((c for lang, text in sources if (c := countries_of(lang, text))), [])
-        found = [people_and_units(lang, text) for lang, text in sources]
+        found = []
+        for lang, text in sources:
+            people, units = people_and_units(lang, text)
+            table = english_names.get(lang, {})
+            found.append(([table.get(n, n) for n in people], [table.get(n, n) for n in units]))
         people = [aliases.get(n, n) for n in next((people for people, _ in found if people), [])]
         units = [aliases.get(n, n) for n in next((units for _, units in found if units), [])]
         battle["commanders"] = list(dict.fromkeys(people))

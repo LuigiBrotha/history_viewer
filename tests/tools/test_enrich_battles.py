@@ -116,3 +116,21 @@ def test_only_the_infobox_of_the_battle_counts_but_other_names_lead_to_the_artic
     assert a["units"] == ["Afrika Korps"]
     assert b["commanders"] == []
     assert b["units"] == []
+
+
+def test_names_of_another_language_become_their_english_article(tmp_path):
+    path, url = setup(tmp_path, [{"title": "Schlacht C", "start": "1941-06-22", "lang": "de"}])
+    import sqlite3
+    connection = sqlite3.connect(tmp_path / "test.db")
+    connection.execute("UPDATE foreign_battle_articles SET wikitext = ? WHERE title = 'Schlacht C'", (
+        "{{Infobox Militärischer Konflikt\n|BEFEHLSHABER1=[[Georgi Konstantinowitsch Schukow]]\n"
+        "|BEFEHLSHABER2=[[Fedor von Bock]]\n}}",))
+    connection.commit()
+    connection.close()
+    names = tmp_path / "names"
+    names.mkdir()
+    (names / "dewiki-names.json").write_text(json.dumps({"Georgi Konstantinowitsch Schukow": "Georgy Zhukov"}),
+                                             encoding="utf-8")
+    run(path, url, tmp_path / "no_unit_battles.json", names_dir=names)
+    [battle] = json.loads(path.read_text(encoding="utf-8"))
+    assert battle["commanders"] == ["Georgy Zhukov", "Fedor von Bock"]
