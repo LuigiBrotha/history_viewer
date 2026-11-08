@@ -5,6 +5,7 @@ def test_tidy_translation_drops_word_piece_marks_and_a_leading_article():
     assert tidy_translation("The▁Battle of Krosno") == "Battle of Krosno"
     assert tidy_translation("▁Westerplatte▁Defense") == "Westerplatte Defense"
     assert tidy_translation("The Battle of Rzhev") == "Battle of Rzhev"
+    assert tidy_translation("The siege of Budapest") == "Siege of Budapest"
 
 
 def test_wikidata_labels_maps_each_title_back_through_its_sitelink():
@@ -51,3 +52,10 @@ def test_english_titles_prefers_wikipedia_then_wikidata_then_a_translation():
     # Asked once, and not for what the cache or Wikipedia already knew.
     assert fetched == ["Ржевская битва|Бой за Гродно"]
     assert cache["ru|Бой за Гродно"] is None
+
+
+from tools.translate_titles import ArgosTranslator
+
+
+def test_a_language_without_a_model_gives_no_translations(tmp_path):
+    assert ArgosTranslator(tmp_path)("be", ["Абарона Брэсцкай крэпасці"]) == {}

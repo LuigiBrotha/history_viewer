@@ -29,7 +29,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from app.services.storage.models import ForeignBattleArticle
+from app.services.storage.models import BattleArticle, ForeignBattleArticle
 from tools.countries import COUNTRY_KAMP, land_of
 from tools.extract_battles import DEFAULT_DATABASE, DEFAULT_OUTPUT, WAR_END, WAR_START, _write_atomically
 from tools.translate_titles import _fetch_json
@@ -271,6 +271,19 @@ def collect(cache_path=CACHE, fetch=_fetch_json):
     return state
 
 
+def missing_articles(battles, stored_english, stored_foreign):
+    """[(lang, title)] of the Veldslagen with a Wikidata item whose article is not stored yet."""
+    missing = []
+    for battle in battles:
+        if not battle.get("wikidata"):
+            continue
+        lang = battle.get("lang", "en")
+        stored = battle["title"] in stored_english if lang == "en" else (lang, battle["title"]) in stored_foreign
+        if not stored:
+            missing.append((lang, battle["title"]))
+    return missing
+
+
 def fetch_wikitexts(pages, fetch=_fetch_json):
     """{(lang, title): wikitext} of the given articles, 50 at a time per language."""
     by_lang = {}
@@ -296,19 +309,26 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, cache_path=C
     battles = json.loads(battles_path.read_text(encoding="utf-8"))
     engine = create_engine(database_url)
     with Session(engine) as session:
-        owners = {(lang, title): battle for lang, title, battle in session.execute(
-            select(ForeignBattleArticle.lang, ForeignBattleArticle.title, ForeignBattleArticle.battle)).all() if battle}
+        stored_foreign = {(lang, title): battle for lang, title, battle in session.execute(
+            select(ForeignBattleArticle.lang, ForeignBattleArticle.title, ForeignBattleArticle.battle)).all()}
+        stored_english = set(session.scalars(select(BattleArticle.title)).all())
+    owners = {key: battle for key, battle in stored_foreign.items() if battle}
     items = [item for item in state["items"].values() if item]
     positions = {qid: tuple(v["coord"]) for qid, v in state["linked"].items() if v["coord"]}
     names = {qid: v["name"] for qid, v in state["linked"].items() if v["name"]}
     before = len(battles)
-    battles, new = merge_wikidata(battles, items, owners, positions, names)
-    texts = fetch_wikitexts([(lang, title) for lang, title in new if lang != "en"])
+    battles, _ = merge_wikidata(battles, items, owners, positions, names)
+    # The articles of new Veldslagen, and of any whose fetch failed before, English ones too.
+    texts = fetch_wikitexts(missing_articles(battles, stored_english, stored_foreign))
     now = datetime.now(timezone.utc)
     with Session(engine) as session, session.begin():
         for (lang, title), wikitext in texts.items():
-            session.merge(ForeignBattleArticle(lang=lang, title=title, battle=title, wikitext=wikitext,
-                                               dump_name="wikipedia api", extracted_at=now))
+            if lang == "en":
+                session.merge(BattleArticle(title=title, wikitext=wikitext, dump_name="wikipedia api",
+                                            extracted_at=now))
+            else:
+                session.merge(ForeignBattleArticle(lang=lang, title=title, battle=title, wikitext=wikitext,
+                                                   dump_name="wikipedia api", extracted_at=now))
     engine.dispose()
     _write_atomically(battles_path, json.dumps(battles, ensure_ascii=False, separators=(",", ":")))
     filled = sum(1 for b in battles if any(v == "wikidata" for v in (b.get("filled") or {}).values()))

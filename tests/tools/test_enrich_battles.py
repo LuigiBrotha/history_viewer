@@ -134,3 +134,36 @@ def test_names_of_another_language_become_their_english_article(tmp_path):
     run(path, url, tmp_path / "no_unit_battles.json", names_dir=names)
     [battle] = json.loads(path.read_text(encoding="utf-8"))
     assert battle["commanders"] == ["Georgy Zhukov", "Fedor von Bock"]
+
+
+def test_a_battle_without_a_winner_gets_the_one_its_infobox_names(tmp_path):
+    won = EN.replace("}}\n}}", "}}\n| result = British victory\n}}")
+    path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01", "winner": []},
+                                 {"title": "Battle B", "start": "1940-01-01", "winner": ["as"]}])
+    engine = create_engine(url)
+    with Session(engine) as session, session.begin():
+        session.get(BattleArticle, "Battle A").wikitext = won
+        session.get(BattleArticle, "Battle B").wikitext = won
+    engine.dispose()
+    run(path, url, tmp_path / "no_unit_battles.json")
+    battles = json.loads(path.read_text(encoding="utf-8"))
+    assert battles[0]["winner"] == ["westers"]
+    # A Winnaar already known stays as it was.
+    assert battles[1]["winner"] == ["as"]
+
+
+def test_landen_from_wikidata_stay_when_no_article_names_any(tmp_path):
+    path, url = setup(tmp_path, [{"title": "Battle D", "start": "1941-01-01", "countries": ["Finland"]}])
+    run(path, url, tmp_path / "no_unit_battles.json")
+    assert json.loads(path.read_text(encoding="utf-8"))[0]["countries"] == ["Finland"]
+
+
+def test_an_article_in_a_language_without_rules_is_skipped(tmp_path):
+    path, url = setup(tmp_path, [{"title": "Бітва", "lang": "be", "start": "1941-01-01", "countries": ["Polen"]}])
+    engine = create_engine(url)
+    with Session(engine) as session, session.begin():
+        session.add(ForeignBattleArticle(lang="be", title="Бітва", battle="Бітва", wikitext="{{Вайна}}",
+                                         dump_name="wikipedia api", extracted_at=datetime.now(timezone.utc)))
+    engine.dispose()
+    run(path, url, tmp_path / "no_unit_battles.json")
+    assert json.loads(path.read_text(encoding="utf-8"))[0]["countries"] == ["Polen"]

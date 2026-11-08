@@ -28,3 +28,8 @@ Branch: `uboat-world-languages`.
 | New Veldslagen from Wikidata | Named after the article in the first Wikipedia of a fixed order (en, the languages above, then uk, es, pt, sv, cs, zh, fi, hu, sr, …), its wikitext fetched once and stored; Landen from its participants; English title from Wikidata |
 | Query service | The SPARQL service was rate-limited (outage), so the search API (`haswbstatement`) and `wbgetentities` are used, one request every two seconds, waiting when told to |
 | Any language | The Artikel endpoint and the Taal label accept any Wikipedia code; a language without a Dutch name shows its code (Taal: UK) |
+| Articles of Wikidata Veldslagen | Every Veldslag with a Wikidata item whose article is not stored yet gets it fetched, English ones too (65 English articles about operations without a war infobox in the dump) |
+| Winnaar and Landen of new Veldslagen | Their Winnaar comes from their article's infobox when Wikidata names none (only for a Veldslag without a Winnaar); Landen from Wikidata's participants stay when no article names any; articles in a language without rules give nothing |
+| More Argos models | cs, et, fi, hu, lv, nb (for `no`), sk; the older models (cs, fi, hu) split words with Moses + BPE (`sacremoses`, `subword-nmt` in group `translate`) |
+| Belarusian, Serbo-Croatian, Macedonian | No Argos model; the Russian model turns Belarusian into gibberish ("Abarona Breszkai Krapazzi"), so these 49 titles stay untranslated (accuracy before coverage) |
+| Plaatshints of new Veldslagen | Not yet: tools.place_hints is rerun on master after the merge; languages without downloaded geo_tags get none |

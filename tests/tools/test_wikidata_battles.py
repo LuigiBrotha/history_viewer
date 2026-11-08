@@ -63,3 +63,19 @@ def test_a_known_veldslag_is_only_filled_in_and_a_new_one_is_made_from_its_artic
     assert made["countries"] == ["Duitsland", "Sovjet-Unie"] and made["winner"] == ["as"] and made["place"] == "Kyiv"
     assert new == [("uk", "Оборона Києва")]
     assert len(battles) == 3  # the item of 1914 lies outside the war
+
+
+from tools.wikidata_battles import missing_articles
+
+
+def test_missing_articles_are_those_of_wikidata_veldslagen_not_stored_yet():
+    battles = [
+        {"title": "Operation Mincemeat", "lang": "en", "wikidata": "Q1"},
+        {"title": "Battle of Kursk", "wikidata": "Q2"},
+        {"title": "Марабу", "lang": "be", "wikidata": "Q3"},
+        {"title": "Сава", "lang": "be", "wikidata": "Q4"},
+        {"title": "Battle without item"},
+    ]
+    stored_english = {"Battle of Kursk"}
+    stored_foreign = {("be", "Сава")}
+    assert missing_articles(battles, stored_english, stored_foreign) == [("en", "Operation Mincemeat"), ("be", "Марабу")]

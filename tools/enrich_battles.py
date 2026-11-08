@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.services.storage.models import BattleArticle, ForeignBattleArticle
-from tools.battle_winner import COMMENT, REF
+from tools.battle_winner import COMMENT, REF, other_winner, winner
 from tools.countries import land_of, side_countries
 from tools.extract_battles import DEFAULT_DATABASE, DEFAULT_OUTPUT, _write_atomically, find_infobox
 from tools.wiki_languages import LANGUAGES, ORDER
@@ -34,6 +34,12 @@ def _fields(lang, wikitext):
     if lang == "en":
         return find_infobox(wikitext) or {}
     return find_infobox(wikitext, LANGUAGES[lang].infobox) or {}
+
+
+def winner_of(lang, wikitext):
+    """The Winnaar the infobox of an article names, [] when it names none."""
+    fields = _fields(lang, wikitext)
+    return winner(fields) if lang == "en" else other_winner(lang, fields)
 
 
 def linked_names(field):
@@ -139,7 +145,8 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles
             select(ForeignBattleArticle.lang, ForeignBattleArticle.title, ForeignBattleArticle.battle,
                    ForeignBattleArticle.wikitext)
         ).all():
-            foreign.setdefault(battle or title, []).append((lang, wikitext))
+            if lang in LANGUAGES:  # a language without rules gives nothing to read
+                foreign.setdefault(battle or title, []).append((lang, wikitext))
     engine.dispose()
     for articles in foreign.values():
         articles.sort(key=lambda item: ORDER.index(item[0]) if item[0] in ORDER else len(ORDER))
@@ -150,7 +157,12 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles
             sources.append(("en", english[title]))
         sources += foreign.get(title, [])
         # Each field from the first article that has it: English, then the others in order.
-        battle["countries"] = next((c for lang, text in sources if (c := countries_of(lang, text))), [])
+        # Landen from Wikidata's participants stay when no article names any.
+        battle["countries"] = next((c for lang, text in sources if (c := countries_of(lang, text))),
+                                   battle.get("countries") or [])
+        if not battle.get("winner"):
+            # A Veldslag new from Wikidata gets its Winnaar from its article's infobox.
+            battle["winner"] = next((w for lang, text in sources if (w := winner_of(lang, text))), [])
         found = []
         for lang, text in sources:
             people, units = people_and_units(lang, text)
