@@ -243,3 +243,18 @@ class BattleHints(Base):
     battle: Mapped[str] = mapped_column(String, primary_key=True)
     hints_json: Mapped[str] = mapped_column(Text, nullable=False)
     computed_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class DutchArticle(Base):
+    """The Dutch version of an Artikel (its language and title): the article of the Dutch
+    Wikipedia about the same battle ("wikipedia", its wikitext), else a machine translation of the
+    rendered original ("vertaald", its HTML). Written by tools.dutch_articles and when asked."""
+
+    __tablename__ = "dutch_articles"
+
+    lang: Mapped[str] = mapped_column(String, primary_key=True)
+    title: Mapped[str] = mapped_column(String, primary_key=True)
+    kind: Mapped[str] = mapped_column(String, nullable=False)
+    nl_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    made_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)

@@ -18,9 +18,17 @@ class RequestHandler:
         self.articles = articles
 
     @router.get("/api/battles/articles/{title:path}", name="battles_article")
-    async def handle_request(self, title: str, lang: str = "en") -> ArticleOut:
+    async def handle_request(self, title: str, lang: str = "en", versie: str = "origineel") -> ArticleOut:
+        """The Artikel in its own language, or with versie=nl its Dutch version."""
         if not LANGUAGE.match(lang):
             raise HTTPException(status_code=404, detail="Geen artikel voor deze veldslag.")
+        if versie == "nl":
+            if await self.articles.article(title, lang) is None:
+                raise HTTPException(status_code=404, detail="Geen artikel voor deze veldslag.")
+            article = await self.articles.dutch(title, lang)
+            if article is None:
+                raise HTTPException(status_code=404, detail="Geen Nederlandse versie voor dit artikel.")
+            return article
         article = await self.articles.article(title, lang)
         if article is None:
             raise HTTPException(status_code=404, detail="Geen artikel voor deze veldslag.")

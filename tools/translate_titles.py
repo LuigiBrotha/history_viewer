@@ -29,8 +29,6 @@ USER_AGENT = "uboats-battle-extract/1.0"
 BATCH = 50
 PAUSE_SECONDS = 2.0
 RETRIES = 10
-# A language whose Wikipedia code is not the code of its Argos model.
-MODEL_CODES = {"no": "nb"}
 
 
 def wikidata_labels(lang, titles, fetch=None):
@@ -81,56 +79,17 @@ def tidy_translation(text):
 
 
 class ArgosTranslator:
-    """Translates titles into English with the Argos models in `models` (one folder per
-    language, as unpacked from translate-<lang>_en-<version>.argosmodel)."""
+    """Translates titles into English with the Argos models in `models`."""
 
     def __init__(self, models=DEFAULT_MODELS):
-        self.models = Path(models).expanduser()
-        self.loaded = {}
+        from app.services.translation.argos import Models
 
-    def _model(self, lang):
-        # One model in memory at a time: each takes a few hundred MB.
-        if lang not in self.loaded:
-            self.loaded.clear()
-            code = MODEL_CODES.get(lang, lang)
-            found = sorted(self.models.glob(f"translate-{code}_en-*/*/model"))
-            self.loaded[lang] = _load(found[-1].parent, code) if found else None
-        return self.loaded[lang]
+        self.models = Models(models)
 
     def __call__(self, lang, titles):
-        model = self._model(lang)
-        if model is None or not titles:
+        if not titles or not self.models.has(lang, "en"):
             return {}
-        translator, encode, decode = model
-        results = translator.translate_batch([encode(t) for t in titles], beam_size=4)
-        return {title: tidy_translation(decode(r.hypotheses[0])) for title, r in zip(titles, results)}
-
-
-def _load(folder, code):
-    """(translator, encode, decode) of one unpacked model: SentencePiece, or Moses words split
-    by BPE in the older models (cs, fi, hu)."""
-    import ctranslate2
-
-    translator = ctranslate2.Translator(str(folder / "model"), device="cpu", compute_type="int8")
-    if (folder / "sentencepiece.model").exists():
-        import sentencepiece
-
-        pieces = sentencepiece.SentencePieceProcessor(model_file=str(folder / "sentencepiece.model"))
-        return translator, lambda text: pieces.encode(text, out_type=str), pieces.decode
-    from sacremoses import MosesDetokenizer, MosesPunctNormalizer, MosesTokenizer
-    from subword_nmt.apply_bpe import BPE
-
-    normalizer, words, joiner = MosesPunctNormalizer(lang=code), MosesTokenizer(lang=code), MosesDetokenizer(lang="en")
-    with open(folder / "bpe.model", encoding="utf-8") as codes:
-        bpe = BPE(codes)
-
-    def encode(text):
-        return bpe.process_line(" ".join(words.tokenize(normalizer.normalize(text), escape=False))).split()
-
-    def decode(tokens):
-        return joiner.detokenize(" ".join(tokens).replace("@@ ", "").split(" "))
-
-    return translator, encode, decode
+        return {title: tidy_translation(text) for title, text in zip(titles, self.models.translate(lang, "en", titles))}
 
 
 def english_titles(battles, wikipedia, labels_cache, translate, fetch=None, save=None):
