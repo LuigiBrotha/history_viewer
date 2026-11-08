@@ -26,6 +26,11 @@ pytest = "^8.3.4"
 pytest-asyncio = "^1.4.0"
 pillow = "^13.0.0"
 
+
+[tool.poetry.group.translate.dependencies]
+ctranslate2 = "^4.8.5"
+sentencepiece = "^0.2.3"
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
