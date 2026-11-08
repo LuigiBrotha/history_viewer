@@ -2576,3 +2576,50 @@ select {
   color: var(--ink-soft);
   font-style: italic;
 }
+
+/* Original or Dutch version of the Artikel: two joined buttons in its head. */
+.article-versions {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.article-version {
+  min-width: 44px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ink);
+  background: var(--paper-light);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.article-version + .article-version {
+  border-left: 0;
+}
+
+.article-version[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper-light);
+}
+
+.article-version:disabled {
+  border-color: var(--rule);
+  color: var(--ink-soft);
+  cursor: not-allowed;
+}
+
+.article-version:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Where the Dutch version comes from, above the article. */
+.article-origin {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-style: italic;
+}

@@ -29,6 +29,13 @@ export function restoreLabels(initial, urlSync, battles) {
     urlSync.update({ spread: initial.spread });
     battles.setSpreadRange?.(readRange(initial.spread));
   }
+  if (initial.version !== undefined) {
+    urlSync.update({ version: initial.version });
+    battles.setArticleVersion?.(initial.version);
+  } else if (battles.articleVersion?.() === "nl") {
+    urlSync.update({ version: "nl" });
+  }
+  battles.onArticleVersionChange?.((version) => urlSync.update({ version: version === "nl" ? "nl" : null }));
   battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
   battles.onSpreadChange?.((range) => urlSync.update({ spread: writeRange(range) }));
   battles.onLabelModeChange?.((mode) => urlSync.update({ labelMode: mode === "of" ? "of" : null }));

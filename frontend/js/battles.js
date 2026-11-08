@@ -25,6 +25,8 @@ async function loadBattles() {
   return battles;
 }
 
+const ARTICLE_VERSION_KEY = "uboats.articleVersion";
+
 function safeStorage(win) {
   try {
     return win.localStorage;
@@ -90,6 +92,9 @@ export function initBattles({
       onLabelsChange() {},
       setSort() {},
       onSortChange() {},
+      setArticleVersion() {},
+      articleVersion: () => "origineel",
+      onArticleVersionChange() {},
     };
   }
   const storage = safeStorage(win);
@@ -143,12 +148,28 @@ export function initBattles({
     onBattleClick: (battle) => selectBattle(battle.title),
   });
 
+  const versionListeners = [];
   const articlePane = createArticlePane({
     rootEl: doc.getElementById("article-pane"),
     load: loadArticle,
+    // The last choice between the original and the Dutch version holds after a reload.
+    onVersionChange: (version) => {
+      try {
+        storage?.setItem(ARTICLE_VERSION_KEY, version);
+      } catch {
+        // Not kept, but the choice still holds on this page.
+      }
+      versionListeners.forEach((listener) => listener(version));
+    },
     onBattleLink: (title) => selectBattle(title, { pickDate: true }),
     onClose: () => closeArticle(),
   });
+
+  try {
+    if (storage?.getItem(ARTICLE_VERSION_KEY) === "nl") articlePane.setVersion("nl");
+  } catch {
+    // No stored choice: the original.
+  }
 
   function closeArticle() {
     showHints(null);
@@ -553,6 +574,9 @@ export function initBattles({
     },
     onSpreadChange: (listener) => spreadListeners.push(listener),
     setSort: (next) => pane.setSort(next),
+    setArticleVersion: (version) => articlePane.setVersion(version),
+    articleVersion: () => articlePane.version(),
+    onArticleVersionChange: (listener) => versionListeners.push(listener),
     onSortChange: (listener) => sortListeners.push(listener),
     exportList,
     backupPositions,

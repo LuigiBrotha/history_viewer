@@ -130,3 +130,12 @@ test("the Spreiding range is kept and carried as spreiding=min-max, the full ran
   assert.deepEqual(readView("?spreiding=x", "date"), {});
   assert.deepEqual(carriedView({ date: "1942-01-01", spread: "0-100" }), { spread: "0-100" });
 });
+
+
+test("the Dutch version of the Artikel is kept as artikel=nl, the original is left out", () => {
+  assert.equal(writeView({ version: "nl" }, "date"), "?artikel=nl");
+  assert.equal(writeView({ version: "origineel" }, "date"), "");
+  assert.deepEqual(readView("?artikel=nl", "date"), { version: "nl" });
+  assert.deepEqual(readView("?artikel=xx", "date"), {});
+  assert.deepEqual(carriedView({ version: "nl", date: "1940-01-01" }), { version: "nl" });
+});

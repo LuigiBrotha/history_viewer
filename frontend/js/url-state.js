@@ -52,6 +52,7 @@ export function readView(search, kind) {
     ["sort", SORTS.has(params.get("sorteer")) ? params.get("sorteer") : undefined],
     ["labelMode", params.get("filtermodus") === "of" ? "of" : undefined],
     ["showAll", params.get("alles") === "1" ? true : undefined],
+    ["version", params.get("artikel") === "nl" ? "nl" : undefined],
     ["spread", /^\d+-\d*$/.test(params.get("spreiding") ?? "") ? params.get("spreiding") : undefined],
   );
   return Object.fromEntries(fields.filter(([, value]) => value !== undefined));
@@ -81,13 +82,14 @@ export function writeView(view, kind) {
   add("filtermodus", view.labelMode === "of" && "of");
   add("alles", view.showAll === true && "1");
   add("spreiding", view.spread && encode(view.spread));
+  add("artikel", view.version === "nl" && "nl");
   return pairs.length ? `?${pairs.join("&")}` : "";
 }
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, map, nopos, filter, sort, labelMode, showAll, spread } = view;
+  const { battle, boat, map, nopos, filter, sort, labelMode, showAll, spread, version } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, map, nopos, filter, sort, labelMode, showAll, spread }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, map, nopos, filter, sort, labelMode, showAll, spread, version }).filter(([, value]) => value !== undefined),
   );
 }

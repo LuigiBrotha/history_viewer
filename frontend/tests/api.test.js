@@ -313,6 +313,12 @@ test("fetchArticle returns the article, null on 404 and rejects on other errors"
   };
   assert.deepEqual(await fetchArticle("A & B"), { title: "A & B", html: "<p>x</p>", url: "u" });
   assert.deepEqual(calls, ["api/battles/articles/A%20%26%20B"]);
+  await fetchArticle("Бітва", "be", "nl");
+  await fetchArticle("Kursk", "en", "nl");
+  assert.deepEqual(calls.slice(1), [
+    "api/battles/articles/%D0%91%D1%96%D1%82%D0%B2%D0%B0?lang=be&versie=nl",
+    "api/battles/articles/Kursk?versie=nl",
+  ]);
 
   globalThis.fetch = async () => ({ ok: false, status: 404 });
   assert.equal(await fetchArticle("Nope"), null);

@@ -5,7 +5,7 @@ import { displayTitle, durationDays } from "./battle-model.js";
 
 const KAMP_NAMES = { as: "As", westers: "Westerse geallieerden", sovjet: "Sovjet-Unie", overig: "Overig" };
 const WINNER_NAMES = { ...KAMP_NAMES, onbeslist: "onbeslist", onbekend: "onbekend" };
-const LANGUAGE_NAMES = {
+export const LANGUAGE_NAMES = {
   en: "Engels", nl: "Nederlands", de: "Duits", pl: "Pools", ru: "Russisch", fr: "Frans", it: "Italiaans", ja: "Japans",
 };
 const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie" };

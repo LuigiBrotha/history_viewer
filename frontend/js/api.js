@@ -161,11 +161,18 @@ export async function clearBattlePosition(title) {
   }
 }
 
-// The sanitised article of a battle in its language, or null when there is none.
-export async function fetchArticle(title, lang = "en") {
-  const query = lang === "en" ? "" : `?lang=${encodeURIComponent(lang)}`;
+// A Dutch version may first have to be translated, which takes up to a few minutes.
+const TRANSLATION_TIMEOUT_MS = 300000;
+
+// The sanitised article of a battle in its language, or with version "nl" its Dutch version;
+// null when there is none.
+export async function fetchArticle(title, lang = "en", version = "origineel") {
+  const params = new URLSearchParams();
+  if (lang !== "en") params.set("lang", lang);
+  if (version === "nl") params.set("versie", "nl");
+  const query = params.size ? `?${params}` : "";
   const response = await fetch(`api/battles/articles/${encodeURIComponent(title)}${query}`, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(version === "nl" ? TRANSLATION_TIMEOUT_MS : REQUEST_TIMEOUT_MS),
   });
   if (response.status === 404) return null;
   if (!response.ok) {
