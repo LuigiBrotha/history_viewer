@@ -38,7 +38,7 @@ function newTabLink(href, text) {
 // is the one text that goes into the page as markup (through a template, which runs no
 // scripts and loads nothing). Titles, messages and the source line are text content.
 function languageName(lang) {
-  return (LANGUAGE_NAMES[lang] ?? lang.toUpperCase()).toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  return LANGUAGE_NAMES[lang] ?? lang.toUpperCase();
 }
 
 // The article of the selected battle. The server sanitised the HTML with a whitelist, so it
@@ -117,7 +117,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     if (article.source === "wikipedia") {
       origin.replaceChildren("Nederlandse Wikipedia: ", newTabLink(article.url, article.title));
     } else {
-      const via = lang === "en" ? "" : " (via het Engels)";
+      const via = lang === "en" || lang === "simple" ? "" : " (via het Engels)";
       origin.replaceChildren(`Machinevertaling uit het ${languageName(lang)}${via}`);
     }
     origin.hidden = false;
