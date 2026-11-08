@@ -134,10 +134,10 @@ test("sorting by name uses the English title", () => {
 });
 
 test("any language code is a Taal label, named by its code when there is no Dutch name", () => {
-  assert.deepEqual(readLabels("taal:uk"), [{ kind: "taal", value: "uk" }]);
-  assert.equal(labelText({ kind: "taal", value: "uk" }), "Taal: UK");
+  assert.deepEqual(readLabels("taal:hy"), [{ kind: "taal", value: "hy" }]);
+  assert.equal(labelText({ kind: "taal", value: "hy" }), "Taal: HY");
   assert.equal(labelText({ kind: "taal", value: "ru" }), "Taal: Russisch");
   assert.deepEqual(readLabels("taal:Not a code"), []);
-  const found = searchLabels([{ title: "Оборона Києва", lang: "uk" }], "taal");
-  assert.ok(found.some((s) => s.label === "Taal: UK"));
+  const found = searchLabels([{ title: "Оборона Києва", lang: "hy" }], "taal");
+  assert.ok(found.some((s) => s.label === "Taal: HY"));
 });

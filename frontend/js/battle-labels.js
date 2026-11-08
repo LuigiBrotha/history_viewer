@@ -7,6 +7,10 @@ const KAMP_NAMES = { as: "As", westers: "Westerse geallieerden", sovjet: "Sovjet
 const WINNER_NAMES = { ...KAMP_NAMES, onbeslist: "onbeslist", onbekend: "onbekend" };
 export const LANGUAGE_NAMES = {
   en: "Engels", nl: "Nederlands", de: "Duits", pl: "Pools", ru: "Russisch", fr: "Frans", it: "Italiaans", ja: "Japans",
+  be: "Belarussisch", ca: "Catalaans", cs: "Tsjechisch", el: "Grieks", es: "Spaans", et: "Ests", fi: "Fins",
+  he: "Hebreeuws", hu: "Hongaars", lij: "Ligurisch", lt: "Litouws", lv: "Lets", mk: "Macedonisch", no: "Noors",
+  ro: "Roemeens", sh: "Servokroatisch", simple: "Eenvoudig Engels", sk: "Slowaaks", sl: "Sloveens", sr: "Servisch",
+  uk: "Oekraïens", zh: "Chinees",
 };
 const POSITION_NAMES = { eigen: "eigen positie", wikipedia: "Wikipedia-positie" };
 const KIND_NAMES = {
