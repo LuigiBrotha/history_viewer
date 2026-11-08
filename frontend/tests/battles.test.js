@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }) } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }), loadHints = async () => [] } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -117,6 +117,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     savePosition,
     clearPosition,
     download,
+    loadHints,
     loadArticle: async (title) => {
       articles.push(title);
       return loadArticle(title);
@@ -783,14 +784,16 @@ test("a back-up holds the Eigen posities, and restoring one asks first and saves
 });
 
 
-test("selecting a battle without a position shows its plaatshints, a click while placing moves the square there", async () => {
-  const hints = [{ name: "Bir Hakeim", lat: 31.6, lng: 23.5, kind: "infobox" }, { name: "Tobruk", lat: 32.1, lng: 23.9, kind: "artikel" }];
+test("a selected battle shows its Plaatshints; only one without a position zooms to them; a click while placing moves the square", async () => {
+  const hints = { Unplaced: [{ name: "Bir Hakeim", lat: 31.6, lng: 23.5, kind: "infobox" }, { name: "Tobruk", lat: 32.1, lng: 23.9, kind: "artikel" }],
+    Placed: [{ name: "Gazala", lat: 32.1, lng: 23.1, kind: "artikel" }] };
   const ctx = setup({
     mode: "period",
     load: async () => [
-      battle({ title: "Unplaced", start: "1942-05-26", end: "1942-06-11", lat: null, lng: null, hints }),
+      battle({ title: "Unplaced", start: "1942-05-26", end: "1942-06-11", lat: null, lng: null }),
       battle({ title: "Placed", start: "1942-05-26", end: "1942-06-11", lat: 30, lng: 20 }),
     ],
+    loadHints: async (title) => hints[title] ?? [],
   });
   await ctx.ready();
   ctx.controller.setPeriod(null, null);
@@ -798,6 +801,7 @@ test("selecting a battle without a position shows its plaatshints, a click while
   await ctx.ready();
   const hintMarkers = () => [...ctx.layers].filter((l) => String(l.options.icon?.className).startsWith("place-hint"));
   ctx.controller.selectBattle("Unplaced");
+  await ctx.ready();
   assert.deepEqual(hintMarkers().map((m) => m.options.title), ["Bir Hakeim", "Tobruk"]);
   assert.equal(ctx.map.fits.length, 1);
   ctx.controller.editSelected();
@@ -805,5 +809,7 @@ test("selecting a battle without a position shows its plaatshints, a click while
   const square = [...ctx.layers].find((l) => l.options.battleTitle === "Unplaced");
   assert.deepEqual(square.latlng, [32.1, 23.9]);
   ctx.controller.selectBattle("Placed");
-  assert.equal(hintMarkers().length, 0);
+  await ctx.ready();
+  assert.deepEqual(hintMarkers().map((m) => m.options.title), ["Gazala"]);
+  assert.equal(ctx.map.fits.length, 1);
 });

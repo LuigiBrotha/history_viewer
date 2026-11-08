@@ -8,7 +8,7 @@ import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
 import { createArticlePane } from "./battle-article.js";
-import { fetchArticle } from "./api.js";
+import { fetchArticle, fetchHints } from "./api.js";
 
 const BATTLES_URL = "battles/battles.json";
 
@@ -50,6 +50,7 @@ export function initBattles({
   win = window,
   load = loadBattles,
   loadArticle = fetchArticle,
+  loadHints = fetchHints,
   loadPositions = fetchBattlePositions,
   savePosition = saveBattlePosition,
   download = null,
@@ -142,7 +143,7 @@ export function initBattles({
   });
 
   function closeArticle() {
-    hintLayer.clear();
+    showHints(null);
     articleSplit.close();
     articlePane.clear();
     selected = null;
@@ -183,10 +184,28 @@ export function initBattles({
     },
   });
 
+  // The selected battle's hints, asked for once per battle; the map zooms to them only when the
+  // battle has no position of its own.
+  const hintCache = new Map();
+  let hintsFor = null;
   function showHints(battle) {
-    const unplaced = battle && (battle.lat == null || battle.lng == null);
-    if (unplaced && battle.hints?.length) hintLayer.show(battle.hints);
-    else hintLayer.clear();
+    // Selected again (to place it, or after saving): its hints stay as they are.
+    if (battle && battle.title === hintsFor) return;
+    hintLayer.clear();
+    hintsFor = battle ? battle.title : null;
+    if (!battle) return;
+    const unplaced = battle.lat == null || battle.lng == null;
+    const cached = hintCache.get(battle.title);
+    const request = cached ?? loadHints(battle.title).then((hints) => {
+      hintCache.set(battle.title, Promise.resolve(hints));
+      return hints;
+    });
+    request.then(
+      (hints) => {
+        if (selected === battle.title) hintLayer.show(hints, { fit: unplaced });
+      },
+      (error) => console.error(error),
+    );
   }
 
   // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.

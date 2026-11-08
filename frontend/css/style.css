@@ -2436,8 +2436,9 @@ select {
   box-shadow: none;
 }
 
-/* Plaatshints of a selected Veldslag without a position: a ring with the place's name, in the
-   accent colour for the infobox's places and in ink for the places linked in the text. */
+/* Plaatshints of the selected Veldslag: a triangle with the place's name, so they never look like
+   the squares of the Veldslagen or the circles of boats and ships. The accent colour marks the
+   infobox's places, ink those named in the text. */
 .place-hint {
   --hint: var(--ink-soft);
 }
@@ -2453,18 +2454,20 @@ select {
   height: 14px;
 }
 
-.place-hint-ring {
+.place-hint-triangle {
   position: absolute;
   inset: 0;
-  box-sizing: border-box;
-  border: 2px solid var(--hint);
-  border-radius: 50%;
-  background: rgba(251, 248, 242, 0.6);
+  background: var(--paper-light);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
   cursor: pointer;
 }
 
-.place-hint.infobox .place-hint-ring {
-  border-width: 3px;
+.place-hint-triangle::after {
+  content: "";
+  position: absolute;
+  inset: 2px 2px 1px;
+  background: var(--hint);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
 .place-hint-name {

@@ -232,3 +232,14 @@ class ForeignBattleArticle(Base):
     wikitext: Mapped[str] = mapped_column(Text, nullable=False)
     dump_name: Mapped[str] = mapped_column(String, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
+
+
+class BattleHints(Base):
+    """The Plaatshints of a Veldslag: the places its articles name, as a JSON list of
+    {"name", "lat", "lng", "kind"} ("infobox" or "artikel"). Written by tools.place_hints."""
+
+    __tablename__ = "battle_hints"
+
+    battle: Mapped[str] = mapped_column(String, primary_key=True)
+    hints_json: Mapped[str] = mapped_column(Text, nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)

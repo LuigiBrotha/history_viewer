@@ -1,8 +1,7 @@
 import bz2
 import gzip
-from xml.sax.saxutils import escape
 
-from tools.place_hints import hints_for, linked_places, place_coordinates, place_positions
+from tools.place_hints import build_places, choose, hints_for, linked_places, lookup_names, name_candidates, name_key
 
 BATTLE = """{{Infobox military conflict
 | conflict = Battle of Bir Hakeim
@@ -11,50 +10,74 @@ BATTLE = """{{Infobox military conflict
 | commander2 = [[Erwin Rommel]]
 }}
 The '''Battle of Bir Hakeim''' was fought near [[Tobruk]] and [[Gazala|the Gazala line]] by [[Germany|German]]
-troops under [[Erwin Rommel]]. See [[File:Map.png]] and [[Bir Hakeim]].
+troops under [[Erwin Rommel]].<ref>{{cite book|title=Desert War}}</ref> The French then broke out towards
+El Adem and Sidi Barrani. See [[File:Map.png]].
 """
 
 
 def test_linked_places_takes_the_place_field_then_the_text_without_countries_or_files():
     assert linked_places("en", BATTLE) == [
-        ("Bir Hakeim", "infobox"), ("Libya", "infobox"), ("Tobruk", "artikel"), ("Gazala", "artikel"), ("Erwin Rommel", "artikel"),
+        ("Bir Hakeim", "infobox"), ("Libya", "infobox"), ("Tobruk", "artikel"), ("Gazala", "artikel"),
+        ("Erwin Rommel", "artikel"),
     ]
 
 
-def test_place_coordinates_reads_the_ways_languages_write_a_position():
-    assert place_coordinates("en", "{{Infobox settlement|coordinates={{coord|32|04|N|23|58|E}}}}") == (32.06667, 23.96667)
-    assert place_coordinates("fr", "{{Infobox Commune de France|latitude=48.7|longitude=44.5}}") == (48.7, 44.5)
-    assert place_coordinates("pl", "{{Miejscowość infobox|stopniN=49|minutN=41|stopniE=21|minutE=46}}") == (49.68333, 21.76667)
-    assert place_coordinates("it", "{{Divisione amministrativa|Latitudine decimale=45.4|Longitudine decimale=9.2}}") == (45.4, 9.2)
-    assert place_coordinates("en", "A person, born somewhere.") is None
-    assert place_coordinates("en", "{{Infobox country|coordinates={{coord|27|N|17|E}}}}") is None
-    assert place_coordinates("de", "{{Infobox Staat|BREITENGRAD=27}} {{Coordinate|NS=27|EW=17}}") is None
+def test_name_key_is_the_bare_name():
+    assert name_key("Alexandria (Virginia)") == "alexandria"
+    assert name_key("Alexandria, Egypt") == "alexandria"
+    assert name_key("Sidi Barrani") == "sidi barrani"
 
 
-def test_hints_put_the_infobox_first_and_skip_what_is_not_a_place():
-    links = [("en", "Tobruk", "artikel"), ("en", "Erwin Rommel", "artikel"), ("en", "Bir Hakeim", "infobox"),
-             ("fr", "Tobrouk", "artikel")]
-    positions = {("en", "Tobruk"): (32.08, 23.97), ("en", "Bir Hakeim"): (31.6, 23.48), ("fr", "Tobrouk"): (32.08, 23.97)}
-    assert hints_for(links, positions) == [
-        {"name": "Bir Hakeim", "lat": 31.6, "lng": 23.48, "kind": "infobox"},
-        {"name": "Tobruk", "lat": 32.08, "lng": 23.97, "kind": "artikel"},
-        {"name": "Tobrouk", "lat": 32.08, "lng": 23.97, "kind": "artikel"},
+def test_name_candidates_are_capitalised_groups_outside_links_and_references():
+    keys = name_candidates("en", BATTLE)
+    assert {"el adem", "sidi barrani", "french"} <= keys
+    assert "desert war" not in keys  # inside a reference
+    assert "tobruk" not in keys  # linked, counted apart
+    assert name_candidates("ja", "ミッドウェー島の戦い") == set()
+
+
+def test_choose_takes_the_candidate_nearest_the_linked_places_or_the_only_one():
+    alexandrias = [("Alexandria", 31.2, 29.92), ("Alexandria, Virginia", 38.8, -77.05)]
+    tobruk = (32.08, 23.97)
+    assert choose(alexandrias, [tobruk])[0] == "Alexandria"
+    assert choose([("Alexandria, Virginia", 38.8, -77.05)], [tobruk]) is None  # too far
+    assert choose(alexandrias, []) is None
+    assert choose([("Sidi Barrani", 31.61, 25.93)], [])[0] == "Sidi Barrani"
+
+
+def test_hints_put_the_infobox_first_then_links_then_names_without_links():
+    links = [("en", "Tobruk", "artikel"), ("en", "Erwin Rommel", "artikel"), ("en", "Bir Hakeim", "infobox")]
+    positions = {("en", "Tobruk"): (32.08, 23.97, "city"), ("en", "Bir Hakeim"): (31.6, 23.48, None)}
+    names = [("en", "sidi barrani"), ("en", "alexandria"), ("en", "french")]
+    named = {("en", "sidi barrani"): [("Sidi Barrani", 31.61, 25.93)],
+             ("en", "alexandria"): [("Alexandria, Virginia", 38.8, -77.05), ("Alexandria", 31.2, 29.92)]}
+    assert [(h["name"], h["kind"]) for h in hints_for(links, positions, names, named)] == [
+        ("Bir Hakeim", "infobox"), ("Tobruk", "artikel"), ("Sidi Barrani", "artikel"), ("Alexandria", "artikel"),
     ]
 
 
-def page_xml(page_id, title, text):
-    return (f"<page><title>{escape(title)}</title><ns>0</ns><id>{page_id}</id>"
-            f"<revision><text>{escape(text)}</text></revision></page>")
-
-
-def test_place_positions_reads_the_dump_and_follows_redirects(tmp_path):
-    pages = [(1, "Tobruk", "{{coord|32|04|N|23|58|E}}"), (2, "Erwin Rommel", "A field marshal.")]
-    data = bz2.compress(b"<mediawiki>")
-    offset = len(data)
-    data += bz2.compress("".join(page_xml(*p) for p in pages).encode("utf-8"))
-    dump, index, redirects = tmp_path / "d.xml.bz2", tmp_path / "i.txt.bz2", tmp_path / "r.sql.gz"
-    dump.write_bytes(data)
-    index.write_bytes(bz2.compress(f"{offset}:1:Tobruk\n{offset}:2:Erwin Rommel\n{offset}:3:Tobrouk\n".encode()))
-    redirects.write_bytes(gzip.compress(b"INSERT INTO `redirect` VALUES (3,0,'Tobruk','','');\n"))
-    found = place_positions("en", dump, index, redirects, {"Tobruk", "Erwin Rommel", "Tobrouk", "Nowhere"})
-    assert found == {"Tobruk": (32.06667, 23.96667), "Tobrouk": (32.06667, 23.96667)}
+def test_build_places_follows_redirects_skips_countries_and_events_and_keeps_names(tmp_path):
+    index = tmp_path / "enwiki-index.txt.bz2"
+    index.write_bytes(bz2.compress("\n".join([
+        "1:1:Tobruk", "1:2:Tobrouk", "1:3:Libya", "1:4:Battle of Gazala", "1:5:Alexandria", "1:6:Alexandria, Virginia",
+        "1:7:Erwin Rommel",
+    ]).encode() + b"\n"))
+    redirects = tmp_path / "enwiki-redirect.sql.gz"
+    redirects.write_bytes(gzip.compress(b"INSERT INTO `redirect` VALUES (2,0,'Tobruk','','');\n"))
+    geotags = tmp_path / "enwiki-geo_tags.sql.gz"
+    geotags.write_bytes(gzip.compress("\n".join([
+        "INSERT INTO `geo_tags` VALUES",
+        "(10,1,'earth',1,32.08,23.97,NULL,'city',NULL,NULL,NULL,32,23),",
+        "(11,3,'earth',1,27.0,17.0,NULL,'country',NULL,NULL,NULL,27,17),",
+        "(12,4,'earth',1,32.15,23.1,NULL,'event',NULL,NULL,NULL,32,23),",
+        "(13,5,'earth',1,31.2,29.92,NULL,'city',NULL,NULL,NULL,31,29),",
+        "(14,6,'earth',1,38.8,-77.05,NULL,NULL,NULL,NULL,NULL,38,-77),",
+        "(15,1,'earth',0,0.0,0.0,NULL,NULL,NULL,NULL,NULL,0,0);",
+    ]).encode()))
+    db = tmp_path / "places.sqlite"
+    positions = build_places(index, redirects, geotags, {"Tobruk", "Tobrouk", "Libya", "Battle of Gazala", "Erwin Rommel"}, db)
+    assert positions == {"Tobruk": (32.08, 23.97, "city"), "Tobrouk": (32.08, 23.97, "city")}
+    found = lookup_names(db, {"alexandria", "tobruk", "libya"})
+    assert sorted(found["alexandria"]) == [("Alexandria", 31.2, 29.92), ("Alexandria, Virginia", 38.8, -77.05)]
+    assert found["tobruk"] == [("Tobruk", 32.08, 23.97)]
+    assert "libya" not in found
