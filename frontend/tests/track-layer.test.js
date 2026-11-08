@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { TRACK_COLORS, createTrackLayer, trackColor, trackSegments } from "../js/track-layer.js";
+import { NUMBER_ANCHOR, TRACK_COLORS, createTrackLayer, trackColor, trackSegments } from "../js/track-layer.js";
 
 test("trackSegments puts an arrow halfway each step, pointing the way the track goes", () => {
   const [east, north] = trackSegments([{ lat: 0, lng: 0 }, { lat: 0, lng: 10 }, { lat: 10, lng: 10 }]);
@@ -46,6 +46,10 @@ test("each track is a coloured line with an arrow per step and a number per batt
   const numbers = added.filter((l) => l.kind === "marker" && l.options.icon.className === "track-number")
     .map((m) => m.options.icon.html.textContent);
   assert.deepEqual(numbers, ["1", "2", "1"]);
+  // The numbers sit beside the square, above it and above the squares drawn later.
+  const number = added.find((l) => l.kind === "marker" && l.options.icon.className === "track-number");
+  assert.ok(number.options.zIndexOffset >= 1000);
+  assert.deepEqual(number.options.icon.iconAnchor, [NUMBER_ANCHOR, NUMBER_ANCHOR]);
   layer.setTracks([]);
   assert.equal(added.length, 0);
 });

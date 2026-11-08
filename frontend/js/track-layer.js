@@ -15,6 +15,11 @@ export function trackColor(labels, label) {
 
 const ARROW_SIZE = 16;
 const NUMBER_SIZE = 18;
+// The number sits as a badge above and left of the square, so it covers neither the square's
+// colour nor the name to its right.
+export const NUMBER_ANCHOR = NUMBER_SIZE + 3;
+// Above the squares, which are drawn again (and so on top) whenever the map moves.
+const ABOVE_SQUARES = 1000;
 
 function mercatorY(lat) {
   const radians = (lat * Math.PI) / 180;
@@ -38,8 +43,8 @@ export function trackSegments(points) {
   return segments;
 }
 
-function icon(className, size, html) {
-  return L.divIcon({ className, iconSize: [size, size], html });
+function icon(className, size, html, iconAnchor) {
+  return L.divIcon({ className, iconSize: [size, size], html, ...(iconAnchor && { iconAnchor }) });
 }
 
 export function createTrackLayer(map) {
@@ -63,7 +68,9 @@ export function createTrackLayer(map) {
           arrow.textContent = "▶";
           arrow.style.color = color;
           arrow.style.transform = `rotate(${angle}deg)`;
-          add(L.marker(mid, { icon: icon("track-arrow", ARROW_SIZE, arrow), interactive: false, keyboard: false }));
+          add(L.marker(mid, {
+            icon: icon("track-arrow", ARROW_SIZE, arrow), interactive: false, keyboard: false, zIndexOffset: ABOVE_SQUARES,
+          }));
         }
         battles.forEach((battle, index) => {
           const number = document.createElement("span");
@@ -71,7 +78,8 @@ export function createTrackLayer(map) {
           number.style.background = color;
           number.title = battle.title;
           add(L.marker([battle.lat, battle.lng], {
-            icon: icon("track-number", NUMBER_SIZE, number), interactive: false, keyboard: false,
+            icon: icon("track-number", NUMBER_SIZE, number, [NUMBER_ANCHOR, NUMBER_ANCHOR]),
+            interactive: false, keyboard: false, zIndexOffset: ABOVE_SQUARES,
           }));
         });
       }
