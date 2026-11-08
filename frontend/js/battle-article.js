@@ -97,7 +97,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
       title.setAttribute("title", titleNote(battle) ?? "");
       langLabel.textContent = lang.toUpperCase();
       langLabel.hidden = lang === "en";
-      sourceText = SOURCES[lang] ?? SOURCES.en;
+      sourceText = SOURCES[lang] ?? `Bron: Wikipedia (${lang}), CC BY-SA 4.0`;
       winner.textContent = winnerText(battle.winner);
       winner.hidden = false;
       body.replaceChildren();

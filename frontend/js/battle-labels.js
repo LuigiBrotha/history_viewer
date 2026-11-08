@@ -48,7 +48,8 @@ export function matchesLabels(battle, labels, mode = "en") {
 }
 
 export function labelText({ kind, value }) {
-  const name = kind in NAMED ? value : FIXED[kind]?.[value] ?? value;
+  const fallback = kind === "taal" ? value.toUpperCase() : value;
+  const name = kind in NAMED ? value : FIXED[kind]?.[value] ?? fallback;
   return `${KIND_NAMES[kind]}: ${name}`;
 }
 
@@ -58,6 +59,8 @@ export function labelKey({ kind, value }) {
 
 function valid({ kind, value }) {
   if (kind in NAMED) return value.length > 0;
+  // Any Wikipedia's code, not only those with a Dutch name.
+  if (kind === "taal") return /^[a-z]{2,3}(?:-[a-z]+)?$/.test(value);
   return kind in FIXED && value in FIXED[kind];
 }
 
@@ -104,7 +107,11 @@ export function searchLabels(battles, query) {
     results.push(...[...names].sort((a, b) => a.localeCompare(b, "nl")).slice(0, MAX_NAMES)
       .map((value) => suggestion({ kind, value })));
   }
-  for (const [kind, names] of Object.entries(FIXED)) {
+  const languages = { ...LANGUAGE_NAMES };
+  for (const battle of battles) {
+    if (battle.lang && !(battle.lang in languages)) languages[battle.lang] = battle.lang.toUpperCase();
+  }
+  for (const [kind, names] of Object.entries({ ...FIXED, taal: languages })) {
     for (const [value, name] of Object.entries(names)) {
       if (name.toLowerCase().includes(needle) || KIND_NAMES[kind].toLowerCase().startsWith(needle)) {
         results.push(suggestion({ kind, value }));

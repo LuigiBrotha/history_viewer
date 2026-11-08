@@ -47,7 +47,7 @@ test("labels survive the URL, unknown ones are dropped", () => {
   const labels = [{ kind: "land", value: "Bosnië, oost" }, { kind: "winnaar", value: "as" }, { kind: "taal", value: "pl" }];
   assert.deepEqual(readLabels(writeLabels(labels)), labels);
   assert.equal(writeLabels([]), "");
-  assert.deepEqual(readLabels("land:Polen,winnaar:nonsense,taal:xx,iets:anders,positie:eigen"), [
+  assert.deepEqual(readLabels("land:Polen,winnaar:nonsense,taal:Not a code,iets:anders,positie:eigen"), [
     { kind: "land", value: "Polen" }, { kind: "positie", value: "eigen" },
   ]);
   assert.deepEqual(readLabels(""), []);
@@ -131,4 +131,13 @@ test("sorting by name uses the English title", () => {
   const sorted = sortBattles([{ title: "Abwehrschlacht", title_en: "Zhitomir defence", start: "1942-01-08" },
     { title: "Battle of Kursk", start: "1943-07-05" }], "naam");
   assert.deepEqual(sorted.map((b) => b.title), ["Battle of Kursk", "Abwehrschlacht"]);
+});
+
+test("any language code is a Taal label, named by its code when there is no Dutch name", () => {
+  assert.deepEqual(readLabels("taal:uk"), [{ kind: "taal", value: "uk" }]);
+  assert.equal(labelText({ kind: "taal", value: "uk" }), "Taal: UK");
+  assert.equal(labelText({ kind: "taal", value: "ru" }), "Taal: Russisch");
+  assert.deepEqual(readLabels("taal:Not a code"), []);
+  const found = searchLabels([{ title: "Оборона Києва", lang: "uk" }], "taal");
+  assert.ok(found.some((s) => s.label === "Taal: UK"));
 });

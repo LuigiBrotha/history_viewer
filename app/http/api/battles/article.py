@@ -1,3 +1,4 @@
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
@@ -6,8 +7,8 @@ from wireup.integration.fastapi import WireupRoute
 
 from app.services.wiki.article_service import ArticleOut, ArticleService
 
-# The Wikipedias whose battle articles are stored.
-LANGUAGES = {"en", "nl", "de", "pl", "ru", "fr", "it", "ja"}
+# Any Wikipedia's code: the articles of every language may be stored (tools.wikidata_battles).
+LANGUAGE = re.compile(r"^[a-z]{2,3}(?:-[a-z]+)?$")
 
 
 class RequestHandler:
@@ -18,7 +19,7 @@ class RequestHandler:
 
     @router.get("/api/battles/articles/{title:path}", name="battles_article")
     async def handle_request(self, title: str, lang: str = "en") -> ArticleOut:
-        if lang not in LANGUAGES:
+        if not LANGUAGE.match(lang):
             raise HTTPException(status_code=404, detail="Geen artikel voor deze veldslag.")
         article = await self.articles.article(title, lang)
         if article is None:
