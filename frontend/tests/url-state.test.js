@@ -113,3 +113,13 @@ test("the labels and the sort order are kept and carried, the date sort is the d
   assert.deepEqual(readView("?sorteer=onzin", "date"), {});
   assert.deepEqual(carriedView({ date: "1942-01-01", filter: "taal:nl", sort: "duur" }), { filter: "taal:nl", sort: "duur" });
 });
+
+test("OF between the labels and 'Toon alle' are kept and carried; EN and off are the defaults", () => {
+  const view = { filter: "land:Polen", labelMode: "of", showAll: true };
+  assert.equal(writeView(view, "date"), "?filter=land%3APolen&filtermodus=of&alles=1");
+  assert.deepEqual(readView("?filter=land%3APolen&filtermodus=of&alles=1", "date"), view);
+  assert.deepEqual(readView("?filtermodus=en&alles=0", "date"), {});
+  assert.deepEqual(readView("?filtermodus=onzin", "date"), {});
+  assert.equal(writeView({ labelMode: "en", showAll: false }, "date"), "");
+  assert.deepEqual(carriedView({ date: "1942-01-01", labelMode: "of", showAll: true }), { labelMode: "of", showAll: true });
+});

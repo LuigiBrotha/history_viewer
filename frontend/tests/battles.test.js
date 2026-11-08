@@ -689,6 +689,33 @@ test("labels filter the list and the squares, and changes are reported", async (
 });
 
 
+test("OF and 'Toon alle' change the squares too: outside squares are dimmed, and changes are reported", async () => {
+  const heard = [];
+  const ctx = setup({ mode: "period", load: async () => BATTLES.map((b, i) => ({ ...b, countries: i === 1 ? ["Japan"] : ["Duitsland"] })) });
+  ctx.controller.onLabelModeChange((mode) => heard.push(mode));
+  ctx.controller.onShowAllChange((on) => heard.push(on));
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  ctx.controller.setLabels([{ kind: "land", value: "Japan" }, { kind: "land", value: "Duitsland" }]);
+  assert.deepEqual(ctx.squares(), []);
+  ctx.elements["battle-pane"].byClass("battle-filter-mode")[0].dispatch("click");
+  assert.equal(ctx.squares().length, 2);
+  ctx.controller.setLabelMode("en");
+  ctx.controller.setLabels([{ kind: "land", value: "Japan" }]);
+  const box = ctx.elements["battle-pane"].byClass("battle-filter-all")[0];
+  box.checked = true;
+  box.dispatch("change");
+  assert.equal(ctx.squares().length, 2);
+  const dimmed = [...ctx.layers].filter((m) => String(m.options.icon.className).includes("outside-filter"))
+    .map((m) => m.options.battleTitle);
+  assert.equal(dimmed.length, 1);
+  assert.notEqual(dimmed[0], "Midway");
+  ctx.controller.setShowAll(false);
+  assert.deepEqual(ctx.squares(), ["Midway"]);
+  assert.deepEqual(heard, ["of", true]);
+});
+
+
 test("a Bevelhebber label draws the Spoor and shows all its battles whatever the date", async () => {
   const ctx = setup({
     mode: "date",

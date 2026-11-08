@@ -1783,3 +1783,32 @@ html, body {
   font-size: 11px;
   font-weight: 700;
 }
+
+/* EN/OF between the filters, and "Toon alle" (every battle, those outside the filters dimmed). */
+.battle-filter-mode {
+  min-width: 36px;
+  min-height: 28px;
+  border: 1px solid #3b2a00;
+  border-radius: 12px;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.battle-filter-all-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.battle-row.outside-filter {
+  opacity: 0.4;
+}
+
+.battle-square.outside-filter {
+  opacity: 0.35;
+}

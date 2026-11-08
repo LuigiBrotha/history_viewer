@@ -428,12 +428,17 @@ function labelled() {
   const rootEl = new Element("aside");
   const removed = [];
   const sorts = [];
-  const pane = createBattlePane({ rootEl, mode: "period", onLabelRemove: (l) => removed.push(l), onSortChange: (s) => sorts.push(s) });
+  const modes = [];
+  const alls = [];
+  const pane = createBattlePane({
+    rootEl, mode: "period", onLabelRemove: (l) => removed.push(l), onSortChange: (s) => sorts.push(s),
+    onLabelModeChange: (m) => modes.push(m), onShowAllChange: (on) => alls.push(on),
+  });
   pane.setBattles(LABELLED);
   pane.setSelection({ from: null, to: null });
   const shown = () => rootEl.byClass("battle-list")[0].children.filter((r) => !r.hidden)
     .map((r) => r.byClass("battle-row-title")[0].textContent);
-  return { pane, rootEl, removed, sorts, shown };
+  return { pane, rootEl, removed, sorts, shown, modes, alls };
 }
 
 test("labels filter the list, show as removable chips and count", () => {
@@ -486,4 +491,39 @@ test("a battle on a Spoor shows its step number in the list, in the colour of th
   assert.deepEqual(steps("Arnhem"), []);
   pane.setTracks([]);
   assert.deepEqual(steps("Kursk"), []);
+});
+
+test("the EN/OF button switches whether one label is enough, and reports it", () => {
+  const { pane, rootEl, shown, modes } = labelled();
+  pane.setLabels([{ kind: "land", value: "Polen" }, { kind: "winnaar", value: "sovjet" }]);
+  assert.deepEqual(shown(), []);
+  const button = rootEl.byClass("battle-filter-mode")[0];
+  assert.equal(button.textContent, "EN");
+  button.dispatch("click");
+  assert.equal(button.textContent, "OF");
+  assert.deepEqual(shown(), ["Bzura", "Kursk"]);
+  assert.deepEqual(modes, ["of"]);
+  pane.setLabelMode("en");
+  assert.equal(rootEl.byClass("battle-filter-mode")[0].textContent, "EN");
+  assert.deepEqual(shown(), []);
+  assert.deepEqual(modes, ["of"]);
+});
+
+test("'Toon alle' lists every battle, dims those outside the labels and reports it", () => {
+  const { pane, rootEl, shown, alls } = labelled();
+  pane.setLabels([{ kind: "winnaar", value: "as" }]);
+  const box = rootEl.byClass("battle-filter-all")[0];
+  box.checked = true;
+  box.dispatch("change");
+  assert.deepEqual(alls, [true]);
+  assert.equal(shown().length, 3);
+  const outside = rootEl.byClass("battle-row").filter((r) => r.classList.contains("outside-filter"))
+    .map((r) => r.byClass("battle-row-title")[0].textContent);
+  assert.deepEqual(outside, ["Kursk"]);
+  assert.equal(rootEl.byClass("battle-pane-title")[0].textContent, "Veldslagen (2 van 3)");
+  pane.setShowAll(false);
+  assert.equal(rootEl.byClass("battle-filter-all")[0].checked, false);
+  assert.deepEqual(shown(), ["Bzura", "Arnhem"]);
+  assert.equal(rootEl.byClass("outside-filter").length, 0);
+  assert.deepEqual(alls, [true]);
 });

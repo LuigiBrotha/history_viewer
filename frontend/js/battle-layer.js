@@ -22,8 +22,9 @@ function tooltipContent(battle) {
   return root;
 }
 
-function squareIcon(battle, selected) {
+function squareIcon(battle, selected, outside = false) {
   const classes = ["battle-square", ...winnerClasses(battle.winner)];
+  if (outside) classes.push("outside-filter");
   if (battle.own) classes.push("own");
   if (selected) classes.push("selected");
   return L.divIcon({
@@ -50,12 +51,14 @@ export function createBattleLayer(map, { onBattleClick }) {
   const squares = new Map();
   let labels = [];
   let battles = [];
+  // Titles of the squares outside the labels, drawn dimmed ("Toon alle").
+  let outside = new Set();
   let selected = null;
   let editing = null;
 
   function addSquare(battle) {
     const marker = L.marker([battle.lat, battle.lng], {
-      icon: squareIcon(battle, selected === battle.title),
+      icon: squareIcon(battle, selected === battle.title, outside.has(battle.title)),
       battleTitle: battle.title,
       keyboard: false,
       riseOnHover: true,
@@ -64,6 +67,7 @@ export function createBattleLayer(map, { onBattleClick }) {
     marker.on("click", () => onBattleClick?.(battle));
     group.addLayer(marker);
     marker.drawnFor = battle;
+    marker.drawnOutside = outside.has(battle.title);
     squares.set(battle.title, marker);
     return marker;
   }
@@ -77,7 +81,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     const wantedByTitle = new Map(wanted.map((battle) => [battle.title, battle]));
 
     // A square is also redrawn when its battle has moved or changed hands since it was drawn.
-    const stale = (marker, battle) => marker.drawnFor.lat !== battle.lat || marker.drawnFor.lng !== battle.lng || marker.drawnFor.own !== battle.own;
+    const stale = (marker, battle) => marker.drawnFor.lat !== battle.lat || marker.drawnFor.lng !== battle.lng
+      || marker.drawnFor.own !== battle.own || marker.drawnOutside !== outside.has(battle.title);
     for (const [title, marker] of squares) {
       const battle = wantedByTitle.get(title);
       if (!battle || stale(marker, battle)) {
@@ -93,7 +98,7 @@ export function createBattleLayer(map, { onBattleClick }) {
     for (const label of labels) {
       group.removeLayer(label);
     }
-    labels = labelsToShow(drawn, map.getZoom()).map((battle) =>
+    labels = labelsToShow(drawn.filter((battle) => !outside.has(battle.title)), map.getZoom()).map((battle) =>
       L.marker([battle.lat, battle.lng], { icon: labelIcon(battle), interactive: false, keyboard: false }),
     );
     for (const label of labels) {
@@ -120,15 +125,16 @@ export function createBattleLayer(map, { onBattleClick }) {
   }
 
   return {
-    setBattles(next) {
+    setBattles(next, outsideTitles = new Set()) {
       battles = next;
+      outside = outsideTitles;
       redraw();
     },
     // Marks the square of one battle (or none) as the one the pane points at.
     setSelected(battle) {
       selected = battle === null ? null : battle.title;
       for (const [title, marker] of squares) {
-        marker.setIcon(squareIcon(battleByTitle(title), title === selected));
+        marker.setIcon(squareIcon(battleByTitle(title), title === selected, outside.has(title)));
       }
     },
     // Makes one battle's square draggable; a battle without a position gets one at the

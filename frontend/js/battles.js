@@ -76,6 +76,10 @@ export function initBattles({
       togglePane() {},
       addLabel() {},
       setLabels() {},
+      setLabelMode() {},
+      setShowAll() {},
+      onLabelModeChange() {},
+      onShowAllChange() {},
       labels: () => [],
       onLabelsChange() {},
       setSort() {},
@@ -117,7 +121,11 @@ export function initBattles({
   let selected = null;
   let lastSelected = null;
   let labels = [];
+  let labelMode = "en";
+  let showAll = false;
   const labelListeners = [];
+  const labelModeListeners = [];
+  const showAllListeners = [];
   const sortListeners = [];
   let requested = null;
 
@@ -148,6 +156,16 @@ export function initBattles({
     onNoposChange,
     onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
+    onLabelModeChange: (next) => {
+      labelMode = next;
+      drawSquares();
+      labelModeListeners.forEach((listener) => listener(next));
+    },
+    onShowAllChange: (on) => {
+      showAll = on;
+      drawSquares();
+      showAllListeners.forEach((listener) => listener(on));
+    },
     onExport: (format) => exportList(format),
     onBackup: () => backupPositions().catch((error) => win.alert?.(`Back-up mislukt: ${error.message}`)),
     onRestore: (text) => restorePositions(text).catch((error) => win.alert?.(`Terugzetten mislukt: ${error.message}`)),
@@ -199,14 +217,14 @@ export function initBattles({
     const restored = new Map(set.map((p) => [p.title, p]));
     battles = battles.map((b) => (restored.has(b.title) ? { ...b, lat: restored.get(b.title).lat, lng: restored.get(b.title).lng, own: true } : b));
     pane.setBattles(battles);
-    layer.setBattles(shown());
+    drawSquares();
     drawTracks();
     return true;
   }
 
   function applyLabels() {
     pane.setLabels(labels);
-    layer.setBattles(shown());
+    drawSquares();
     drawTracks();
   }
 
@@ -230,7 +248,7 @@ export function initBattles({
     battles = battles.map((battle) => (battle.title === title ? { ...battle, ...change } : battle));
     const updated = battles.find((battle) => battle.title === title);
     pane.setBattles(battles);
-    layer.setBattles(shown());
+    drawSquares();
     drawTracks();
     layer.setSelected(updated);
     pane.reveal(updated);
@@ -369,18 +387,33 @@ export function initBattles({
     return true;
   }
 
+  // "Toon alle" widens the squares to every battle, those outside the labels dimmed.
+  const widened = () => showAll && labels.length > 0;
+  const matching = (b) => matchesLabels(b, labels, labelMode);
+
   function shown() {
-    const labelled = battles.filter((b) => matchesLabels(b, labels));
+    const labelled = battles.filter(matching);
     // A Spoor is shown whole, whatever the date or period.
-    if (labels.some(isTrackLabel)) return labelled;
-    if (selection === null) return [];
-    return mode === "date" ? activeOn(labelled, selection.date) : labelled.filter((b) => overlaps(b, selection.from, selection.to));
+    const tracked = labels.some(isTrackLabel);
+    if (tracked && !widened()) return labelled;
+    if (selection === null) return tracked ? labelled : [];
+    const base = widened() ? battles : labelled;
+    const inPeriod = mode === "date" ? activeOn(base, selection.date) : base.filter((b) => overlaps(b, selection.from, selection.to));
+    if (!tracked) return inPeriod;
+    const seen = new Set(inPeriod);
+    return [...inPeriod, ...labelled.filter((b) => !seen.has(b))];
+  }
+
+  function drawSquares() {
+    const list = shown();
+    const outside = widened() ? new Set(list.filter((b) => !matching(b)).map((b) => b.title)) : new Set();
+    layer.setBattles(list, outside);
   }
 
   function select(next) {
     selection = next;
     pane.setSelection(next);
-    layer.setBattles(shown());
+    drawSquares();
   }
 
   // The Eigen posities are optional: without them the battles stay where the file puts them.
@@ -402,7 +435,7 @@ export function initBattles({
       battles = applyPositions(result, await positions);
       loaded = true;
       pane.setBattles(battles);
-      layer.setBattles(shown());
+      drawSquares();
       drawTracks();
       applyEditable();
       if (requested !== null) {
@@ -438,6 +471,19 @@ export function initBattles({
     },
     labels: () => labels,
     onLabelsChange: (listener) => labelListeners.push(listener),
+    // EN/OF and "Toon alle" from the URL: applied without being reported back.
+    setLabelMode(next) {
+      labelMode = next === "of" ? "of" : "en";
+      pane.setLabelMode(labelMode);
+      drawSquares();
+    },
+    setShowAll(on) {
+      showAll = Boolean(on);
+      pane.setShowAll(showAll);
+      drawSquares();
+    },
+    onLabelModeChange: (listener) => labelModeListeners.push(listener),
+    onShowAllChange: (listener) => showAllListeners.push(listener),
     setSort: (next) => pane.setSort(next),
     onSortChange: (listener) => sortListeners.push(listener),
     exportList,

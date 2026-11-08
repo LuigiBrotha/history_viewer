@@ -16,7 +16,17 @@ export function restoreLabels(initial, urlSync, battles) {
     urlSync.update({ sort: initial.sort });
     battles.setSort?.(initial.sort);
   }
+  if (initial.labelMode !== undefined) {
+    urlSync.update({ labelMode: initial.labelMode });
+    battles.setLabelMode?.(initial.labelMode);
+  }
+  if (initial.showAll !== undefined) {
+    urlSync.update({ showAll: initial.showAll });
+    battles.setShowAll?.(initial.showAll);
+  }
   battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
+  battles.onLabelModeChange?.((mode) => urlSync.update({ labelMode: mode === "of" ? "of" : null }));
+  battles.onShowAllChange?.((on) => urlSync.update({ showAll: on || null }));
   battles.onSortChange?.((sort) => urlSync.update({ sort: sort === "datum" ? null : sort }));
 }
 

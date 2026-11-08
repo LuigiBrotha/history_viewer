@@ -37,6 +37,7 @@ function percent(value) {
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
 export function createBattlePane({
   rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
+  onLabelModeChange, onShowAllChange,
 }) {
   let rows = [];
   // The step numbers of the Sporen per battle title: [{ number, color }].
@@ -44,6 +45,10 @@ export function createBattlePane({
   // The rows in the chosen sort order; rows itself stays in date order.
   let order = [];
   let labels = [];
+  // "en": a battle must match every label, "of": one is enough.
+  let labelMode = "en";
+  // Every battle listed, those outside the labels dimmed.
+  let showAll = false;
   let sort = "datum";
   let editable = false;
   let actionsEl = null;
@@ -66,6 +71,14 @@ export function createBattlePane({
   noposRow.append(noposBox, noposText);
   const labelsEl = element("div", "battle-labels");
   labelsEl.hidden = true;
+  const modeButton = element("button", "battle-filter-mode", "EN");
+  modeButton.setAttribute("type", "button");
+  modeButton.setAttribute("title", "EN: aan alle filters voldoen, OF: aan één filter voldoen");
+  const allBox = element("input", "battle-filter-all");
+  allBox.setAttribute("type", "checkbox");
+  allBox.checked = false;
+  const allRow = element("label", "battle-filter-all-row");
+  allRow.append(allBox, element("span", "battle-filter-all-text", "Toon alle"));
   const sortSelect = element("select", "battle-sort");
   sortSelect.setAttribute("aria-label", "Sorteer de veldslagen");
   for (const [value, name] of Object.entries(SORT_NAMES)) {
@@ -142,7 +155,7 @@ export function createBattlePane({
       }
       chip.append(element("span", "battle-filter-text", labelText(label)), remove);
       return chip;
-    }));
+    }), modeButton, allRow);
     labelsEl.hidden = labels.length === 0;
   }
 
@@ -226,19 +239,39 @@ export function createBattlePane({
   });
 
   function applyFilter() {
-    const battles = rows.map((r) => r.battle).filter((battle) => matchesLabels(battle, labels));
+    const all = rows.map((r) => r.battle);
+    const matching = new Set(all.filter((battle) => matchesLabels(battle, labels, labelMode)));
+    const widened = showAll && labels.length > 0;
+    const battles = widened ? all : all.filter((battle) => matching.has(battle));
     const unplaced = withoutPosition(battles, mode, selection, search.value);
     noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
     const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
     if (noposBox.checked && revealed !== null) shown.add(revealed.battle);
     for (const row of rows) {
       row.el.hidden = !shown.has(row.battle);
+      row.el.classList.toggle("outside-filter", widened && !matching.has(row.battle));
     }
-    title.textContent = `Veldslagen (${shown.size})`;
+    const inside = [...shown].filter((battle) => matching.has(battle)).length;
+    title.textContent = widened ? `Veldslagen (${inside} van ${shown.size})` : `Veldslagen (${shown.size})`;
     empty.hidden = shown.size > 0 || rows.length === 0;
   }
 
   search.addEventListener("input", applyFilter);
+  function showLabelMode() {
+    modeButton.textContent = labelMode.toUpperCase();
+    modeButton.setAttribute("aria-label", labelMode === "of" ? "Filters: één is genoeg" : "Filters: alle moeten kloppen");
+  }
+  modeButton.addEventListener("click", () => {
+    labelMode = labelMode === "en" ? "of" : "en";
+    showLabelMode();
+    applyFilter();
+    onLabelModeChange?.(labelMode);
+  });
+  allBox.addEventListener("change", () => {
+    showAll = allBox.checked;
+    applyFilter();
+    onShowAllChange?.(showAll);
+  });
   sortSelect.addEventListener("change", () => {
     sort = sortSelect.value;
     applyOrder();
@@ -341,6 +374,17 @@ export function createBattlePane({
         });
       }
       rows.forEach(renderSteps);
+    },
+    // From the URL or the page: not reported back.
+    setLabelMode(next) {
+      labelMode = next === "of" ? "of" : "en";
+      showLabelMode();
+      applyFilter();
+    },
+    setShowAll(on) {
+      showAll = Boolean(on);
+      allBox.checked = showAll;
+      applyFilter();
     },
     // The labels every listed battle must match.
     setLabels(next) {

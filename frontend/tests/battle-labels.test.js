@@ -115,3 +115,14 @@ test("a battle that holds only battles without a position stays in the track", (
   const battles = [of("Campaign", "1940-01-01", "1940-12-31"), of("Unplaced", "1940-03-01", "1940-03-02", { lat: null, lng: null })];
   assert.deepEqual(track(battles, label).map((b) => b.title), ["Campaign"]);
 });
+
+test("matchesLabels with OF needs only one label to match; without labels everything matches", () => {
+  const battle = { countries: ["Polen"], commanders: ["Erwin Rommel"], winner: ["as"] };
+  const polen = { kind: "land", value: "Polen" };
+  const japan = { kind: "land", value: "Japan" };
+  assert.equal(matchesLabels(battle, [polen, japan]), false);
+  assert.equal(matchesLabels(battle, [polen, japan], "en"), false);
+  assert.equal(matchesLabels(battle, [polen, japan], "of"), true);
+  assert.equal(matchesLabels(battle, [japan], "of"), false);
+  assert.equal(matchesLabels(battle, [], "of"), true);
+});

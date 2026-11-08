@@ -114,3 +114,25 @@ test("labels and the sort order are restored, and their changes reach the URL", 
   sortListener("naam");
   assert.deepEqual(writes, [{ filter: "taal:nl" }, { filter: null }, { sort: null }, { sort: "naam" }]);
 });
+
+test("OF and 'Toon alle' are restored, and their changes reach the URL", () => {
+  const { view, writes, slider, battles } = fakes("?filter=land%3APolen&filtermodus=of&alles=1");
+  const calls = [];
+  let modeListener;
+  let allListener;
+  Object.assign(battles, {
+    setLabels: () => {},
+    setLabelMode: (mode) => calls.push(["mode", mode]),
+    setShowAll: (on) => calls.push(["all", on]),
+    onLabelModeChange: (fn) => (modeListener = fn),
+    onShowAllChange: (fn) => (allListener = fn),
+  });
+  view.restore({ slider, battles });
+  assert.deepEqual(calls, [["mode", "of"], ["all", true]]);
+  writes.length = 0;
+  modeListener("en");
+  allListener(false);
+  modeListener("of");
+  allListener(true);
+  assert.deepEqual(writes, [{ labelMode: null }, { showAll: null }, { labelMode: "of" }, { showAll: true }]);
+});

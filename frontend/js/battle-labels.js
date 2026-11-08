@@ -38,8 +38,11 @@ function matches(battle, { kind, value }) {
   }
 }
 
-export function matchesLabels(battle, labels) {
-  return labels.every((label) => matches(battle, label));
+// "en": every label must match; "of": one is enough. Without labels every battle matches.
+export function matchesLabels(battle, labels, mode = "en") {
+  if (labels.length === 0) return true;
+  const test = (label) => matches(battle, label);
+  return mode === "of" ? labels.some(test) : labels.every(test);
 }
 
 export function labelText({ kind, value }) {
