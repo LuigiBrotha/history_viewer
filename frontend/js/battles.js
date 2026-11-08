@@ -3,6 +3,7 @@ import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
 import { createHintLayer } from "./hint-layer.js";
+import { FULL_RANGE, inSpreadRange, squareSize } from "./spread.js";
 import { createTrackLayer, trackColor } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
@@ -83,6 +84,8 @@ export function initBattles({
       setShowAll() {},
       onLabelModeChange() {},
       onShowAllChange() {},
+      setSpreadRange() {},
+      onSpreadChange() {},
       labels: () => [],
       onLabelsChange() {},
       setSort() {},
@@ -126,6 +129,10 @@ export function initBattles({
   let labels = [];
   let labelMode = "en";
   let showAll = false;
+  // The Plaatshints summary per title, and the Spreiding range the user chose.
+  let hintSummary = {};
+  let spreadRange = FULL_RANGE;
+  const spreadListeners = [];
   const labelListeners = [];
   const labelModeListeners = [];
   const showAllListeners = [];
@@ -164,6 +171,11 @@ export function initBattles({
       labelMode = next;
       drawSquares();
       labelModeListeners.forEach((listener) => listener(next));
+    },
+    onSpreadChange: (range) => {
+      spreadRange = range;
+      drawSquares();
+      spreadListeners.forEach((listener) => listener(range));
     },
     onShowAllChange: (on) => {
       showAll = on;
@@ -443,7 +455,7 @@ export function initBattles({
   }
 
   function drawSquares() {
-    const list = shown();
+    const list = shown().filter((b) => inSpreadRange(hintSummary[b.title], spreadRange));
     const outside = widened() ? new Set(list.filter((b) => !matching(b)).map((b) => b.title)) : new Set();
     layer.setBattles(list, outside);
   }
@@ -468,7 +480,15 @@ export function initBattles({
   );
 
   // How far each battle lies from the places its articles name; optional, shown when it comes.
-  loadHintSummary().then((summary) => pane.setPlaceSummary(summary), (error) => console.error(error));
+  loadHintSummary().then(
+    (summary) => {
+      hintSummary = summary ?? {};
+      pane.setPlaceSummary(hintSummary);
+      layer.setSizes((battle) => squareSize(hintSummary[battle.title]));
+      drawSquares();
+    },
+    (error) => console.error(error),
+  );
 
   let loaded = false;
   load().then(
@@ -525,6 +545,13 @@ export function initBattles({
     },
     onLabelModeChange: (listener) => labelModeListeners.push(listener),
     onShowAllChange: (listener) => showAllListeners.push(listener),
+    // The Spreiding range from the URL: applied without being reported back.
+    setSpreadRange(range) {
+      spreadRange = range;
+      pane.setSpreadRange(range);
+      drawSquares();
+    },
+    onSpreadChange: (listener) => spreadListeners.push(listener),
     setSort: (next) => pane.setSort(next),
     onSortChange: (listener) => sortListeners.push(listener),
     exportList,

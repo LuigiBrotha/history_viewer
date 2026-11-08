@@ -22,16 +22,17 @@ function tooltipContent(battle) {
   return root;
 }
 
-function squareIcon(battle, selected, outside = false) {
+function squareIcon(battle, selected, outside = false, size = SQUARE_SIZE) {
   const classes = ["battle-square", ...winnerClasses(battle.winner)];
   if (outside) classes.push("outside-filter");
   if (battle.own) classes.push("own");
   if (selected) classes.push("selected");
-  return L.divIcon({
-    className: classes.join(" "),
-    iconSize: [SQUARE_SIZE, SQUARE_SIZE],
-    html: document.createElement("span"),
-  });
+  const span = document.createElement("span");
+  if (size !== SQUARE_SIZE) {
+    span.style.width = `${size}px`;
+    span.style.height = `${size}px`;
+  }
+  return L.divIcon({ className: classes.join(" "), iconSize: [size, size], html: span });
 }
 
 function labelIcon(battle) {
@@ -51,6 +52,8 @@ export function createBattleLayer(map, { onBattleClick }) {
   const squares = new Map();
   let labels = [];
   let battles = [];
+  // The side of each battle's square (see spread.js); the plain size unless told otherwise.
+  let sizeOf = () => SQUARE_SIZE;
   // Titles of the squares outside the labels, drawn dimmed ("Toon alle").
   let outside = new Set();
   let selected = null;
@@ -58,7 +61,7 @@ export function createBattleLayer(map, { onBattleClick }) {
 
   function addSquare(battle) {
     const marker = L.marker([battle.lat, battle.lng], {
-      icon: squareIcon(battle, selected === battle.title, outside.has(battle.title)),
+      icon: squareIcon(battle, selected === battle.title, outside.has(battle.title), sizeOf(battle)),
       battleTitle: battle.title,
       keyboard: false,
       riseOnHover: true,
@@ -68,6 +71,7 @@ export function createBattleLayer(map, { onBattleClick }) {
     group.addLayer(marker);
     marker.drawnFor = battle;
     marker.drawnOutside = outside.has(battle.title);
+    marker.drawnSize = sizeOf(battle);
     squares.set(battle.title, marker);
     return marker;
   }
@@ -82,7 +86,8 @@ export function createBattleLayer(map, { onBattleClick }) {
 
     // A square is also redrawn when its battle has moved or changed hands since it was drawn.
     const stale = (marker, battle) => marker.drawnFor.lat !== battle.lat || marker.drawnFor.lng !== battle.lng
-      || marker.drawnFor.own !== battle.own || marker.drawnOutside !== outside.has(battle.title);
+      || marker.drawnFor.own !== battle.own || marker.drawnOutside !== outside.has(battle.title)
+      || marker.drawnSize !== sizeOf(battle);
     for (const [title, marker] of squares) {
       const battle = wantedByTitle.get(title);
       if (!battle || stale(marker, battle)) {
@@ -125,6 +130,11 @@ export function createBattleLayer(map, { onBattleClick }) {
   }
 
   return {
+    // How large each battle's square is drawn: a function of the battle.
+    setSizes(next) {
+      sizeOf = next;
+      redraw();
+    },
     setBattles(next, outsideTitles = new Set()) {
       battles = next;
       outside = outsideTitles;
@@ -134,7 +144,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     setSelected(battle) {
       selected = battle === null ? null : battle.title;
       for (const [title, marker] of squares) {
-        marker.setIcon(squareIcon(battleByTitle(title), title === selected, outside.has(title)));
+        const battle = battleByTitle(title);
+        marker.setIcon(squareIcon(battle, title === selected, outside.has(title), sizeOf(battle)));
       }
     },
     // Makes one battle's square draggable; a battle without a position gets one at the

@@ -527,3 +527,27 @@ test("'Toon alle' lists every battle, dims those outside the labels and reports 
   assert.equal(rootEl.byClass("outside-filter").length, 0);
   assert.deepEqual(alls, [true]);
 });
+
+test("the Spreiding slider narrows the list to battles with a spread in range, keeping those without hints", () => {
+  const changes = [];
+  installDom();
+  const rootEl = new Element("aside");
+  const pane = createBattlePane({ rootEl, mode: "period", onSpreadChange: (range) => changes.push(range) });
+  pane.setBattles([battle({ title: "Near" }), battle({ title: "Wide", start: "1941-01-01" }), battle({ title: "None", start: "1942-01-01" })]);
+  pane.setSelection({ from: null, to: null });
+  pane.setPlaceSummary({ Near: { count: 3, lat: 0, lng: 0, spread_km: 20 }, Wide: { count: 5, lat: 0, lng: 0, spread_km: 600 } });
+  const shown = () => rootEl.byClass("battle-list")[0].children.filter((r) => !r.hidden)
+    .map((r) => r.byClass("battle-row-title")[0].textContent).sort();
+  assert.deepEqual(shown(), ["Near", "None", "Wide"]);
+  const [low, high] = rootEl.byClass("battle-spread-input");
+  assert.equal(rootEl.byClass("battle-spread-text")[0].textContent, "Spreiding 0–1000+ km");
+  high.value = "50"; // 316 km
+  high.dispatch("input");
+  assert.deepEqual(shown(), ["Near", "None"]);
+  assert.deepEqual(changes, [{ min: 0, max: 316 }]);
+  assert.equal(rootEl.byClass("battle-spread-text")[0].textContent, "Spreiding 0–316 km");
+  pane.setSpreadRange({ min: 100, max: null });
+  assert.deepEqual(shown(), ["None", "Wide"]);
+  assert.equal(low.value, "40");
+  assert.equal(changes.length, 1);
+});

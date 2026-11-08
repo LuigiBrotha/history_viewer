@@ -123,3 +123,10 @@ test("OF between the labels and 'Toon alle' are kept and carried; EN and off are
   assert.equal(writeView({ labelMode: "en", showAll: false }, "date"), "");
   assert.deepEqual(carriedView({ date: "1942-01-01", labelMode: "of", showAll: true }), { labelMode: "of", showAll: true });
 });
+
+test("the Spreiding range is kept and carried as spreiding=min-max, the full range is left out", () => {
+  assert.equal(writeView({ spread: "20-150" }, "date"), "?spreiding=20-150");
+  assert.deepEqual(readView("?spreiding=20-", "date"), { spread: "20-" });
+  assert.deepEqual(readView("?spreiding=x", "date"), {});
+  assert.deepEqual(carriedView({ date: "1942-01-01", spread: "0-100" }), { spread: "0-100" });
+});

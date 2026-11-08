@@ -831,3 +831,26 @@ test("each row tells how far its position lies from the middle of its Plaatshint
   assert.equal(text("Placed"), "111 km van 3 plaatsen · spreiding 50 km");
   assert.equal(text("Unplaced"), "1 plaats · spreiding 0 km");
 });
+
+test("the Spreiding sizes the squares and its range hides battles out of it, but never those without hints", async () => {
+  const ctx = setup({
+    mode: "period",
+    load: async () => [battle({ title: "Near", lat: 1, lng: 1 }), battle({ title: "Wide", lat: 2, lng: 2 }), battle({ title: "None", lat: 3, lng: 3 })],
+    loadHintSummary: async () => ({ Near: { count: 3, lat: 1, lng: 1, spread_km: 20 }, Wide: { count: 5, lat: 2, lng: 2, spread_km: 500 } }),
+  });
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  await ctx.ready();
+  const size = (title) => [...ctx.layers].find((m) => m.options.battleTitle === title).options.icon.iconSize[0];
+  assert.deepEqual([size("Near"), size("Wide"), size("None")], [13, 7, 10]);
+  const heard = [];
+  ctx.controller.onSpreadChange((range) => heard.push(range));
+  const high = ctx.elements["battle-pane"].byClass("battle-spread-input")[1];
+  high.value = "40"; // 100 km
+  high.dispatch("input");
+  assert.deepEqual(ctx.squares(), ["Near", "None"]);
+  assert.deepEqual(heard, [{ min: 0, max: 100 }]);
+  ctx.controller.setSpreadRange({ min: 100, max: null });
+  assert.deepEqual(ctx.squares(), ["None", "Wide"]);
+  assert.equal(heard.length, 1);
+});

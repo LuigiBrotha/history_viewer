@@ -12,6 +12,7 @@ import {
 } from "./battle-model.js";
 import { SORT_NAMES, labelText, matchesLabels, sortBattles } from "./battle-labels.js";
 import { placeText } from "./hint-layer.js";
+import { FULL_RANGE, STEPS, inSpreadRange, rangeForSteps, rangeText, stepForKm } from "./spread.js";
 import { trackColor } from "./track-layer.js";
 
 const WIKIPEDIA_PREFIX = "https://en.wikipedia.org/";
@@ -38,7 +39,7 @@ function percent(value) {
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
 export function createBattlePane({
   rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
-  onLabelModeChange, onShowAllChange,
+  onLabelModeChange, onShowAllChange, onSpreadChange,
 }) {
   let rows = [];
   // The step numbers of the Sporen per battle title: [{ number, color }].
@@ -92,6 +93,26 @@ export function createBattlePane({
   sortSelect.value = sort;
   noposRow.appendChild(sortSelect);
 
+  // The Spreiding range: two handles on one track, on a log scale (see spread.js).
+  let spreadRange = FULL_RANGE;
+  const spreadRow = element("div", "battle-spread-row");
+  const spreadText = element("span", "battle-spread-text", rangeText(spreadRange));
+  const spreadTrack = element("div", "battle-spread-track");
+  const spreadInput = (label, value) => {
+    const input = element("input", "battle-spread-input");
+    input.setAttribute("type", "range");
+    input.setAttribute("min", "0");
+    input.setAttribute("max", String(STEPS));
+    input.setAttribute("step", "1");
+    input.setAttribute("aria-label", label);
+    input.value = String(value);
+    return input;
+  };
+  const spreadLow = spreadInput("Kleinste spreiding", 0);
+  const spreadHigh = spreadInput("Grootste spreiding", STEPS);
+  spreadTrack.append(spreadLow, spreadHigh);
+  spreadRow.append(spreadText, spreadTrack);
+
   const axis = element("div", "battle-axis");
   for (const { year, fraction } of yearMarks(AXIS_BOUNDS)) {
     const mark = element("span", "battle-year", String(year));
@@ -141,7 +162,7 @@ export function createBattlePane({
     restoreInput,
   );
 
-  rootEl.replaceChildren(head, noposRow, labelsEl, axis, scroll, tools, source);
+  rootEl.replaceChildren(head, noposRow, spreadRow, labelsEl, axis, scroll, tools, source);
 
   function renderLabels() {
     labelsEl.replaceChildren(...labels.map((label) => {
@@ -254,7 +275,8 @@ export function createBattlePane({
     const all = rows.map((r) => r.battle);
     const matching = new Set(all.filter((battle) => matchesLabels(battle, labels, labelMode)));
     const widened = showAll && labels.length > 0;
-    const battles = widened ? all : all.filter((battle) => matching.has(battle));
+    const inSpread = (battle) => inSpreadRange(placeSummary[battle.title], spreadRange);
+    const battles = (widened ? all : all.filter((battle) => matching.has(battle))).filter(inSpread);
     const unplaced = withoutPosition(battles, mode, selection, search.value);
     noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
     const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
@@ -269,6 +291,27 @@ export function createBattlePane({
   }
 
   search.addEventListener("input", applyFilter);
+
+  function showSpread() {
+    spreadLow.value = String(stepForKm(spreadRange.min));
+    spreadHigh.value = String(spreadRange.max === null ? STEPS : stepForKm(spreadRange.max));
+    spreadText.textContent = rangeText(spreadRange);
+  }
+  // A handle may not pass the other: the one being moved stops there.
+  const onSpreadInput = (moved) => () => {
+    let low = Number(spreadLow.value);
+    let high = Number(spreadHigh.value);
+    if (low > high) {
+      if (moved === spreadLow) low = high;
+      else high = low;
+    }
+    spreadRange = rangeForSteps(low, high);
+    showSpread();
+    applyFilter();
+    onSpreadChange?.(spreadRange);
+  };
+  spreadLow.addEventListener("input", onSpreadInput(spreadLow));
+  spreadHigh.addEventListener("input", onSpreadInput(spreadHigh));
   function showLabelMode() {
     modeButton.textContent = labelMode.toUpperCase();
     modeButton.setAttribute("aria-label", labelMode === "of" ? "Filters: één is genoeg" : "Filters: alle moeten kloppen");
@@ -379,6 +422,13 @@ export function createBattlePane({
     setPlaceSummary(summary) {
       placeSummary = summary ?? {};
       rows.forEach(renderPlaces);
+      applyFilter();
+    },
+    // From the URL or the page: not reported back.
+    setSpreadRange(range) {
+      spreadRange = range;
+      showSpread();
+      applyFilter();
     },
     // The Sporen drawn on the map: [{ battles (in order), color }]; each battle shows its number.
     setTracks(tracks) {

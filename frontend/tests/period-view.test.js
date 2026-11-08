@@ -136,3 +136,19 @@ test("OF and 'Toon alle' are restored, and their changes reach the URL", () => {
   allListener(true);
   assert.deepEqual(writes, [{ labelMode: null }, { showAll: null }, { labelMode: "of" }, { showAll: true }]);
 });
+
+test("the Spreiding range is restored, and its changes reach the URL", () => {
+  const { view, writes, slider, battles } = fakes("?spreiding=20-150");
+  const calls = [];
+  let listener;
+  Object.assign(battles, {
+    setSpreadRange: (range) => calls.push(range),
+    onSpreadChange: (fn) => (listener = fn),
+  });
+  view.restore({ slider, battles });
+  assert.deepEqual(calls, [{ min: 20, max: 150 }]);
+  writes.length = 0;
+  listener({ min: 0, max: null });
+  listener({ min: 0, max: 100 });
+  assert.deepEqual(writes, [{ spread: null }, { spread: "0-100" }]);
+});

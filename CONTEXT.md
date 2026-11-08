@@ -95,3 +95,7 @@ _Avoid_: Tag, chip
 **Plaatshint**:
 Een plaats die in een artikel over een Veldslag genoemd wordt, als driehoekje op de kaart zodra die Veldslag geselecteerd is. Komt uit het plaatsveld van de infobox (eigen kleur) of uit de tekst, gelinkt of niet. Een hint, geen positie: het vierkantje van de Veldslag blijft waar het is tot de gebruiker een Eigen positie bewaart.
 _Avoid_: Locatie, kandidaat-positie
+
+**Spreiding**:
+Hoe ver de Plaatshints van een Veldslag uit elkaar liggen: hun standaardafwijking rond hun midden, in km. Een kleine Spreiding betekent dat de artikelen dicht bij elkaar liggende plaatsen noemen, dus dat de positie preciezer te bepalen is. Een Veldslag zonder Plaatshints heeft geen Spreiding.
+_Avoid_: Spread, afwijking (dat is de afstand van de positie tot het midden)

@@ -1,4 +1,5 @@
 import { readLabels, writeLabels } from "./battle-labels.js";
+import { readRange, writeRange } from "./spread.js";
 import { readView } from "./url-state.js";
 
 // The view of a period page (/status, /heatmap) in its URL: the period, the Veldslag, the
@@ -24,7 +25,12 @@ export function restoreLabels(initial, urlSync, battles) {
     urlSync.update({ showAll: initial.showAll });
     battles.setShowAll?.(initial.showAll);
   }
+  if (initial.spread !== undefined) {
+    urlSync.update({ spread: initial.spread });
+    battles.setSpreadRange?.(readRange(initial.spread));
+  }
   battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
+  battles.onSpreadChange?.((range) => urlSync.update({ spread: writeRange(range) }));
   battles.onLabelModeChange?.((mode) => urlSync.update({ labelMode: mode === "of" ? "of" : null }));
   battles.onShowAllChange?.((on) => urlSync.update({ showAll: on || null }));
   battles.onSortChange?.((sort) => urlSync.update({ sort: sort === "datum" ? null : sort }));
