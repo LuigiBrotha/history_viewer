@@ -93,7 +93,9 @@ def test_ranks_are_dropped_and_units_in_the_commander_field_count_as_units():
     )
 
 
-def test_units_and_people_from_their_own_articles_join_their_battles(tmp_path):
+def test_only_the_infobox_of_the_battle_counts_but_other_names_lead_to_the_article(tmp_path):
+    """The own articles of units and people only give their other names (Rommel → Erwin Rommel):
+    a Veldslag named in the article of a person, but not in its own infobox, does not get them."""
     path, url = setup(tmp_path, [{"title": "Battle A", "start": "1940-01-01"}, {"title": "Battle B", "start": "1940-05-10"}])
     units = tmp_path / "unit_battles.json"
     units.write_text(json.dumps({
@@ -111,5 +113,6 @@ def test_units_and_people_from_their_own_articles_join_their_battles(tmp_path):
     run(path, url, units)
     a, b = json.loads(path.read_text(encoding="utf-8"))
     assert a["commanders"] == ["Erwin Rommel"]
-    assert a["units"] == ["Afrika Korps", "7th Panzer Division (Wehrmacht)"]
-    assert b["commanders"] == ["Erwin Rommel"]
+    assert a["units"] == ["Afrika Korps"]
+    assert b["commanders"] == []
+    assert b["units"] == []

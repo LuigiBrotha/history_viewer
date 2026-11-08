@@ -113,22 +113,12 @@ def _unit_battles(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _add(names, extra):
-    for name in extra:
-        if name not in names:
-            names.append(name)
-
-
 def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles=DEFAULT_UNIT_BATTLES):
     battles_path = Path(battles_path)
     known = _unit_battles(unit_battles)
+    # Only the other names of units and people (Rommel → Erwin Rommel); the Veldslagen their own
+    # articles name do not count, only who the infobox of the Veldslag itself names (user's choice).
     aliases = known.get("aliases", {})
-    # Veldslag → the units and people whose own article names it.
-    from_articles = {"units": {}, "people": {}}
-    for kind in from_articles:
-        for name, titles in known.get(kind, {}).items():
-            for title in titles:
-                from_articles[kind].setdefault(title, []).append(name)
     battles = json.loads(battles_path.read_text(encoding="utf-8"))
     engine = create_engine(database_url)
     with Session(engine) as session:
@@ -156,8 +146,6 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, unit_battles
         units = [aliases.get(n, n) for n in next((units for _, units in found if units), [])]
         battle["commanders"] = list(dict.fromkeys(people))
         battle["units"] = list(dict.fromkeys(units))
-        _add(battle["commanders"], from_articles["people"].get(title, []))
-        _add(battle["units"], from_articles["units"].get(title, []))
     _write_atomically(battles_path, json.dumps(battles, ensure_ascii=False, separators=(",", ":")))
     print(f"{sum(1 for b in battles if b['countries'])} of {len(battles)} Veldslagen have Landen")
 

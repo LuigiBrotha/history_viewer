@@ -32,7 +32,7 @@ Branches: `uboat-shortcuts` (step 2) and `uboat-filters` (steps 3–5, on top of
 
 | Topic | Decision |
 |---|---|
-| Sources | The Veldslag's infobox (`units1..3`, `commander1..3`, `BEFEHLSHABER1/2`, `dowódca1/2`; linked names only) and the `battles` field of the English articles of units and people (`tools/extract_unit_battles.py`), with their redirects as other names. |
+| Sources | Only the Veldslag's own infobox (`units1..3`, `commander1..3`, `BEFEHLSHABER1/2`, `dowódca1/2`; linked names only). The articles of units and people (`tools/extract_unit_battles.py`) only give their other names (redirects); the battles they list do not count (changed 2026-11-08 by the user: Montgomery came into Capture of Hamburg from his own article, not from its infobox). |
 | Clean-up | *(autonomous)* Ranks linked beside a name (Admiral, Major (rank), Kapitänleutnant…) are dropped; units named in a commander field (fronts, army groups, Stavka) count as Eenheden. |
 | Spoor | The Veldslagen of the Eenheid or Bevelhebber with a position, by start date, joined by a line with an arrow per step and numbered; shown whole whatever the date or period. A battle that holds a shorter battle of the same Spoor is left out. Each Spoor has its own colour. |
 
