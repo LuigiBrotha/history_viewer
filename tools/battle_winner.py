@@ -270,9 +270,73 @@ LOCAL_ACTORS = {
         **dict.fromkeys(["aliantów", "alianckie", "alianci"], "allied"),
         **dict.fromkeys(["państw osi", "osi"], "axis"),
     },
+    "ru": {
+        **dict.fromkeys(["германии", "нацистской германии", "третьего рейха", "немецких войск", "немецкой армии",
+                         "немцев", "вермахта", "германских войск", "японии", "японских войск", "японцев", "италии",
+                         "итальянских войск", "финляндии", "финских войск", "финнов", "румынии", "румынских войск",
+                         "венгрии", "венгерских войск", "немецко-финских войск", "германо-финских войск"], "as"),
+        **dict.fromkeys(["сша", "американских войск", "американцев", "великобритании", "британских войск",
+                         "британцев", "англичан", "польши", "польских войск", "поляков", "франции", "французских войск",
+                         "канадских войск", "австралийских войск", "новозеландских войск", "норвегии",
+                         "норвежских войск", "греции", "греческих войск", "югославии", "нидерландов"], "westers"),
+        **dict.fromkeys(["ссср", "советского союза", "советских войск", "советской армии", "красной армии", "ркка",
+                         "советского флота", "мнр", "монголии"], "sovjet"),
+        **dict.fromkeys(["китая", "китайских войск", "партизан", "нoak"], "overig"),
+        **dict.fromkeys(["союзников", "союзных войск", "антигитлеровской коалиции"], "allied"),
+        **dict.fromkeys(["оси", "войск оси", "стран оси", "стран «оси»"], "axis"),
+    },
+    "fr": {
+        **dict.fromkeys(["allemande", "allemand", "allemands", "allemandes", "allemagne", "nazie", "wehrmacht",
+                         "japonaise", "japonais", "japon", "italienne", "italien", "italiens", "italie",
+                         "finlandaise", "finlandais", "finlande", "roumaine", "roumains", "hongroise", "germano-italienne",
+                         "italo-allemande", "germano-finlandaise"], "as"),
+        **dict.fromkeys(["américaine", "américain", "américains", "états-unis", "britannique", "britanniques",
+                         "royaume-uni", "anglaise", "anglais", "française", "français", "france", "france libre",
+                         "polonaise", "polonais", "pologne", "canadienne", "canadiens", "australienne", "australiens",
+                         "néo-zélandaise", "norvégienne", "grecque", "yougoslave", "néerlandaise", "belge",
+                         "franco-britannique", "anglo-américaine", "américano-britannique"], "westers"),
+        **dict.fromkeys(["soviétique", "soviétiques", "urss", "armée rouge", "union soviétique", "russe", "russes"],
+                        "sovjet"),
+        **dict.fromkeys(["chinoise", "chinois", "chine", "partisans", "partisane"], "overig"),
+        **dict.fromkeys(["alliée", "alliés", "alliées", "allié", "alliés de la seconde guerre mondiale"], "allied"),
+        **dict.fromkeys(["axe", "puissances de l'axe"], "axis"),
+    },
+    "it": {
+        **dict.fromkeys(["tedesca", "tedesco", "tedeschi", "tedesche", "germania", "germania nazista", "wehrmacht",
+                         "giapponese", "giapponesi", "giappone", "italiana", "italiano", "italiani", "italiane",
+                         "italia", "italo-tedesca", "italo-tedesche", "germano-italiana", "finlandese", "finlandesi",
+                         "rumena", "rumeni", "ungherese", "ungheresi", "nazista", "nazisti"], "as"),
+        **dict.fromkeys(["statunitense", "statunitensi", "americana", "americano", "americani", "stati uniti",
+                         "britannica", "britannico", "britannici", "inglese", "inglesi", "regno unito", "francese",
+                         "francesi", "francia", "polacca", "polacchi", "polonia", "canadese", "canadesi",
+                         "australiana", "australiani", "neozelandese", "norvegese", "greca", "greci", "jugoslava",
+                         "olandese", "belga", "anglo-americana", "angloamericana"], "westers"),
+        **dict.fromkeys(["sovietica", "sovietico", "sovietici", "sovietiche", "unione sovietica", "urss",
+                         "armata rossa", "russa", "russi"], "sovjet"),
+        **dict.fromkeys(["cinese", "cinesi", "cina", "partigiani", "partigiana", "jugoslavi"], "overig"),
+        **dict.fromkeys(["alleata", "alleati", "alleate", "alleato", "alleati della seconda guerra mondiale"], "allied"),
+        **dict.fromkeys(["asse", "potenze dell'asse"], "axis"),
+    },
+    "ja": {
+        **dict.fromkeys(["日本軍", "日本", "大日本帝国", "日本海軍", "日本陸軍", "ドイツ軍", "ドイツ", "独軍", "イタリア軍",
+                         "イタリア", "伊軍", "フィンランド軍", "ルーマニア軍", "ハンガリー軍"], "as"),
+        **dict.fromkeys(["アメリカ軍", "米軍", "アメリカ", "アメリカ合衆国", "米国", "米海軍", "アメリカ海軍", "イギリス軍",
+                         "英軍", "イギリス", "英国", "オーストラリア軍", "豪軍", "オランダ軍", "フランス軍", "仏軍",
+                         "ニュージーランド軍", "カナダ軍", "ポーランド軍", "英印軍", "米英軍"], "westers"),
+        **dict.fromkeys(["ソ連軍", "ソビエト連邦", "ソビエト軍", "ソ連", "赤軍", "モンゴル軍"], "sovjet"),
+        **dict.fromkeys(["中国軍", "中華民国軍", "国民革命軍", "国民党軍", "八路軍", "中国", "中華民国", "国府軍"], "overig"),
+        **dict.fromkeys(["連合国軍", "連合軍", "連合国"], "allied"),
+        **dict.fromkeys(["枢軸国", "枢軸軍"], "axis"),
+    },
 }
 
 _A = "(?P<actor>ACTORS)"
+# "victoire de l'armée allemande", "des Alliés", "soviétique": what may stand between the word and the side.
+# "vittoria delle forze alleate", "dell'Unione Sovietica".
+_IT_OF = r"(?:(?:degli|dei|delle|della|dello|dell['’]|del|di)\s*)?(?:(?:forze|truppe|armate|flotta|esercito)\s+)?"
+# "победа флота Великобритании": the kind of force before the side.
+_RU_FORCE = r"(?:(?:вмс|флота|войск|армии|сил|авиации)\s+)?"
+_FR_OF = r"(?:(?:des|du|de\s+la|de\s+l['’]|de|d['’])\s*)?(?:(?:armée|forces|troupes|flotte)\s+)?"
 LOCAL_OUTCOMES = {
     "nl": [(rf"{_A}(?:\s+\w+){{0,2}}?\s*overwinning", "win"), (rf"overwinning\s+(?:voor|van)\s+(?:de\s+|het\s+)?{_A}", "win"),
            (rf"{_A}(?:\s+\w+){{0,2}}?\s*nederlaag", "loss"), (rf"nederlaag\s+(?:voor|van)\s+(?:de\s+|het\s+)?{_A}", "loss"),
@@ -282,14 +346,32 @@ LOCAL_OUTCOMES = {
            (rf"(?:abzug|rückzug|kapitulation)\s+(?:der|des)\s+{_A}", "loss")],
     "pl": [(rf"zwycięstwo\s+{_A}", "win"), (rf"{_A}\s+zwycięstwo", "win"),
            (rf"(?:klęska|porażka|kapitulacja|odwrót)\s+{_A}", "loss")],
+    "ru": [(rf"побед\w*\s+{_RU_FORCE}{_A}", "win"),
+           (rf"(?:поражение|разгром|капитуляция|отступление|отход|провал|уничтожение|эвакуация)\s+{_RU_FORCE}{_A}",
+            "loss")],
+    "it": [(rf"vittoria\s+(?:\w+\s+){{0,2}}?{_IT_OF}{_A}", "win"),
+           (rf"successo\s+(?:\w+\s+){{0,2}}?{_IT_OF}{_A}", "win"),
+           (rf"(?:sconfitta|fallimento|ritirata|resa|ripiegamento|evacuazione|capitolazione)\s+(?:\w+\s+){{0,2}}?{_IT_OF}{_A}",
+            "loss")],
+    "ja": [(rf"{_A}の?(?:戦術的|戦略的|決定的|一方的)?な?(?:勝利|大勝)", "win"),
+           (rf"{_A}の?(?:戦術的|戦略的|決定的)?な?(?:敗北|撤退|降伏|全滅|失敗|大敗)", "loss")],
+    "fr": [(rf"victoire\s+(?:\w+\s+){{0,2}}?{_FR_OF}{_A}", "win"),
+           (rf"succès\s+(?:\w+\s+){{0,2}}?{_FR_OF}{_A}", "win"),
+           (rf"(?:défaite|échec|retraite|évacuation|capitulation|reddition|repli)\s+(?:\w+\s+){{0,2}}?{_FR_OF}{_A}", "loss")],
 }
 LOCAL_UNDECIDED = {
     "nl": r"\b(?:onbeslist|onbesliste|patstelling|gelijkspel|wapenstilstand|staakt-het-vuren)\b",
     "de": r"\b(?:unentschieden|patt|waffenstillstand|unentschiedener)\b",
     "pl": r"(?:nierozstrzygnięt|\bremis\b|\brozejm)",
+    "ru": r"(?:ничья|ничейн|неопредел[её]нн|безрезультатн|перемири|прекращени\w*\s+огня)",
+    "it": r"(?:stallo|indecis|pareggio|inconcludent|nessun vincitore|armistizio)",
+    "ja": r"(?:引き分け|痛み分け|決着つかず|膠着|停戦)",
+    "fr": r"(?:indécis|non concluant|statu quo|status quo|match nul|cessez-le-feu)",
 }
 LOCAL_STRATEGIC = {"nl": (("strateg",), ("tactisch",)), "de": (("strategisch",), ("taktisch",)),
-                   "pl": (("strategiczn",), ("taktyczn",))}
+                   "pl": (("strategiczn",), ("taktyczn",)), "ru": (("стратегическ",), ("тактическ",)),
+                   "fr": (("stratégique", "strategique"), ("tactique",)), "it": (("strategic",), ("tattic",)),
+                   "ja": (("戦略",), ("戦術",))}
 
 _LINK_OR_TEMPLATE = re.compile(r"\{\{([^{}]*)\}\}|\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]")
 _FLAG_FILE = re.compile(r"flag[ _]of[ _](?:the[ _])?(.+?)\.(?:svg|png)", re.IGNORECASE)
@@ -303,7 +385,7 @@ def _template_kamp(lang, body):
         code = candidate.split("-")[0].strip()
         if code.upper() in ISO_KAMP and code.isupper():
             return ISO_KAMP[code.upper()]
-        if kamp := LOCAL_COUNTRIES[lang].get(_normal(candidate)):
+        if kamp := LOCAL_COUNTRIES.get(lang, {}).get(_normal(candidate)):
             return kamp
     return None
 
@@ -323,9 +405,13 @@ def other_side_kamp(lang, field):
                 return kamp
             continue
         for name in (target, label):
-            if name and (kamp := LOCAL_COUNTRIES[lang].get(_normal(name)) or COUNTRIES.get(_normal(name))):
+            if name and (kamp := LOCAL_COUNTRIES.get(lang, {}).get(_normal(name)) or COUNTRIES.get(_normal(name))):
                 return kamp
-    return None
+    # Otherwise the first Land the side names, in any of the ways tools.countries knows.
+    from tools.countries import COUNTRY_KAMP, side_countries
+
+    lands = side_countries(lang, field)
+    return COUNTRY_KAMP[lands[0]] if lands else None
 
 
 def _local_actor_kamp(lang, actor, columns):
@@ -339,7 +425,11 @@ def _local_actor_kamp(lang, actor, columns):
 
 def _compiled(lang):
     actors = sorted(LOCAL_ACTORS[lang], key=len, reverse=True)
-    pattern = "|".join(re.escape(a) for a in actors)
+    # A side is a whole word: "оси" is not the start of "осинового".
+    pattern = "(?:" + "|".join(re.escape(a) for a in actors) + ")"
+    # Japanese writes no spaces, so there a side runs straight into the next word.
+    if lang != "ja":
+        pattern += r"(?:(?<=-)|(?![\w-]))"
     return [(re.compile(r.replace("ACTORS", pattern)), kind) for r, kind in LOCAL_OUTCOMES[lang]]
 
 

@@ -13,8 +13,8 @@ def pages():
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
-def test_order_is_dutch_german_polish():
-    assert ORDER == ("nl", "de", "pl")
+def test_order_follows_the_choice_of_the_user():
+    assert ORDER == ("nl", "de", "pl", "ru", "fr", "it", "ja")
     assert set(LANGUAGES) == set(ORDER)
 
 

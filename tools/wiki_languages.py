@@ -40,6 +40,17 @@ class Language:
     date_end: str | None = None
     range_words: tuple = ()
     coord_field: str | None = None
+    # Date templates whose arguments are the date itself ({{date|1|septembre|1939}}), and those
+    # that hold a range of two dates ({{Période|19 juillet 1870|29 janvier 1871}}).
+    date_templates: tuple = ()
+    period_templates: tuple = ()
+    # Words around a date that mean nothing to the parser ("года", "du"); regular expressions.
+    filler: tuple = ()
+    # Decimal degrees in two infobox fields.
+    lat_field: str | None = None
+    lng_field: str | None = None
+    # A rewrite of the cleaned date text into words the English parser reads (Japanese).
+    rewrite: object = None
 
 
 def _infobox(*names):
@@ -103,21 +114,139 @@ LANGUAGES = {
     ),
 }
 
+RU_INFOBOX = ("Вооружённый конфликт",)
+FR_INFOBOX = ("Infobox Conflit militaire",)
+
+LANGUAGES |= {
+    "ru": Language(
+        code="ru",
+        infobox=_infobox(*RU_INFOBOX),
+        candidate=_candidate(*RU_INFOBOX),
+        date="дата", place="место", part_of="часть", result="итог", side1="противник1", side2="противник2",
+        months=_months(("января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа",
+                        "сентября", "октября", "ноября", "декабря"),
+                       ("январь", "февраль", "март", "апрель", "май", "июнь", "июль", "август",
+                        "сентябрь", "октябрь", "ноябрь", "декабрь"),
+                       ("январе", "феврале", "марте", "апреле", "мае", "июне", "июле", "августе",
+                        "сентябре", "октябре", "ноябре", "декабре")),
+        range_words=("по", "и"),
+        date_templates=("год", "дата"),
+        filler=(r"(?<=\d)\s*(?:год(?:а|у|ы|ов)?|гг?\.)(?!\w)", r"(?<!\w)(?:с|в|начало|конец|середина)(?!\w)"),
+    ),
+    "fr": Language(
+        code="fr",
+        infobox=_infobox(*FR_INFOBOX),
+        candidate=_candidate(*FR_INFOBOX),
+        date="date", place="lieu", part_of="guerre", result="issue", side1="combattants1", side2="combattants2",
+        months=_months(("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+                        "septembre", "octobre", "novembre", "décembre"),
+                       ("", "fevrier", "", "", "", "", "", "aout", "", "", "", "decembre")),
+        range_words=("au", "à", "et"),
+        date_templates=("date",),
+        period_templates=("période", "periode"),
+        filler=(r"(?<!\w)(?:du|le|depuis|début|fin)(?!\w)", r"(?<!\w)mi-"),
+        lat_field="latitude", lng_field="longitude",
+    ),
+}
+
+IT_INFOBOX = ("conflitto",)
+
+LANGUAGES |= {
+    "it": Language(
+        code="it",
+        infobox=_infobox(*IT_INFOBOX),
+        candidate=re.compile(rb"\{\{\s*conflitto\s*[|\n]", re.IGNORECASE),
+        date="data", place="luogo", part_of="parte_di", result="esito", side1="schieramento1", side2="schieramento2",
+        months=_months(("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
+                        "settembre", "ottobre", "novembre", "dicembre")),
+        range_words=("al", "e"),
+        filler=(r"(?<!\w)(?:dal|il|inizio|fine|metà)(?!\w)",),
+    ),
+}
+
+_ENGLISH_MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
+                   "October", "November", "December")
+
+
+def japanese_date(text):
+    """"1942年6月5日 － 6月7日" as "5 June 1942 – 7 June"; Shōwa years (昭和17年) as 1942."""
+    month = lambda m: _ENGLISH_MONTHS[int(m) - 1] if 1 <= int(m) <= 12 else m  # noqa: E731
+    text = re.sub(r"昭和\s*(\d+)\s*年", lambda m: f"{1925 + int(m.group(1))}年", text)
+    text = re.sub(r"[（(][^）)]*[）)]", " ", text)
+    text = re.sub(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日",
+                  lambda m: f" {m.group(3)} {month(m.group(2))} {m.group(1)} ", text)
+    text = re.sub(r"(\d{4})\s*年\s*(\d{1,2})\s*月", lambda m: f" {month(m.group(2))} {m.group(1)} ", text)
+    text = re.sub(r"(\d{1,2})\s*月\s*(\d{1,2})\s*日", lambda m: f" {m.group(2)} {month(m.group(1))} ", text)
+    text = re.sub(r"(\d{4})\s*年", r" \1 ", text)
+    text = re.sub(r"\s*(?:[－～〜~ー]|から)\s*", " – ", text)
+    text = re.sub(r"(?:まで|頃|ごろ|上旬|中旬|下旬|未明|早朝|夜)", " ", text)
+    return re.sub(r"\s+", " ", text).strip(" –")
+
+
+JA_INFOBOX = ("Battlebox", "Infobox 軍事衝突", "Infobox military conflict")
+
+LANGUAGES |= {
+    "ja": Language(
+        code="ja",
+        infobox=_infobox(*JA_INFOBOX),
+        candidate=_candidate(*JA_INFOBOX),
+        date="date", place="place", part_of="conflict", result="result", side1="combatant1", side2="combatant2",
+        rewrite=japanese_date,
+    ),
+}
+
 # The order in which other languages are asked for a title, a position or a Winnaar.
-ORDER = ("nl", "de", "pl")
+ORDER = ("nl", "de", "pl", "ru", "fr", "it", "ja")
 
 
 def wiki_url(lang, title):
     return f"https://{lang}.wikipedia.org/wiki/" + quote(title.replace(" ", "_"), safe="_(),:'!*;@$&=+~-./")
 
 
+_TEMPLATE = re.compile(r"\{\{\s*([^{}|]+?)\s*(?:\|([^{}]*))?\}\}")
+_ORDINAL = re.compile(r"(?<=\d)(?:er|re|e|º|°|ª)(?!\w)")
+
+
+def prepare_date(lang, raw):
+    """The date field with this language's date templates written out as plain text, so
+    clean_date_text keeps them: {{date|1|septembre|1939-}} becomes "1 septembre 1939"."""
+    language = LANGUAGES[lang]
+
+    def write_out(match):
+        name = match.group(1).strip().lower()
+        if not (match.group(2) or "").strip() and re.fullmatch(r"\d{1,2}(?:er)?\s+\w+", name):
+            return name
+        # "5 juin- 1944-": a dash before a space or at the end marks an open range, not a part.
+        arguments = [re.sub(r"-(?=\s|$)", "", a).strip() for a in (match.group(2) or "").split("|") if "=" not in a]
+        # Only the parts of a date: an argument such as "guerre mondiale" is a topic.
+        arguments = [a for a in arguments if a and (re.search(r"\d", a) or a.lower() in language.months)]
+        if name in language.period_templates and len(arguments) >= 2:
+            return f"{arguments[0]} – {arguments[1]}"
+        if name.rstrip("-+") in language.date_templates:
+            return " ".join(arguments[:3])
+        return match.group(0)
+
+    if not (language.date_templates or language.period_templates):
+        return raw
+    previous = None
+    while previous != raw:
+        previous = raw
+        raw = _TEMPLATE.sub(write_out, raw)
+    return raw
+
+
 def english_date(lang, text):
     """A cleaned date text with local month names and range words in English, so the English
     date parser can read it. German day numbers lose their dot: `5. Juli` becomes `5 July`."""
     language = LANGUAGES[lang]
+    if language.rewrite:
+        return language.rewrite(text)
     names = sorted(language.months, key=len, reverse=True)
     pattern = re.compile(r"(?<!\w)(" + "|".join(re.escape(n) for n in names) + r")(?!\w)", re.IGNORECASE)
     text = pattern.sub(lambda m: language.months[m.group(1).lower()], text)
+    text = _ORDINAL.sub("", text)
+    for filler in language.filler:
+        text = re.sub(filler, " ", text, flags=re.IGNORECASE)
     text = re.sub(r"\b(\d{1,2})\.(?=\s|$|[–—-])", r"\1", text)
     for word in language.range_words:
         text = re.sub(rf"\s+{word}\s+", " – ", text)
@@ -203,6 +332,14 @@ def other_coordinates(lang, text):
         raw = fields.get(LANGUAGES["pl"].coord_field, "")
         tokens = re.findall(r"\d+(?:[.,]\d+)?|[NSEW]\b", raw)
         position = tokens and _position([t.replace(",", ".") for t in tokens])
+    language = LANGUAGES.get(lang)
+    if not position and language and language.lat_field:
+        fields = find_infobox(text, language.infobox) or {}
+        try:
+            position = checked(float(fields.get(language.lat_field, "").replace(",", ".")),
+                               float(fields.get(language.lng_field, "").replace(",", ".")))
+        except ValueError:
+            position = None
     if not position:
         position = _degree_fields(text)
     if position:
@@ -236,7 +373,7 @@ def extract_other_battle(lang, title, text):
     fields = find_infobox(text, language.infobox)
     if fields is None:
         return None, "no infobox"
-    raw = fields.get(language.date, "")
+    raw = prepare_date(lang, fields.get(language.date, ""))
     if language.date_end and fields.get(language.date_end, "").strip():
         raw = f"{raw} – {fields[language.date_end]}"
     try:
