@@ -45,16 +45,13 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
 
   const winner = element("p", "article-winner");
   winner.hidden = true;
-  // How the chosen position lies among the Plaatshints; filled in once they have arrived.
-  const places = element("p", "article-places");
-  places.hidden = true;
   const status = element("p", "article-status");
   status.hidden = true;
   const body = element("div", "article-body");
   const source = element("p", "article-source");
   source.hidden = true;
   const scroll = element("div", "article-scroll");
-  scroll.append(winner, places, status, body, source);
+  scroll.append(winner, status, body, source);
 
   rootEl.replaceChildren(head, scroll);
 
@@ -98,7 +95,6 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
       sourceText = SOURCES[lang] ?? SOURCES.en;
       winner.textContent = winnerText(battle.winner);
       winner.hidden = false;
-      places.hidden = true;
       body.replaceChildren();
       source.hidden = true;
       setStatus(LOADING);
@@ -121,12 +117,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
       render(article.html);
       showSource(article.url);
     },
-    setPlaceStats(text) {
-      places.textContent = text;
-      places.hidden = !text;
-    },
     clear() {
-      places.hidden = true;
       latest += 1;
       title.textContent = "";
       winner.hidden = true;

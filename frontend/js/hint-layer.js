@@ -22,36 +22,15 @@ function distanceKm(a, b) {
   return 2 * EARTH_KM * Math.asin(Math.sqrt(Math.min(1, h)));
 }
 
-// The middle of points on the globe: the mean of their unit vectors.
-function middle(points) {
-  let x = 0;
-  let y = 0;
-  let z = 0;
-  for (const { lat, lng } of points) {
-    x += Math.cos(toRad(lat)) * Math.cos(toRad(lng));
-    y += Math.cos(toRad(lat)) * Math.sin(toRad(lng));
-    z += Math.sin(toRad(lat));
-  }
-  return { lat: (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI, lng: (Math.atan2(y, x) * 180) / Math.PI };
-}
-
-// How the chosen position of a battle relates to the places its articles name: offsetKm, the
-// distance from the middle of the hints (null without a position), and spreadKm, the standard
-// deviation of the hints around that middle. Null without hints.
-export function placeStats(battle, hints) {
-  if (!hints?.length) return null;
-  const centre = middle(hints);
-  const spreadKm = Math.sqrt(hints.reduce((sum, h) => sum + distanceKm(h, centre) ** 2, 0) / hints.length);
-  const placed = battle.lat != null && battle.lng != null;
-  return { count: hints.length, offsetKm: placed ? distanceKm(battle, centre) : null, spreadKm };
-}
-
-export function placeStatsText(stats) {
-  if (!stats) return "";
-  const spread = `spreiding ${Math.round(stats.spreadKm)} km`;
-  const places = `${stats.count} Plaatshint${stats.count === 1 ? "" : "s"}`;
-  if (stats.offsetKm === null) return `${places} · ${spread}`;
-  return `Positie ${Math.round(stats.offsetKm)} km van het midden van ${places} · ${spread}`;
+// How a battle's position lies among the places its articles name, from the summary of its
+// Plaatshints ({ count, lat, lng, spread_km }: their middle and spread): "42 km van 9 plaatsen ·
+// spreiding 120 km", or without a position only the count and spread; "" without hints.
+export function placeText(battle, summary) {
+  if (!summary) return "";
+  const places = `${summary.count} ${summary.count === 1 ? "plaats" : "plaatsen"}`;
+  const spread = `spreiding ${Math.round(summary.spread_km)} km`;
+  if (battle.lat == null || battle.lng == null) return `${places} · ${spread}`;
+  return `${Math.round(distanceKm(battle, summary))} km van ${places} · ${spread}`;
 }
 
 function hintIcon(hint) {

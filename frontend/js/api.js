@@ -185,6 +185,15 @@ export async function fetchHints(title) {
   return (await response.json()).hints;
 }
 
+// Per battle with Plaatshints: { count, lat, lng, spread_km } (their middle and spread).
+export async function fetchHintSummary() {
+  const response = await fetch("api/battles/hint-summary", { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch the plaatshints summary: ${response.status}`);
+  }
+  return response.json();
+}
+
 // Places come from Nominatim through the backend. The caller's signal cancels a stale lookup.
 export async function fetchPlaces(query, { signal } = {}) {
   const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);

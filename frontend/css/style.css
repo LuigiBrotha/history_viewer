@@ -2485,10 +2485,7 @@ select {
   pointer-events: none;
 }
 
-/* How the chosen position lies among the Plaatshints, under the Winnaar. */
-.article-places {
-  margin: 0 0 8px;
+/* In each row: how far the position lies from the places its articles name. */
+.battle-row-places {
   color: var(--ink-soft);
-  font-family: var(--mono);
-  font-size: 0.8em;
 }

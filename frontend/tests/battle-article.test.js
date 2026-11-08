@@ -137,21 +137,3 @@ test("an article in another language is loaded in that language and labelled", a
   assert.deepEqual(asked, [["Slag om K", "nl"], ["Battle of Kursk", "en"]]);
   assert.equal(rootEl.byClass("article-lang")[0].hidden, true);
 });
-
-test("the Plaatshints line shows what it is given, hides when empty and on clear or a new battle", async () => {
-  const { rootEl, pane } = setup(async () => null);
-  const line = () => rootEl.byClass("article-places")[0];
-  await pane.show({ title: "Battle of Kursk", url: "https://en.wikipedia.org/wiki/Battle_of_Kursk" });
-  assert.equal(line().hidden, true);
-  pane.setPlaceStats("Positie 12 km van het midden van 9 Plaatshints · spreiding 80 km");
-  assert.equal(line().textContent, "Positie 12 km van het midden van 9 Plaatshints · spreiding 80 km");
-  assert.equal(line().hidden, false);
-  pane.setPlaceStats("");
-  assert.equal(line().hidden, true);
-  pane.setPlaceStats("x");
-  await pane.show({ title: "Midway", url: "https://en.wikipedia.org/wiki/Midway" });
-  assert.equal(line().hidden, true);
-  pane.setPlaceStats("x");
-  pane.clear();
-  assert.equal(line().hidden, true);
-});

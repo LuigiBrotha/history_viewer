@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }), loadHints = async () => [] } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }), loadHints = async () => [], loadHintSummary = async () => ({}) } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -118,6 +118,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     clearPosition,
     download,
     loadHints,
+    loadHintSummary,
     loadArticle: async (title) => {
       articles.push(title);
       return loadArticle(title);
@@ -811,8 +812,22 @@ test("a selected battle shows its Plaatshints; only one without a position zooms
   ctx.controller.selectBattle("Placed");
   await ctx.ready();
   assert.deepEqual(hintMarkers().map((m) => m.options.title), ["Gazala"]);
-  const places = ctx.elements["article-pane"].byClass("article-places")[0];
-  assert.match(places.textContent, /^Positie \d+ km van het midden van 1 Plaatshint · spreiding 0 km$/);
-  assert.equal(places.hidden, false);
+
   assert.equal(ctx.map.fits.length, 1);
+});
+
+
+test("each row tells how far its position lies from the middle of its Plaatshints, also after saving one", async () => {
+  const ctx = setup({
+    mode: "period",
+    load: async () => [battle({ title: "Placed", start: "1942-05-26", end: "1942-06-11", lat: 0, lng: 1 }),
+      battle({ title: "Unplaced", start: "1942-05-26", end: "1942-06-11", lat: null, lng: null })],
+    loadHintSummary: async () => ({ Placed: { count: 3, lat: 0, lng: 0, spread_km: 50 }, Unplaced: { count: 1, lat: 0, lng: 0, spread_km: 0 } }),
+  });
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  await ctx.ready();
+  const text = (title) => ctx.rows().find((r) => ctx.titleOf(r) === title).byClass("battle-row-places")[0]?.textContent;
+  assert.equal(text("Placed"), "111 km van 3 plaatsen · spreiding 50 km");
+  assert.equal(text("Unplaced"), "1 plaats · spreiding 0 km");
 });

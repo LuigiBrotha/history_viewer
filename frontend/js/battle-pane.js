@@ -11,6 +11,7 @@ import {
   yearMarks,
 } from "./battle-model.js";
 import { SORT_NAMES, labelText, matchesLabels, sortBattles } from "./battle-labels.js";
+import { placeText } from "./hint-layer.js";
 import { trackColor } from "./track-layer.js";
 
 const WIKIPEDIA_PREFIX = "https://en.wikipedia.org/";
@@ -42,6 +43,8 @@ export function createBattlePane({
   let rows = [];
   // The step numbers of the Sporen per battle title: [{ number, color }].
   let steps = new Map();
+  // Per battle title, the middle and spread of its Plaatshints (see placeText).
+  let placeSummary = {};
   // The rows in the chosen sort order; rows itself stays in date order.
   let order = [];
   let labels = [];
@@ -178,6 +181,7 @@ export function createBattlePane({
       meta.appendChild(element("span", "battle-lang", battle.lang.toUpperCase()));
     }
     meta.append(element("span", "battle-row-dates", battle.date_text), element("span", "battle-row-duration", durationText(battle)));
+    const placesEl = element("span", "battle-row-places");
     if (battle.own) {
       meta.appendChild(element("span", "battle-ownpos", "eigen positie"));
     } else if (battle.lat == null || battle.lng == null) {
@@ -198,9 +202,17 @@ export function createBattlePane({
       link.setAttribute("rel", "noopener noreferrer");
       row.appendChild(link);
     }
-    const entry = { battle, el: row, stepsEl, active: false, dimmed: false };
+    meta.appendChild(placesEl);
+    const entry = { battle, el: row, stepsEl, placesEl, active: false, dimmed: false };
     renderSteps(entry);
+    renderPlaces(entry);
     return entry;
+  }
+
+  function renderPlaces({ battle, placesEl }) {
+    const text = placeText(battle, placeSummary[battle.title]);
+    placesEl.textContent = text;
+    placesEl.hidden = !text;
   }
 
   function renderSteps({ battle, stepsEl }) {
@@ -364,6 +376,10 @@ export function createBattlePane({
     },
     // The listed battles, in the order shown.
     visibleBattles: () => order.filter((r) => !r.el.hidden).map((r) => r.battle),
+    setPlaceSummary(summary) {
+      placeSummary = summary ?? {};
+      rows.forEach(renderPlaces);
+    },
     // The Sporen drawn on the map: [{ battles (in order), color }]; each battle shows its number.
     setTracks(tracks) {
       steps = new Map();
