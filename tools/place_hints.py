@@ -203,7 +203,10 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
         for lang, title, battle, wikitext in session.execute(select(
                 ForeignBattleArticle.lang, ForeignBattleArticle.title, ForeignBattleArticle.battle,
                 ForeignBattleArticle.wikitext)).all():
-            foreign.setdefault(battle or title, []).append((lang, wikitext))
+            # An article belongs to the Veldslag the merge gave it, or, not merged yet, to the
+            # Veldslag of its own language and title; languages this code does not know wait.
+            if lang in LANGUAGES:
+                foreign.setdefault(battle or title, []).append((lang, wikitext, battle is not None))
     engine.dispose()
     unplaced = [b for b in battles if b.get("lat") is None or b.get("lng") is None]
     links = {}
@@ -211,7 +214,8 @@ def run(battles_path=DEFAULT_OUTPUT, database_url=DEFAULT_DATABASE, english_dir=
         sources = []
         if battle.get("lang", "en") == "en" and battle["title"] in english:
             sources.append(("en", english[battle["title"]]))
-        sources += foreign.get(battle["title"], [])
+        sources += [(lang, text) for lang, text, owned in foreign.get(battle["title"], [])
+                    if owned or battle.get("lang") == lang]
         links[battle["title"]] = [(lang, title, kind) for lang, text in sources
                                   for title, kind in linked_places(lang, text)]
     positions = {}
