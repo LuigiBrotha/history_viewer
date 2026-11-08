@@ -1,5 +1,5 @@
 import { fetchArticle } from "./api.js";
-import { winnerText } from "./battle-model.js";
+import { displayTitle, titleNote, winnerText } from "./battle-model.js";
 
 const LOADING = "Laden…";
 const NO_ARTICLE = "Geen artikel beschikbaar voor deze veldslag.";
@@ -89,7 +89,8 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     async show(battle) {
       const ticket = ++latest;
       const lang = battle.lang ?? "en";
-      title.textContent = battle.title;
+      title.textContent = displayTitle(battle);
+      title.setAttribute("title", titleNote(battle) ?? "");
       langLabel.textContent = lang.toUpperCase();
       langLabel.hidden = lang === "en";
       sourceText = SOURCES[lang] ?? SOURCES.en;

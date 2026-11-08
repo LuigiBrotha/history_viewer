@@ -551,3 +551,10 @@ test("the Spreiding slider narrows the list to battles with a spread in range, k
   assert.equal(low.value, "40");
   assert.equal(changes.length, 1);
 });
+
+test("a row shows the English title, with the original in its tooltip", () => {
+  const { rootEl } = setup("date", [battle({ title: "Ржевская битва", lang: "ru", title_en: "Battles of Rzhev", title_source: "wikidata" })]);
+  const name = rootEl.byClass("battle-row-title")[0];
+  assert.equal(name.textContent, "Battles of Rzhev");
+  assert.equal(name.getAttribute("title"), "Ржевская битва");
+});

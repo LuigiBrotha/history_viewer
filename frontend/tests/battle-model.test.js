@@ -255,3 +255,22 @@ test("the legend shows the four Kampen, undecided and unknown", () => {
     ],
   );
 });
+
+test("displayTitle shows the English title of a Veldslag of another language, titleNote the original", async () => {
+  const { displayTitle, titleNote } = await import("../js/battle-model.js");
+  const english = { title: "Battle of Kursk" };
+  const found = { title: "Сталинградская битва", lang: "ru", title_en: "Battle of Stalingrad", title_source: "wikipedia" };
+  const made = { title: "Bój pod Pęcicami", lang: "pl", title_en: "Battle of Pęcice", title_source: "vertaald" };
+  assert.equal(displayTitle(english), "Battle of Kursk");
+  assert.equal(displayTitle(found), "Battle of Stalingrad");
+  assert.equal(titleNote(english), null);
+  assert.equal(titleNote(found), "Сталинградская битва");
+  assert.equal(titleNote(made), "Bój pod Pęcicami (vertaald)");
+});
+
+test("filterBattles also finds a Veldslag by its English title", async () => {
+  const { filterBattles } = await import("../js/battle-model.js");
+  const battles = [{ title: "Ржевская битва", title_en: "Battles of Rzhev" }];
+  assert.equal(filterBattles(battles, "rzhev").length, 1);
+  assert.equal(filterBattles(battles, "Ржев").length, 1);
+});

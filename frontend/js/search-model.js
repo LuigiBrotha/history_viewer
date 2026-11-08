@@ -27,7 +27,11 @@ export const matchShips = (ships, q) =>
   pick(ships, q, ["name"], (ship) => ({ label: ship.name, sub: ship.boat_number ?? null, item: ship }), "ship_external_id");
 
 export const matchBattles = (battles, q) =>
-  pick(battles, q, ["title", "place"], (battle) => ({ label: battle.title, sub: battle.place ?? null, item: battle }));
+  pick(battles, q, ["title", "title_en", "place"], (battle) => ({
+    label: battle.title_en || battle.title,
+    sub: [battle.title_en ? battle.title : null, battle.place].filter(Boolean).join(" · ") || null,
+    item: battle,
+  }));
 
 const ROUND = 1e5;
 const DECIMAL_PAIR = /^([-+]?\d+(?:\.\d+)?)\s*(?:,\s*|\s+)([-+]?\d+(?:\.\d+)?)$/;

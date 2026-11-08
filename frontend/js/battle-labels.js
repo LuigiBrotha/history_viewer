@@ -1,4 +1,4 @@
-import { durationDays } from "./battle-model.js";
+import { displayTitle, durationDays } from "./battle-model.js";
 
 // Labels: filters on the Veldslagen chosen through the search field, such as "Land: Polen".
 // A battle must match every label. Pure: the pane and the pages decide what to show.
@@ -113,8 +113,8 @@ export function searchLabels(battles, query) {
 }
 
 const SORTS = {
-  datum: (a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : a.title.localeCompare(b.title, "nl")),
-  naam: (a, b) => a.title.localeCompare(b.title, "nl", { sensitivity: "base" }),
+  datum: (a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : displayTitle(a).localeCompare(displayTitle(b), "nl")),
+  naam: (a, b) => displayTitle(a).localeCompare(displayTitle(b), "nl", { sensitivity: "base" }),
   duur: (a, b) => durationDays(b) - durationDays(a) || SORTS.datum(a, b),
 };
 export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur" };

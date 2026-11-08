@@ -76,7 +76,7 @@ export function createTrackLayer(map) {
           const number = document.createElement("span");
           number.textContent = String(index + 1);
           number.style.background = color;
-          number.title = battle.title;
+          number.title = battle.title_en || battle.title;
           add(L.marker([battle.lat, battle.lng], {
             icon: icon("track-number", NUMBER_SIZE, number, [NUMBER_ANCHOR, NUMBER_ANCHOR]),
             interactive: false, keyboard: false, zIndexOffset: ABOVE_SQUARES,

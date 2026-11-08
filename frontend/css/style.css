@@ -2570,3 +2570,9 @@ select {
 .battle-spread-input:focus-visible::-moz-range-thumb {
   outline: 2px solid var(--accent);
 }
+
+/* The original title under an English one in a map tooltip. */
+.battle-tooltip-original {
+  color: var(--ink-soft);
+  font-style: italic;
+}

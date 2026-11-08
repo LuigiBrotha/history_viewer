@@ -1,4 +1,4 @@
-import { durationText, labelsToShow, squaresToDraw, winnerClasses, wrapLng } from "./battle-model.js";
+import { displayTitle, durationText, labelsToShow, squaresToDraw, titleNote, winnerClasses, wrapLng } from "./battle-model.js";
 
 const SHOW_ZOOM = 8;
 
@@ -16,7 +16,9 @@ function text(tag, className, content) {
 function tooltipContent(battle) {
   const root = document.createElement("div");
   root.className = "battle-tooltip";
-  root.appendChild(text("div", "battle-tooltip-name", battle.title));
+  root.appendChild(text("div", "battle-tooltip-name", displayTitle(battle)));
+  const note = titleNote(battle);
+  if (note) root.appendChild(text("div", "battle-tooltip-original", note));
   root.appendChild(text("div", "battle-tooltip-dates", battle.date_text));
   root.appendChild(text("div", "battle-tooltip-duration", durationText(battle)));
   return root;
@@ -40,7 +42,7 @@ function labelIcon(battle) {
     className: "battle-label",
     iconSize: [0, 0],
     iconAnchor: [-LABEL_OFFSET_PX, 0],
-    html: text("span", "battle-label-text", battle.title),
+    html: text("span", "battle-label-text", displayTitle(battle)),
   });
 }
 

@@ -4,9 +4,11 @@ import {
   bandPosition,
   barPosition,
   datePosition,
+  displayTitle,
   durationText,
   filterBattles,
   overlaps,
+  titleNote,
   withoutPosition,
   yearMarks,
 } from "./battle-model.js";
@@ -193,7 +195,9 @@ export function createBattlePane({
     const row = element("li", "battle-row");
     row.setAttribute("data-index", String(index));
 
-    const name = element("button", "battle-row-title", battle.title);
+    const name = element("button", "battle-row-title", displayTitle(battle));
+    const note = titleNote(battle);
+    if (note) name.setAttribute("title", note);
     name.setAttribute("type", "button");
     const meta = element("div", "battle-row-meta");
     const stepsEl = element("span", "battle-row-steps");

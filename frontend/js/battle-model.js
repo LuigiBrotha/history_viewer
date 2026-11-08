@@ -40,13 +40,24 @@ export function durationText(battle) {
   return battle.precision === "month" ? `ongeveer ${text}` : text;
 }
 
+// The title to show: the English one a Veldslag of another language was given, else its own.
+export function displayTitle(battle) {
+  return battle.title_en || battle.title;
+}
+
+// The original title beside an English one, marked when a model translated it; null otherwise.
+export function titleNote(battle) {
+  if (!battle.title_en) return null;
+  return battle.title_source === "vertaald" ? `${battle.title} (vertaald)` : battle.title;
+}
+
 export function filterBattles(battles, query) {
   const needle = query.trim().toLowerCase();
   if (needle === "") {
     return battles;
   }
   return battles.filter((battle) =>
-    [battle.title, battle.place, battle.part_of].some((field) => field != null && field.toLowerCase().includes(needle)),
+    [battle.title, battle.title_en, battle.place, battle.part_of].some((field) => field != null && field.toLowerCase().includes(needle)),
   );
 }
 

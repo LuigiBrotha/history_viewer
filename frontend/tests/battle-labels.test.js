@@ -126,3 +126,9 @@ test("matchesLabels with OF needs only one label to match; without labels everyt
   assert.equal(matchesLabels(battle, [japan], "of"), false);
   assert.equal(matchesLabels(battle, [], "of"), true);
 });
+
+test("sorting by name uses the English title", () => {
+  const sorted = sortBattles([{ title: "Abwehrschlacht", title_en: "Zhitomir defence", start: "1942-01-08" },
+    { title: "Battle of Kursk", start: "1943-07-05" }], "naam");
+  assert.deepEqual(sorted.map((b) => b.title), ["Battle of Kursk", "Abwehrschlacht"]);
+});
