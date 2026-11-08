@@ -2,6 +2,7 @@ import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from ".
 import { activeOn, applyPositions, overlaps } from "./battle-model.js";
 import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
+import { createHintLayer } from "./hint-layer.js";
 import { createTrackLayer, trackColor } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
@@ -141,6 +142,7 @@ export function initBattles({
   });
 
   function closeArticle() {
+    hintLayer.clear();
     articleSplit.close();
     articlePane.clear();
     selected = null;
@@ -172,6 +174,20 @@ export function initBattles({
   });
 
   const trackLayer = createTrackLayer(map);
+
+  // Plaatshints of the selected battle while it has no position; a click while placing that
+  // battle moves its square to the hint.
+  const hintLayer = createHintLayer(map, {
+    onPick: (hint) => {
+      if (editing && editing.battle.title === selected) editHandle?.moveTo(hint.lat, hint.lng);
+    },
+  });
+
+  function showHints(battle) {
+    const unplaced = battle && (battle.lat == null || battle.lng == null);
+    if (unplaced && battle.hints?.length) hintLayer.show(battle.hints);
+    else hintLayer.clear();
+  }
 
   // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.
   function drawTracks() {
@@ -251,6 +267,7 @@ export function initBattles({
     drawSquares();
     drawTracks();
     layer.setSelected(updated);
+    showHints(updated);
     pane.reveal(updated);
   }
 
@@ -379,6 +396,7 @@ export function initBattles({
     split.open();
     layer.setSelected(battle);
     layer.showBattle(battle);
+    showHints(battle);
     pane.reveal(battle);
     articleSplit.open();
     articlePane.show(battle);

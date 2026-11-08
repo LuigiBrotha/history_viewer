@@ -84,6 +84,8 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     getBounds: () => ({ getSouth: () => -90, getWest: () => -180, getNorth: () => 90, getEast: () => 180 }),
     panTo: (latlng) => pans.push(latlng),
     setView: (latlng) => pans.push(latlng),
+    fits: [],
+    fitBounds(bounds) { this.fits.push(bounds); },
   };
   const elements = {};
   for (const id of ["battle-split", "map-side", "battle-pane", "battle-divider", "battle-toggle", "article-split", "article-pane", "article-divider"]) {
@@ -778,4 +780,30 @@ test("a back-up holds the Eigen posities, and restoring one asks first and saves
   assert.deepEqual(asked, ["1 Eigen positie terugzetten? (1 is al gelijk)"]);
   assert.deepEqual(ctx.squares().includes("Atlantic"), true);
   await assert.rejects(ctx.controller.restorePositions("not json", () => true));
+});
+
+
+test("selecting a battle without a position shows its plaatshints, a click while placing moves the square there", async () => {
+  const hints = [{ name: "Bir Hakeim", lat: 31.6, lng: 23.5, kind: "infobox" }, { name: "Tobruk", lat: 32.1, lng: 23.9, kind: "artikel" }];
+  const ctx = setup({
+    mode: "period",
+    load: async () => [
+      battle({ title: "Unplaced", start: "1942-05-26", end: "1942-06-11", lat: null, lng: null, hints }),
+      battle({ title: "Placed", start: "1942-05-26", end: "1942-06-11", lat: 30, lng: 20 }),
+    ],
+  });
+  await ctx.ready();
+  ctx.controller.setPeriod(null, null);
+  ctx.controller.setEditable(true);
+  await ctx.ready();
+  const hintMarkers = () => [...ctx.layers].filter((l) => String(l.options.icon?.className).startsWith("place-hint"));
+  ctx.controller.selectBattle("Unplaced");
+  assert.deepEqual(hintMarkers().map((m) => m.options.title), ["Bir Hakeim", "Tobruk"]);
+  assert.equal(ctx.map.fits.length, 1);
+  ctx.controller.editSelected();
+  hintMarkers()[1].events.click();
+  const square = [...ctx.layers].find((l) => l.options.battleTitle === "Unplaced");
+  assert.deepEqual(square.latlng, [32.1, 23.9]);
+  ctx.controller.selectBattle("Placed");
+  assert.equal(hintMarkers().length, 0);
 });

@@ -2435,3 +2435,49 @@ select {
   border: 1px solid var(--ink);
   box-shadow: none;
 }
+
+/* Plaatshints of a selected Veldslag without a position: a ring with the place's name, in the
+   accent colour for the infobox's places and in ink for the places linked in the text. */
+.place-hint {
+  --hint: var(--ink-soft);
+}
+
+.place-hint.infobox {
+  --hint: var(--accent);
+}
+
+.place-hint > span {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.place-hint-ring {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 2px solid var(--hint);
+  border-radius: 50%;
+  background: rgba(251, 248, 242, 0.6);
+  cursor: pointer;
+}
+
+.place-hint.infobox .place-hint-ring {
+  border-width: 3px;
+}
+
+.place-hint-name {
+  position: absolute;
+  top: 50%;
+  left: 18px;
+  transform: translateY(-50%);
+  color: var(--hint);
+  font-family: var(--serif);
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 0 2px var(--paper-light), 0 0 2px var(--paper-light), 0 0 3px var(--paper-light);
+  pointer-events: none;
+}
