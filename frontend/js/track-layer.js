@@ -55,12 +55,12 @@ export function createTrackLayer(map) {
     drawn.push(layer);
   };
   return {
-    // tracks: [{ battles (in order, with positions), color }]
+    // tracks: [{ battles (in order, with positions), color, noLine (a band shows the way instead) }]
     setTracks(tracks) {
       drawn.forEach((layer) => group.removeLayer(layer));
       drawn = [];
-      for (const { battles, color } of tracks) {
-        if (battles.length > 1) {
+      for (const { battles, color, noLine } of tracks) {
+        if (battles.length > 1 && !noLine) {
           add(L.polyline(battles.map((b) => [b.lat, b.lng]), { color, weight: 3, opacity: 0.9, interactive: false }));
         }
         for (const { mid, angle } of trackSegments(battles)) {

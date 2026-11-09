@@ -303,14 +303,16 @@ export function initBattles({
   // Each Eenheid or Bevelhebber label draws its Spoor in a colour of its own.
   function drawTracks() {
     const tracked = labels.filter(isTrackLabel);
+    const hasBand = (label) => label.kind === "bevelhebber" && Boolean(manpowerTable[label.value]);
     const tracks = tracked.map((label) => ({
       battles: track(battles, label),
       color: trackColor(labels, label),
+      noLine: hasBand(label),
     }));
     trackLayer.setTracks(tracks);
     pane.setTracks(tracks);
     manpowerLayer.setBands(tracked
-      .filter((label) => label.kind === "bevelhebber" && manpowerTable[label.value])
+      .filter(hasBand)
       .map((label) => ({
         stops: bandStops(track(battles, label), manpowerTable[label.value]),
         color: trackColor(labels, label),

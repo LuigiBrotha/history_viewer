@@ -2,6 +2,7 @@
 
 export const DEFAULT_MAX_WIDTH = 48;
 export const MIN_BAND_WIDTH = 8;
+const MIN_DRAWN_WIDTH = 4;
 export const MAX_BAND_WIDTH = 96;
 
 // The width in px from a number or numeric string: a whole number from 8 to 96, else undefined.
@@ -54,6 +55,11 @@ export function bandSteps(stops) {
 
 export function highestManpower(stops) {
   return stops.reduce((max, s) => Math.max(max, s.manpower ? s.manpower.total : 0), 0);
+}
+
+// The width a band is drawn at: its share of the full width, but never so thin that it is lost.
+export function bandWidthOf(manpower, highest, maxPx) {
+  return Math.max(MIN_DRAWN_WIDTH, widthOf(manpower, highest, maxPx));
 }
 
 export function widthOf(manpower, highest, maxPx) {

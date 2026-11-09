@@ -136,15 +136,25 @@ test("a step without figures is dashed and a battle without a band has no wedge"
   layer.setBands([{ stops: [stop("A", 0, 50, 10), stop("B", 10, null, 5), stop("C", 20, 100)], color: "red" }]);
   const lines = of(added, "polyline");
   assert.equal(lines.length, 2);
-  assert.equal(lines[0].options.dashArray, "2 8");
-  assert.equal(lines[0].options.weight, 8);
-  assert.equal(lines[0].options.lineCap, "butt");
+  assert.equal(lines[0].options.dashArray, "1 7");
+  assert.equal(lines[0].options.weight, 2);
+  assert.equal(lines[0].options.lineCap, "round");
+  // Above the half-transparent band pane, so the fine dots stay crisp.
+  assert.equal(lines[0].options.pane, "manpower-losses");
   assert.equal(lines[0].options.interactive, false);
   // A and C have no solid step: each is a short rectangle across the line.
   assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower" && p.latlngs.length === 4).length, 2);
   // Only A has a figure and a loss; B has a loss but no band.
   assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower-losses").length, 1);
   assert.equal(of(added, "circle").length, 0);
+});
+
+test("no part of the band is thinner than 4 px, however small its share", () => {
+  const { added, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 1), stop("B", 10, 1000000)], color: "red" }]);
+  const [band] = of(added, "polygon");
+  assert.deepEqual(band.latlngs.slice(0, 1).concat(band.latlngs.slice(3)).map((q) => q[0] + 0).sort((a, b) => a - b), [-2, 2]);
 });
 
 test("a loss is drawn as a dark wedge of the same scale", () => {

@@ -59,12 +59,13 @@ Dit zijn de 20 Veldslagen die het Spoor nu tekent: met een positie uit Wikipedia
 - Bij een Veldslag met eigen verliescijfer staat een **donkere wig** op dezelfde schaal aan de rand van de band. Verlies = doden, gewonden, vermisten en gevangenen, plus verloren tanks en vliegtuigen omgerekend naar bemanning. Verliezen worden niet overgenomen van een omvattende slag.
 - De band is **hoekig**: rechte uiteinden en scherpe hoeken (bij een scherpe bocht een schuine kant in plaats van een lange punt). Een Veldslag met cijfer zonder band ernaast is een kort rechthoekje.
 - De kleur is de **Spoorkleur**, half doorzichtig.
-- Een stap waarvan een van beide uiteinden geen cijfer heeft, is een stippellijn.
+- Een stap waarvan een van beide uiteinden geen cijfer heeft, is een fijne stippellijn.
+- Bij een Bevelhebber met band vervangt de band de Spoorlijn; pijlen en nummers blijven.
 - De band ligt onder de bestaande Spoorlijn, pijlen en nummers, en onder de vierkantjes.
 
 ### Schaal en bediening
 
-- De breedte is **lineair** in vaste pixels: gelijk bij elke zoom.
+- De breedte is **lineair** in vaste pixels: gelijk bij elke zoom. Geen enkel deel is dunner dan 4 px.
 - Een **schuif voor de dikte** zet de breedte van het hoogste cijfer (standaard 48 px, Lille, 163.000 Manschappen). De rest schaalt mee.
 - De band verschijnt **automatisch** met het Label, op elke pagina die het Spoor tekent. Geen aparte aan/uit-knop.
 - Een kleine legenda bij de schuif geeft een schaalstreepje en de zin "cijfer per kant, niet per Bevelhebber".

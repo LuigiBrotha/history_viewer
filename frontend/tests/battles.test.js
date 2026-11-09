@@ -791,6 +791,16 @@ test("only the Label of Erwin Rommel gets a band", async () => {
   assert.equal(bandParts(ctx).length, 0);
 });
 
+test("the band replaces the Spoor line of its Bevelhebber; without figures the line stays", async () => {
+  const lines = (ctx) => [...ctx.layers].filter((l) => l.options?.icon?.className === "track-line");
+  const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: async () => FIGURES });
+  await ctx.ready();
+  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Erwin Rommel" }]);
+  assert.equal(lines(ctx).length, 0);
+  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Someone Else" }]);
+  assert.equal(lines(ctx).length, 1);
+});
+
 test("a label chosen before the figures arrive gets its band when they do", async () => {
   let give;
   const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: () => new Promise((resolve) => { give = resolve; }) });
