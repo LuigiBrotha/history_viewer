@@ -151,7 +151,7 @@ test("Nog te verfijnen is a sort order and a Positie label", () => {
   assert.equal(labelText({ kind: "positie", value: "verfijnen" }), "Positie: nog te verfijnen");
 });
 
-import { commanderLabels } from "../js/battle-labels.js";
+import { commanderLabels, unitLabels } from "../js/battle-labels.js";
 
 test("commanderLabels gives every person of a Veldslag, once, and leaves out what is no person", () => {
   const battle = { commanders: ["Erwin Rommel", "Killed in action", "POW", "Prisoner of War", "Wounded in Action",
@@ -162,4 +162,12 @@ test("commanderLabels gives every person of a Veldslag, once, and leaves out wha
     { kind: "bevelhebber", value: "John W. Mitchell (United States Air Force)" },
   ]);
   assert.deepEqual(commanderLabels({}), []);
+});
+
+test("unitLabels gives every Eenheid of a Veldslag, once", () => {
+  assert.deepEqual(unitLabels({ units: ["101st Airborne Division", "82nd Airborne Division", "101st Airborne Division"] }), [
+    { kind: "eenheid", value: "101st Airborne Division" },
+    { kind: "eenheid", value: "82nd Airborne Division" },
+  ]);
+  assert.deepEqual(unitLabels({}), []);
 });

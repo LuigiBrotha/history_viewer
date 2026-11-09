@@ -260,37 +260,38 @@ test("a failing boat says so", async () => {
   assert.match(rootEl.allText(), /Artikel kon niet worden geladen\./);
 });
 
-const commanderButton = (rootEl) => rootEl.byClass("article-commanders")[0];
+const groupButton = (rootEl, kind) => rootEl.byClass(`article-group-${kind}`)[0];
 const okArticle = async (title) => ({ title, html: "<p>x</p>", url: "u" });
 
-test("the Article of a Veldslag with Bevelhebbers has a button that says how many, and reports the battle", async () => {
+test("the Article of a Veldslag has a button per group that says how many, and reports the group", async () => {
   const clicked = [];
   const { rootEl, pane } = setup(okArticle, {
-    commandersOf: () => ({ count: 12, active: false }),
-    onAllCommanders: (b) => clicked.push(b.title),
+    trackGroupOf: (_, kind) => ({ count: kind === "bevelhebber" ? 12 : 9, active: false }),
+    onToggleGroup: (b, kind) => clicked.push([b.title, kind]),
   });
   await pane.show(battle);
-  const button = commanderButton(rootEl);
-  assert.equal(button.hidden, false);
-  assert.equal(button.textContent, "Alle Bevelhebbers op de kaart (12)");
-  button.dispatch("click");
-  assert.deepEqual(clicked, [battle.title]);
+  assert.equal(groupButton(rootEl, "bevelhebber").hidden, false);
+  assert.equal(groupButton(rootEl, "bevelhebber").textContent, "Alle Bevelhebbers op de kaart (12)");
+  assert.equal(groupButton(rootEl, "eenheid").textContent, "Alle Eenheden op de kaart (9)");
+  groupButton(rootEl, "eenheid").dispatch("click");
+  assert.deepEqual(clicked, [[battle.title, "eenheid"]]);
 });
 
-test("the button changes when they are on the map, and is hidden without Bevelhebbers or for a boat", async () => {
+test("a button changes when its group is on the map, and is hidden without members or for a boat", async () => {
   let state = { count: 3, active: true };
-  const { rootEl, pane } = setup(okArticle, { commandersOf: () => state });
+  const { rootEl, pane } = setup(okArticle, { trackGroupOf: () => state });
   await pane.show(battle);
-  assert.equal(commanderButton(rootEl).textContent, "Bevelhebbers van de kaart halen");
+  assert.equal(groupButton(rootEl, "bevelhebber").textContent, "Bevelhebbers van de kaart halen");
+  assert.equal(groupButton(rootEl, "eenheid").textContent, "Eenheden van de kaart halen");
   state = { count: 3, active: false };
-  pane.refreshCommanders();
-  assert.equal(commanderButton(rootEl).textContent, "Alle Bevelhebbers op de kaart (3)");
+  pane.refreshGroups();
+  assert.equal(groupButton(rootEl, "bevelhebber").textContent, "Alle Bevelhebbers op de kaart (3)");
   state = { count: 0, active: false };
-  pane.refreshCommanders();
-  assert.equal(commanderButton(rootEl).hidden, true);
+  pane.refreshGroups();
+  assert.equal(groupButton(rootEl, "bevelhebber").hidden, true);
   state = { count: 3, active: false };
   await pane.showSubject({ title: "U-99", load: async () => ({ nodes: [], translated: false }) });
-  assert.equal(commanderButton(rootEl).hidden, true);
+  assert.equal(groupButton(rootEl, "eenheid").hidden, true);
   pane.clear();
-  assert.equal(commanderButton(rootEl).hidden, true);
+  assert.equal(groupButton(rootEl, "bevelhebber").hidden, true);
 });

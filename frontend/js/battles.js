@@ -1,6 +1,6 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
 import { activeOn, applyPositions, applyVoorzet, overlaps } from "./battle-model.js";
-import { commanderLabels, isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
+import { commanderLabels, unitLabels, isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
 import { createHintLayer } from "./hint-layer.js";
 import { FULL_RANGE, inSpreadRange, squareSize } from "./spread.js";
@@ -175,11 +175,11 @@ export function initBattles({
     },
     onBattleLink: (title) => selectBattle(title, { pickDate: true }),
     onClose: () => closeArticle(),
-    commandersOf: (battle) => {
-      const own = commanderLabels(battle);
+    trackGroupOf: (battle, kind) => {
+      const own = groupLabels(battle, kind);
       return { count: own.length, active: allOnMap(own) };
     },
-    onAllCommanders: (battle) => toggleAllCommanders(battle),
+    onToggleGroup: (battle, kind) => toggleGroup(battle, kind),
   });
 
   try {
@@ -338,16 +338,18 @@ export function initBattles({
     pane.setLabels(labels);
     drawSquares();
     drawTracks();
-    articlePane.refreshCommanders();
+    articlePane.refreshGroups();
   }
 
   const allOnMap = (own) => own.length > 0
     && own.every((label) => labels.some((l) => labelKey(l) === labelKey(label)));
 
-  // Adds every Bevelhebber of a Veldslag to the Labels, on OF so the list holds all their battles,
-  // and shows all their Sporen; a second time takes just those off again.
-  function toggleAllCommanders(battle) {
-    const own = commanderLabels(battle);
+  const groupLabels = (battle, kind) => (kind === "eenheid" ? unitLabels(battle) : commanderLabels(battle));
+
+  // Adds every Bevelhebber or Eenheid of a Veldslag to the Labels, on OF so the list holds all their
+  // battles, and shows all their Sporen; a second time takes just those off again.
+  function toggleGroup(battle, kind) {
+    const own = groupLabels(battle, kind);
     const keys = new Set(own.map(labelKey));
     if (allOnMap(own)) {
       changeLabels(labels.filter((l) => !keys.has(labelKey(l))));

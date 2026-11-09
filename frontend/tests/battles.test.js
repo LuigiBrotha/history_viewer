@@ -206,7 +206,8 @@ const WAR = [
   battle({ title: "Arras", start: "1940-05-21", end: "1940-05-21", lat: 50, lng: 2, commanders: ["Rommel"] }),
   battle({ title: "Other", start: "1941-01-01", end: "1941-01-02", lat: 10, lng: 10, commanders: ["Someone"] }),
 ];
-const commandersButton = (ctx) => ctx.elements["article-pane"].byClass("article-commanders")[0];
+const commandersButton = (ctx) => ctx.elements["article-pane"].byClass("article-group-bevelhebber")[0];
+const unitsButton = (ctx) => ctx.elements["article-pane"].byClass("article-group-eenheid")[0];
 const keys = (ctx) => ctx.controller.labels().map((l) => l.value);
 
 test("the button adds every Bevelhebber of the Article, keeps other Labels, switches to OF and fits all their Sporen", async () => {
@@ -228,6 +229,27 @@ test("the button adds every Bevelhebber of the Article, keeps other Labels, swit
   assert.equal(ctx.map.fits.length, 1);
   assert.deepEqual(ctx.map.fits[0].map(([lat, lng]) => `${lat},${lng}`).sort(), ["30,28", "32,23", "50,2"]);
   assert.equal(commandersButton(ctx).textContent, "Bevelhebbers van de kaart halen");
+});
+
+test("the Eenheden button adds every Eenheid of the Article and leaves the Bevelhebbers alone", async () => {
+  const units = [
+    battle({ title: "Bastogne", start: "1944-12-20", end: "1944-12-27", lat: 50, lng: 5.7, commanders: ["McAuliffe"], units: ["101st Airborne Division", "10th Armored"] }),
+    battle({ title: "Carentan", start: "1944-06-10", end: "1944-06-15", lat: 49.3, lng: -1.2, units: ["101st Airborne Division"] }),
+  ];
+  const ctx = setup({ load: async () => units });
+  await ctx.ready();
+  ctx.controller.selectBattle("Bastogne");
+  await ctx.ready();
+  assert.equal(unitsButton(ctx).textContent, "Alle Eenheden op de kaart (2)");
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (1)");
+  ctx.map.fits.length = 0;
+  unitsButton(ctx).dispatch("click");
+  assert.deepEqual(keys(ctx), ["101st Airborne Division", "10th Armored"]);
+  assert.deepEqual(ctx.map.fits[0].map(([lat, lng]) => `${lat},${lng}`).sort(), ["49.3,-1.2", "50,5.7"]);
+  assert.equal(unitsButton(ctx).textContent, "Eenheden van de kaart halen");
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (1)");
+  unitsButton(ctx).dispatch("click");
+  assert.deepEqual(keys(ctx), []);
 });
 
 test("a second click takes only the Bevelhebbers of this Article away again, and moves no map", async () => {

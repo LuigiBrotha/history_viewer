@@ -63,6 +63,11 @@ export function commanderLabels(battle) {
   return [...new Set(names)].map((value) => ({ kind: "bevelhebber", value }));
 }
 
+// A Label per Eenheid in the infobox of a Veldslag, each once.
+export function unitLabels(battle) {
+  return [...new Set(battle.units ?? [])].map((value) => ({ kind: "eenheid", value }));
+}
+
 export function labelText({ kind, value }) {
   const fallback = kind === "taal" ? value.toUpperCase() : value;
   const name = kind in NAMED ? value : FIXED[kind]?.[value] ?? fallback;

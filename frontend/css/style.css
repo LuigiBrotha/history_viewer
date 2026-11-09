@@ -2725,9 +2725,14 @@ select {
   display: none;
 }
 
-/* All Bevelhebbers of an Article, and the name at the end of a Spoor */
-.article-commanders {
+/* All Bevelhebbers or Eenheden of an Article, and the name at the end of a Spoor */
+.article-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 0 0 10px;
+}
+.article-group {
   padding: 5px 10px;
   border: 1px solid currentColor;
   border-radius: 3px;
@@ -2736,7 +2741,7 @@ select {
   font: inherit;
   cursor: pointer;
 }
-.article-commanders:hover {
+.article-group:hover {
   background: rgba(122, 42, 28, 0.08);
 }
 .track-name span {
