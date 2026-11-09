@@ -12,7 +12,7 @@ import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setBoatsVisible, setRoutesVisible } from "./map.js";
-import { createBoatToggle, createNamesToggle, createRouteToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createRouteToggle, createShipsToggle } from "./map-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -406,6 +406,7 @@ function main() {
             urlSync.update({ boatsOff: visible ? null : true });
           },
         });
+        createShipsToggle({ map: mapState.map, shipLayer, urlSync, shown: !initialView.shipsOff });
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));

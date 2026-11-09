@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createBoatToggle, createNamesToggle, createRouteToggle } from "../js/map-toggle.js";
+import { createBoatToggle, createNamesToggle, createRouteToggle, createShipsToggle } from "../js/map-toggle.js";
 
 function fakeDoc() {
   return {
@@ -72,4 +72,19 @@ test("the names button tells the battles and keeps the choice in the URL", () =>
   button.click();
   assert.deepEqual(seen, [false, true]);
   assert.deepEqual(writes, [{ namesOff: true }, { namesOff: null }]);
+});
+
+test("the ships button tells the layer and keeps the choice in the URL", () => {
+  const seen = [];
+  const writes = [];
+  const { button } = setup(true, ({ map, doc, visible }) => createShipsToggle({
+    map, doc, shown: visible,
+    shipLayer: { setVisible: (shown) => seen.push(shown) },
+    urlSync: { update: (partial) => writes.push(partial) },
+  }));
+  assert.equal(button.id, "ships-toggle");
+  assert.equal(button.textContent, "Schepen");
+  button.click();
+  assert.deepEqual(seen, [true, false]);
+  assert.deepEqual(writes, [{ shipsOff: null }, { shipsOff: true }]);
 });

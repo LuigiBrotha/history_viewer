@@ -722,7 +722,8 @@ html, body {
 #battle-toggle,
 #route-toggle,
 #boat-toggle,
-#names-toggle {
+#names-toggle,
+#ships-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -741,14 +742,16 @@ html, body {
 #battle-toggle.leaflet-control,
 #route-toggle.leaflet-control,
 #boat-toggle.leaflet-control,
-#names-toggle.leaflet-control {
+#names-toggle.leaflet-control,
+#ships-toggle.leaflet-control {
   position: static;
 }
 
 #battle-toggle[aria-expanded="true"],
 #route-toggle[aria-pressed="true"],
 #boat-toggle[aria-pressed="true"],
-#names-toggle[aria-pressed="true"] {
+#names-toggle[aria-pressed="true"],
+#ships-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -2086,7 +2089,8 @@ select {
 #battle-toggle,
 #route-toggle,
 #boat-toggle,
-#names-toggle {
+#names-toggle,
+#ships-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
@@ -2096,7 +2100,8 @@ select {
 #battle-toggle[aria-expanded="true"],
 #route-toggle[aria-pressed="true"],
 #boat-toggle[aria-pressed="true"],
-#names-toggle[aria-pressed="true"] {
+#names-toggle[aria-pressed="true"],
+#ships-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }

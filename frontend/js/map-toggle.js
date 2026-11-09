@@ -55,3 +55,19 @@ export function createNamesToggle({ map, doc, battles, urlSync, shown }) {
     },
   });
 }
+
+// The ships that were hit; the same on every page that draws them.
+export function createShipsToggle({ map, doc, shipLayer, urlSync, shown }) {
+  return createMapToggle({
+    map,
+    doc,
+    id: "ships-toggle",
+    label: "Schepen",
+    title: "Gezonken, beschadigde en buitgemaakte schepen op de kaart aan of uit",
+    visible: shown,
+    onChange: (visible) => {
+      shipLayer.setVisible(visible);
+      urlSync.update({ shipsOff: visible ? null : true });
+    },
+  });
+}

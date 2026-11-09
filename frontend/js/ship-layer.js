@@ -27,6 +27,9 @@ export function createShipLayer(map, { onShipClick = null } = {}) {
   }
 
   return {
+    setVisible(visible) {
+      map.getPane(PANE).style.display = visible ? "" : "none";
+    },
     setShips(ships) {
       const wanted = new Map();
       for (const ship of ships) {

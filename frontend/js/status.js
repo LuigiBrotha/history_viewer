@@ -15,7 +15,7 @@ import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
-import { createBoatToggle, createNamesToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createShipsToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
 import { createStatusMap, fitBoat, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
 
@@ -148,6 +148,7 @@ function main() {
       urlSync.update({ boatsOff: visible ? null : true });
     },
   });
+  createShipsToggle({ map: state.map, shipLayer, urlSync, shown: !readView(location.search, "period").shipsOff });
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   const slider = initPeriodSlider({

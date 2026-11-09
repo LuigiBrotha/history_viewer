@@ -107,3 +107,13 @@ test("a ship is big enough for a finger on a touch screen", () => {
     delete globalThis.matchMedia;
   }
 });
+
+test("switching the ships off hides their pane and on shows it again", () => {
+  install();
+  const map = fakeMap();
+  const layer = createShipLayer(map);
+  layer.setVisible(false);
+  assert.equal(map.panes.ships.style.display, "none");
+  layer.setVisible(true);
+  assert.equal(map.panes.ships.style.display, "");
+});

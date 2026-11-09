@@ -160,8 +160,9 @@ test("a restored Kaartuitsnede stays in the URL when the next change is written"
 });
 
 test("switched-off routes and boats stay in the URL for the way back", () => {
-  const { view, writes, slider, battles } = fakes("?routes=uit&boten=uit");
+  const { view, writes, slider, battles } = fakes("?routes=uit&boten=uit&schepen=uit");
   view.restore({ slider, battles });
   assert.ok(writes.some((partial) => partial.routesOff === true));
   assert.ok(writes.some((partial) => partial.boatsOff === true));
+  assert.ok(writes.some((partial) => partial.shipsOff === true));
 });
