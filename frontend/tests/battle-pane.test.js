@@ -572,3 +572,17 @@ test("a search field and title of the column stay where the column put them", ()
   assert.equal(rootEl.byClass("battle-pane-head").length, 0);
   assert.equal(searchEl.getAttribute("placeholder"), null);
 });
+
+test("battles found in the texts are listed at the top, whatever the sort", () => {
+  const { pane, rootEl, rows, titleOf } = setup();
+  const search = rootEl.byClass("battle-search")[0];
+  search.value = "woord uit de tekst";
+  search.dispatch("input");
+  assert.equal(rows().filter((r) => !r.hidden).length, 0);
+  pane.setTextHits(["Midway", "Atlantic"]);
+  const listed = rows().filter((r) => !r.hidden).map(titleOf);
+  assert.deepEqual(listed.sort(), ["Atlantic", "Midway"]);
+  assert.deepEqual(pane.visibleBattles().map((b) => b.title), ["Midway", "Atlantic"]);
+  pane.setTextHits(null);
+  assert.equal(rows().filter((r) => !r.hidden).length, 0);
+});

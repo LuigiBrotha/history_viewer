@@ -47,6 +47,15 @@ export async function fetchAllRoutes({ firstPageSize = FIRST_PAGE_SIZE, pageSize
   }
 }
 
+// The Onderwerpen whose text holds these words: { available, battles, boats, ships }, best first.
+export async function fetchSearch(query) {
+  const response = await fetch(`api/search?q=${encodeURIComponent(query)}`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  if (!response.ok) {
+    throw new Error(`Failed to search: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchPatrolPeriods() {
   const response = await fetch("api/uboats/patrol-periods", { signal: AbortSignal.timeout(FULL_LOAD_TIMEOUT_MS) });
   if (!response.ok) {

@@ -13,6 +13,8 @@ export function createSubjectList({ rootEl, emptyText, onPick, onCount }) {
   let query = "";
   let selected = null;
   let marks = { isActive: null, dim: false };
+  // key → place among the rows found in the texts, best first; null without such a search.
+  let hits = null;
 
   const list = element("ul", "subject-list");
   const empty = element("p", "subject-empty", emptyText);
@@ -38,12 +40,21 @@ export function createSubjectList({ rootEl, emptyText, onPick, onCount }) {
   function applySearch() {
     let count = 0;
     for (const [key, row] of rows) {
-      const matches = query === "" || row.item.search.includes(query);
+      const matches = query === "" || row.item.search.includes(query) || hits?.has(key) === true;
       if (matches) count += 1;
       row.el.hidden = !matches && key !== selected;
     }
     empty.hidden = count > 0 || rows.size === 0;
     onCount(count);
+  }
+
+  function applyOrder() {
+    const rowsInOrder = [...rows.entries()];
+    if (hits !== null) {
+      const placeOf = ([key]) => hits.get(key) ?? hits.size;
+      rowsInOrder.sort((a, b) => placeOf(a) - placeOf(b));
+    }
+    list.replaceChildren(...rowsInOrder.map(([, row]) => row.el));
   }
 
   function applyMarks() {
@@ -70,13 +81,19 @@ export function createSubjectList({ rootEl, emptyText, onPick, onCount }) {
   return {
     setItems(items) {
       rows = new Map(items.map((item) => [item.key, buildRow(item)]));
-      list.replaceChildren(...[...rows.values()].map((row) => row.el));
+      applyOrder();
       rows.get(selected)?.el.classList.toggle("selected", true);
       applySearch();
       applyMarks();
     },
     setSearch(text) {
       query = text.trim().toLowerCase();
+      applySearch();
+    },
+    // The keys found in the texts, best first: those rows are listed too, at the top. Null ends it.
+    setHits(keys) {
+      hits = keys === null ? null : new Map(keys.map((key, place) => [key, place]));
+      applyOrder();
       applySearch();
     },
     // isActive(item) marks the rows for the date or period, null marks none; with dim the

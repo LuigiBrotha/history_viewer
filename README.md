@@ -145,6 +145,16 @@ cannot be reached it shows `Geen verbinding, opnieuw proberen…` and keeps the
 data already on screen. On `/dag-tot-dag` the selected date, zoom and followed boat are
 kept across updates.
 
+## Searching the texts
+
+The search field above the column Onderwerpen looks in the names and in the full text of every
+battle (all languages and the Dutch versions), boat and ship. It accepts typing errors and puts
+the best results on top. It reads `search_index.db`, next to the database, which is built with:
+
+    poetry run python -m tools.build_search_index
+
+Run it again after new articles or translations came in. Without it, the field filters on names.
+
 ## Excluding route points
 
 On `/dag-tot-dag`, follow a boat and click a route point: `Punt uitsluiten` leaves it out of

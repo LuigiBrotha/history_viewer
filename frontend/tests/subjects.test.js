@@ -11,12 +11,13 @@ const hit = (id, slug, date) => ({ ship_external_id: id, boat_slug: slug, boat_n
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-async function setup() {
+async function setup(found = { available: false }) {
   const storage = { getItem: () => null, setItem() {} };
   const column = createSubjectColumn({ rootEl: new Element("aside"), storage });
   const closed = [];
   const selected = [];
-  const battles = { column, onArticleClosed: (f) => closed.push(f), onBattleSelected: (f) => selected.push(f) };
+  const textHits = [];
+  const battles = { column, onArticleClosed: (f) => closed.push(f), onBattleSelected: (f) => selected.push(f), setTextHits: (titles) => textHits.push(titles) };
   const writes = {};
   const urlSync = { update: (partial) => Object.assign(writes, partial) };
   const log = [];
@@ -31,12 +32,17 @@ async function setup() {
   const panel = () => ({ open: (slug) => opened.push(["boat", slug]), openShip: (h) => opened.push(["ship", h.ship_external_id, h.boat_slug]) });
   const boats = [{ slug: "u1", number: "U-1", patrol_count: 1 }, { slug: "u2", number: "U-2", patrol_count: 1 }];
   const ships = [hit("9", "u1", "1940-01-01"), hit("9", "u2", "1941-01-01"), hit("8", "u2", "1942-01-01")];
-  const subjects = createSubjects({ battles, urlSync, getShips: () => ships, hooks, loadBoats: async () => boats, panel });
+  const searches = [];
+  const search = async (query) => {
+    searches.push(query);
+    return found;
+  };
+  const subjects = createSubjects({ battles, urlSync, getShips: () => ships, hooks, loadBoats: async () => boats, search, panel });
   await flush();
   subjects.setShips(ships);
   const rows = (id) => column.sections[id].bodyEl.byClass("subject-row");
   const row = (id, key) => rows(id).find((r) => r.getAttribute("data-key") === key);
-  return { subjects, column, writes, log, opened, closed, selected, row, followed: () => followedSlug };
+  return { subjects, column, writes, log, opened, closed, selected, row, followed: () => followedSlug, textHits, searches };
 }
 
 test("a boat in the list goes into the Artikel, is followed from the list and is in the URL", async () => {
@@ -143,4 +149,44 @@ test("the boats are only asked for once the map has its first routes", async () 
   go();
   await flush();
   assert.equal(asked, 1);
+});
+
+const waitForSearch = () => new Promise((resolve) => setTimeout(resolve, 260));
+const type = (column, text) => {
+  column.search.value = text;
+  column.search.dispatch("input");
+};
+
+test("words found in the texts bring those Onderwerpen up, best first, and clearing ends it", async () => {
+  const { column, row, textHits, searches } = await setup({ available: true, battles: ["Kursk"], boats: ["u2"], ships: ["8", "9"] });
+  type(column, "torpedo");
+  await waitForSearch();
+  assert.deepEqual(searches, ["torpedo"]);
+  assert.deepEqual(textHits.at(-1), ["Kursk"]);
+  assert.equal(column.sections.boats.titleEl.textContent, "U-boten (1)");
+  assert.equal(row("boats", "u1").hidden, true);
+  const shipRows = column.sections.ships.bodyEl.byClass("subject-row").map((r) => r.getAttribute("data-key"));
+  assert.deepEqual(shipRows.slice(0, 2), ["8", "9"]);
+  type(column, "");
+  assert.equal(textHits.at(-1), null);
+  assert.equal(row("boats", "u1").hidden, false);
+});
+
+test("a short word only filters the names, and typing on asks once", async () => {
+  const { column, searches } = await setup({ available: true, battles: [], boats: [], ships: [] });
+  type(column, "to");
+  await waitForSearch();
+  assert.deepEqual(searches, []);
+  type(column, "tor");
+  type(column, "torp");
+  await waitForSearch();
+  assert.deepEqual(searches, ["torp"]);
+});
+
+test("without an index the names go on filtering as before", async () => {
+  const { column, textHits } = await setup({ available: false });
+  type(column, "ship 8");
+  await waitForSearch();
+  assert.equal(textHits.at(-1), null);
+  assert.equal(column.sections.ships.titleEl.textContent, "Schepen (1)");
 });
