@@ -14,6 +14,8 @@ import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
+import { createNamesToggle } from "./map-toggle.js";
+import { readView } from "./url-state.js";
 import { historyRange } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
@@ -71,7 +73,8 @@ function main() {
   let lastStatus = null;
   let history = null;
   let period = { from: null, to: null };
-  const periodView = createPeriodView({ search: location.search, urlSync: createUrlSync({ kind: "period" }), map });
+  const urlSync = createUrlSync({ kind: "period" });
+  const periodView = createPeriodView({ search: location.search, urlSync, map });
   let fitted = periodView.mapPinned();
   // The colour scale: the busiest area over the whole war, whatever period is shown.
   let scale = { smoothed: 0, raw: 0 };
@@ -163,6 +166,7 @@ function main() {
     fetchPlaces,
   });
   battles.placeToggle();
+  createNamesToggle({ map, battles, urlSync, shown: !readView(location.search, "period").namesOff });
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   initAtlas(map).then((loaded) => {

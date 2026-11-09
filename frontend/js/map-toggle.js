@@ -39,3 +39,19 @@ export function createRouteToggle(options) {
 export function createBoatToggle(options) {
   return createMapToggle({ ...options, id: "boat-toggle", label: "U-boten", title: "U-boten aan of uit; de gezonken schepen blijven staan" });
 }
+
+// The names beside the Veldslag squares; every page with Veldslagen has this one the same way.
+export function createNamesToggle({ map, doc, battles, urlSync, shown }) {
+  return createMapToggle({
+    map,
+    doc,
+    id: "names-toggle",
+    label: "Namen",
+    title: "Namen van de veldslagen op de kaart aan of uit",
+    visible: shown,
+    onChange: (visible) => {
+      battles.setNamesVisible(visible);
+      urlSync.update({ namesOff: visible ? null : true });
+    },
+  });
+}

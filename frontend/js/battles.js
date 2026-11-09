@@ -92,6 +92,7 @@ export function initBattles({
       onLabelsChange() {},
       setSort() {},
       onSortChange() {},
+      setNamesVisible() {},
       setArticleVersion() {},
       articleVersion: () => "origineel",
       onArticleVersionChange() {},
@@ -186,6 +187,10 @@ export function initBattles({
     onClear: (battle) => clearOwn(battle),
     onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
     onNoposChange,
+    onMinimize: () => {
+      split.close();
+      doc.getElementById("battle-toggle")?.focus();
+    },
     onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
     onLabelModeChange: (next) => {
@@ -615,6 +620,7 @@ export function initBattles({
       if (split.isOpen()) split.close();
       else split.open();
     },
+    setNamesVisible: (visible) => layer.setNamesVisible(visible),
     // Moves the Veldslagen button into the top-left row of map controls, after the ones
     // already there, so the page decides its place in that row.
     placeToggle() {

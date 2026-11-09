@@ -558,3 +558,13 @@ test("a row shows the English title, with the original in its tooltip", () => {
   assert.equal(name.textContent, "Battles of Rzhev");
   assert.equal(name.getAttribute("title"), "Ржевская битва");
 });
+
+test("the minimise button in the head asks the page to fold the list away", () => {
+  installDom();
+  const rootEl = new Element("aside");
+  let minimized = 0;
+  const pane = createBattlePane({ rootEl, mode: "date", onSelect() {}, onMinimize: () => { minimized += 1; } });
+  pane.setBattles(LIST);
+  rootEl.byClass("battle-pane-minimize")[0].dispatch("click");
+  assert.equal(minimized, 1);
+});
