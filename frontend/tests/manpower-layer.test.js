@@ -2,11 +2,31 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { stopText } from "../js/manpower.js";
-import { bandPolygon, createManpowerLayer, hitAt, lossWedge, scaleBar } from "../js/manpower-layer.js";
+import { bandPolygon, createManpowerLayer, hitAt, joinAt, lossWedge, scaleBar } from "../js/manpower-layer.js";
 
 test("bandPolygon runs from the width of one end to the width of the other", () => {
   const [p1, p2, p3, p4] = bandPolygon({ x: 0, y: 0 }, { x: 10, y: 0 }, 4, 8);
   assert.deepEqual([p1, p2, p3, p4].map((p) => [p.x + 0, p.y + 0]), [[0, 2], [10, 4], [10, -4], [0, -2]]);
+});
+
+test("a corner is mitred: both sides of the band meet in a sharp point", () => {
+  const { plus, minus } = joinAt({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 }, 10);
+  assert.ok(Math.abs(plus.x - -5) < 1e-9 && Math.abs(plus.y - 5) < 1e-9);
+  assert.ok(Math.abs(minus.x - 5) < 1e-9 && Math.abs(minus.y - -5) < 1e-9);
+});
+
+test("a straight line goes on with no corner and a near reversal gets no mitre", () => {
+  const straight = joinAt({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 0 }, 10);
+  assert.ok(Math.abs(straight.plus.y - 5) < 1e-9 && Math.abs(straight.plus.x) < 1e-9);
+  assert.equal(joinAt({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -0.99875, y: 0.04994 }, 10), null);
+  assert.equal(joinAt({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: -1, y: 0 }, 10), null);
+});
+
+test("bandPolygon takes the corner of a join instead of its own", () => {
+  const start = { plus: { x: 1, y: 2 }, minus: { x: 3, y: -2 } };
+  const end = { plus: { x: 9, y: 4 }, minus: { x: 7, y: -4 } };
+  assert.deepEqual(bandPolygon({ x: 0, y: 0 }, { x: 10, y: 0 }, 4, 8, start, end),
+    [start.plus, end.plus, end.minus, start.minus]);
 });
 
 test("two battles on the same spot draw no polygon", () =>
@@ -96,7 +116,7 @@ test("panes lie under the routes, the band half transparent so overlaps do not d
   assert.equal(panes["manpower-losses"].style.zIndex, 386);
 });
 
-test("a step with figures at both ends is a polygon in the Spoor colour, a circle closes each end", () => {
+test("a step with figures at both ends is a flat-ended polygon in the Spoor colour, with no round parts", () => {
   const { added, map } = fakeLeaflet();
   const layer = createManpowerLayer(map);
   layer.setBands([{ stops: [stop("A", 0, 50), stop("B", 10, 100)], color: "#6b2fbf" }]);
@@ -107,7 +127,7 @@ test("a step with figures at both ends is a polygon in the Spoor colour, a circl
   assert.equal(polygons[0].options.fillColor, "#6b2fbf");
   assert.equal(polygons[0].options.stroke, false);
   assert.equal(polygons[0].options.interactive, false);
-  assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [12, 24]);
+  assert.equal(of(added, "circle").length, 0);
 });
 
 test("a step without figures is dashed and a battle without a band has no wedge", () => {
@@ -120,10 +140,11 @@ test("a step without figures is dashed and a battle without a band has no wedge"
   assert.equal(lines[0].options.weight, 8);
   assert.equal(lines[0].options.lineCap, "butt");
   assert.equal(lines[0].options.interactive, false);
-  assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower").length, 0);
+  // A and C have no solid step: each is a short rectangle across the line.
+  assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower" && p.latlngs.length === 4).length, 2);
   // Only A has a figure and a loss; B has a loss but no band.
   assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower-losses").length, 1);
-  assert.equal(of(added, "circle").length, 2);
+  assert.equal(of(added, "circle").length, 0);
 });
 
 test("a loss is drawn as a dark wedge of the same scale", () => {
@@ -136,12 +157,39 @@ test("a loss is drawn as a dark wedge of the same scale", () => {
   assert.equal(wedge.options.interactive, false);
 });
 
-test("a lone stop draws its circle and, having no direction, no wedge", () => {
+test("a lone stop draws a rectangle as wide as its figure, 12 px long, and without direction no wedge", () => {
   const { added, map } = fakeLeaflet();
   const layer = createManpowerLayer(map);
   layer.setBands([{ stops: [stop("A", 0, 100, 25)], color: "red" }]);
-  assert.equal(of(added, "circle").length, 1);
-  assert.equal(of(added, "polygon").length, 0);
+  assert.equal(of(added, "circle").length, 0);
+  const [box, ...rest] = of(added, "polygon");
+  assert.equal(rest.length, 0);
+  assert.equal(box.options.pane, "manpower");
+  const lats = box.latlngs.map((q) => q[0]);
+  const lngs = box.latlngs.map((q) => q[1]);
+  assert.equal(Math.max(...lngs) - Math.min(...lngs), 12);
+  assert.equal(Math.max(...lats) - Math.min(...lats), 48);
+});
+
+const at = (title, lat, lng, total) => ({ ...stop(title, lng, total), battle: battle(title, lat, lng) });
+
+test("at a corner the two parts of the band share their outer points, so no gap and no round", () => {
+  const { added, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [at("A", 0, 0, 100), at("B", 0, 100, 100), at("C", 100, 100, 100)], color: "red" }]);
+  const [first, second] = of(added, "polygon");
+  assert.deepEqual(first.latlngs[1], second.latlngs[0]);
+  assert.deepEqual(first.latlngs[2], second.latlngs[3]);
+  assert.equal(of(added, "circle").length, 0);
+});
+
+test("a sharp turn back is closed by two straight triangles instead of a long spike", () => {
+  const { added, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [at("A", 0, 0, 100), at("B", 0, 100, 100), at("C", 5, 0, 100)], color: "red" }]);
+  const band = of(added, "polygon").filter((p) => p.options.pane === "manpower");
+  assert.equal(band.filter((p) => p.latlngs.length === 4).length, 2);
+  assert.equal(band.filter((p) => p.latlngs.length === 3).length, 2);
 });
 
 test("the width follows the slider and every part is redrawn on zoom", () => {
@@ -150,7 +198,6 @@ test("the width follows the slider and every part is redrawn on zoom", () => {
   layer.setBands([{ stops: [stop("A", 0, 100), stop("B", 10, 100)], color: "red" }]);
   layer.setMaxWidth(20);
   assert.equal(layer.maxWidth(), 20);
-  assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [10, 10]);
   const before = of(added, "polygon")[0];
   assert.deepEqual(before.latlngs.map((q) => q[0] + 0), [-10, -10, 10, 10]);
   const countBefore = added.length;
@@ -227,7 +274,7 @@ test("moving the slider sets the width and reports it; the URL sets it silently"
   input.listeners.input();
   assert.equal(layer.maxWidth(), 20);
   assert.deepEqual(reported, [20]);
-  assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [10, 10]);
+  assert.deepEqual(of(added, "polygon")[0].latlngs.map((q) => q[0] + 0), [-10, -10, 10, 10]);
   layer.setMaxWidth(64);
   assert.deepEqual(reported, [20]);
   assert.equal(String(input.value), "64");
@@ -261,13 +308,13 @@ const A = { id: "A" };
 const B = { id: "B" };
 const square = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
 
-test("hitAt finds a wedge, a circle and a polygon by being inside, and nothing outside", () => {
+test("hitAt finds a wedge, a box and a polygon by being inside, and nothing outside", () => {
   const wedge = { kind: "wedge", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 8 }], stop: A };
   assert.equal(hitAt({ x: 5, y: 2 }, [wedge]), A);
   assert.equal(hitAt({ x: 1, y: 7 }, [wedge]), null);
-  const circle = { kind: "circle", center: { x: 50, y: 50 }, radius: 5, stop: B };
-  assert.equal(hitAt({ x: 53, y: 53 }, [circle]), B);
-  assert.equal(hitAt({ x: 54, y: 54 }, [circle]), null);
+  const box = { kind: "box", points: [{ x: 45, y: 45 }, { x: 55, y: 45 }, { x: 55, y: 55 }, { x: 45, y: 55 }], stop: B };
+  assert.equal(hitAt({ x: 53, y: 53 }, [box]), B);
+  assert.equal(hitAt({ x: 56, y: 53 }, [box]), null);
   const polygon = { kind: "polygon", points: square, from: { point: { x: 0, y: 5 }, stop: A }, to: { point: { x: 10, y: 5 }, stop: B } };
   assert.ok(hitAt({ x: 5, y: 5 }, [polygon]));
   assert.equal(hitAt({ x: 11, y: 5 }, [polygon]), null);
@@ -335,7 +382,7 @@ test("a mouse move over the band shows one tooltip with the text of the stop, of
   assert.equal(tooltip.open, false);
 });
 
-test("a wedge wins over the polygon and circle beneath it", () => {
+test("a wedge wins over the polygon beneath it", () => {
   const { handlers, tooltips, map } = fakeLeaflet();
   const layer = createManpowerLayer(map);
   layer.setBands([{ stops: [stop("A", 0, 100, 50), stop("B", 100, 100)], color: "red" }]);

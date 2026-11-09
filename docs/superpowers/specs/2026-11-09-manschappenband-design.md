@@ -57,6 +57,7 @@ Dit zijn de 20 Veldslagen die het Spoor nu tekent: met een positie uit Wikipedia
 
 - De breedte loopt **vloeiend** van het cijfer van de ene Veldslag naar dat van de volgende.
 - Bij een Veldslag met eigen verliescijfer staat een **donkere wig** op dezelfde schaal aan de rand van de band. Verlies = doden, gewonden, vermisten en gevangenen, plus verloren tanks en vliegtuigen omgerekend naar bemanning. Verliezen worden niet overgenomen van een omvattende slag.
+- De band is **hoekig**: rechte uiteinden en scherpe hoeken (bij een scherpe bocht een schuine kant in plaats van een lange punt). Een Veldslag met cijfer zonder band ernaast is een kort rechthoekje.
 - De kleur is de **Spoorkleur**, half doorzichtig.
 - Een stap waarvan een van beide uiteinden geen cijfer heeft, is een stippellijn.
 - De band ligt onder de bestaande Spoorlijn, pijlen en nummers, en onder de vierkantjes.

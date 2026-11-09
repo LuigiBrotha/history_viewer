@@ -786,7 +786,7 @@ test("only the Label of Erwin Rommel gets a band", async () => {
   assert.equal(bandParts(ctx).length, 0);
   ctx.controller.setLabels([{ kind: "bevelhebber", value: "Erwin Rommel" }]);
   assert.equal(bandParts(ctx).filter((l) => l.kind === "polygon").length, 1);
-  assert.equal(bandParts(ctx).filter((l) => l.kind === "circle").length, 2);
+  assert.equal(bandParts(ctx).filter((l) => l.kind === "circle").length, 0);
   ctx.controller.setLabels([]);
   assert.equal(bandParts(ctx).length, 0);
 });
@@ -799,7 +799,7 @@ test("a label chosen before the figures arrive gets its band when they do", asyn
   assert.equal(bandParts(ctx).length, 0);
   give(FIGURES);
   await ctx.ready();
-  assert.equal(bandParts(ctx).length, 3);
+  assert.equal(bandParts(ctx).length, 1);
 });
 
 test("Exporteren downloads the listed battles as CSV or GeoJSON", async () => {

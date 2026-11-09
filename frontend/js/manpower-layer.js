@@ -14,10 +14,15 @@ const WEDGE_BASE = 12;
 const DASH = "2 8";
 const DOT_WEIGHT = 8;
 const DOT_HIT = 8;
+// A stop that stands alone, without a solid step on either side, is a rectangle this long.
+const BOX_LENGTH = 12;
+// How far a mitred corner may stick out, as a multiple of half the width (a turn of 120 degrees).
+const MITER_LIMIT = 2;
 
 // The four corners of the part of the band between a and b (points {x, y}), going from the
-// left side of a to that of b and back along the right side. Null when a and b coincide.
-export function bandPolygon(a, b, widthA, widthB) {
+// left side of a to that of b and back along the right side. Null when a and b coincide. A join
+// (see joinAt) replaces the flat end at a or b by the sharp corner it shares with the next part.
+export function bandPolygon(a, b, widthA, widthB, joinA = null, joinB = null) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const length = Math.hypot(dx, dy);
@@ -25,7 +30,35 @@ export function bandPolygon(a, b, widthA, widthB) {
   const nx = -dy / length;
   const ny = dx / length;
   const side = (p, w, sign) => ({ x: p.x + sign * nx * (w / 2), y: p.y + sign * ny * (w / 2) });
-  return [side(a, widthA, 1), side(b, widthB, 1), side(b, widthB, -1), side(a, widthA, -1)];
+  return [
+    joinA?.plus ?? side(a, widthA, 1),
+    joinB?.plus ?? side(b, widthB, 1),
+    joinB?.minus ?? side(b, widthB, -1),
+    joinA?.minus ?? side(a, widthA, -1),
+  ];
+}
+
+const normalOf = (tangent) => ({ x: -tangent.y, y: tangent.x });
+
+// The two points where the sides of the band meet at a corner, for unit vectors along the band
+// before and after it: { plus, minus }, on the same sides as bandPolygon. Null when the turn is
+// so sharp that a mitre would become a long spike.
+export function joinAt(point, before, after, width) {
+  const n1 = normalOf(before);
+  const n2 = normalOf(after);
+  const sumX = n1.x + n2.x;
+  const sumY = n1.y + n2.y;
+  const length = Math.hypot(sumX, sumY);
+  if (length < 1e-9) return null;
+  const mx = sumX / length;
+  const my = sumY / length;
+  const stretch = 1 / (mx * n1.x + my * n1.y);
+  if (stretch > MITER_LIMIT) return null;
+  const off = (width / 2) * stretch;
+  return {
+    plus: { x: point.x + mx * off, y: point.y + my * off },
+    minus: { x: point.x - mx * off, y: point.y - my * off },
+  };
 }
 
 // A triangle on the left edge of the band as seen on screen (y points down) travelling along
@@ -72,13 +105,12 @@ function distanceToSegment(point, a, b) {
 const nearer = (point, { from, to }) => (distance(point, from.point) <= distance(point, to.point) ? from.stop : to.stop);
 
 // The stop under point ({x, y} in layer points), or null. shapes are in priority order:
-// { kind: "wedge", points, stop }, { kind: "circle", center, radius, stop },
+// { kind: "wedge", points, stop }, { kind: "box", points, stop },
 // { kind: "polygon", points, from: { point, stop }, to: { point, stop } } and
 // { kind: "step", from, to } for a dotted step, hit within 8 px.
 export function hitAt(point, shapes) {
   for (const shape of shapes) {
-    if (shape.kind === "wedge" && insidePolygon(point, shape.points)) return shape.stop;
-    if (shape.kind === "circle" && distance(point, shape.center) <= shape.radius) return shape.stop;
+    if ((shape.kind === "wedge" || shape.kind === "box") && insidePolygon(point, shape.points)) return shape.stop;
     if (shape.kind === "polygon" && insidePolygon(point, shape.points)) return nearer(point, shape);
     if (shape.kind === "step" && distanceToSegment(point, shape.from.point, shape.to.point) <= DOT_HIT) return nearer(point, shape);
   }
@@ -125,29 +157,52 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
   const toLatLngs = (points) => points.map((p) => map.layerPointToLatLng(p));
   const still = { interactive: false };
 
-  // Draws one band and returns its shapes for the hit test: wedges, circles, polygons, dotted steps.
+  // Draws one band and returns its shapes for the hit test: wedges, boxes, polygons, dotted steps.
   function drawBand({ stops, color }, top) {
     const points = stops.map((s) => map.latLngToLayerPoint([s.battle.lat, s.battle.lng]));
     const widths = stops.map((s) => (s.manpower ? widthOf(s.manpower.total, top, maxWidth) : 0));
     const ends = (i) => ({ point: points[i], stop: stops[i] });
-    const found = { wedges: [], circles: [], polygons: [], steps: [] };
-    bandSteps(stops).forEach((step, i) => {
+    const found = { wedges: [], boxes: [], polygons: [], steps: [] };
+    const fill = (corners) => add(L.polygon(toLatLngs(corners), { pane: PANE, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
+    const box = (corners, stop) => {
+      fill(corners);
+      found.boxes.push({ kind: "box", points: corners, stop });
+    };
+    const steps = bandSteps(stops);
+    // Per step the unit vector along it: null for a dotted step or two stops on the same spot.
+    const along = steps.map((step, i) => {
+      const length = distance(points[i], points[i + 1]);
+      if (!step.solid || length === 0) return null;
+      return { x: (points[i + 1].x - points[i].x) / length, y: (points[i + 1].y - points[i].y) / length };
+    });
+    // Where two solid steps meet: a shared sharp corner, or for a sharp turn two straight triangles.
+    const joins = stops.map((_, i) => {
+      if (!along[i - 1] || !along[i]) return null;
+      const join = joinAt(points[i], along[i - 1], along[i], widths[i]);
+      if (join) return join;
+      const half = widths[i] / 2;
+      const edge = (t, sign) => ({ x: points[i].x + sign * normalOf(t).x * half, y: points[i].y + sign * normalOf(t).y * half });
+      for (const sign of [1, -1]) box([points[i], edge(along[i - 1], sign), edge(along[i], sign)], stops[i]);
+      return null;
+    });
+    steps.forEach((step, i) => {
       if (!step.solid) {
         add(L.polyline([[step.from.battle.lat, step.from.battle.lng], [step.to.battle.lat, step.to.battle.lng]],
           { pane: PANE, color, weight: DOT_WEIGHT, dashArray: DASH, lineCap: "butt", ...still }));
         found.steps.push({ kind: "step", from: ends(i), to: ends(i + 1) });
         return;
       }
-      const corners = bandPolygon(points[i], points[i + 1], widths[i], widths[i + 1]);
+      const corners = bandPolygon(points[i], points[i + 1], widths[i], widths[i + 1], joins[i], joins[i + 1]);
       if (!corners) return;
-      add(L.polygon(toLatLngs(corners), { pane: PANE, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
+      fill(corners);
       found.polygons.push({ kind: "polygon", points: corners, from: ends(i), to: ends(i + 1) });
     });
+    // A figure with no solid step beside it: a short rectangle across the line.
     stops.forEach((s, i) => {
-      if (!s.manpower) return;
-      add(L.circleMarker([s.battle.lat, s.battle.lng],
-        { pane: PANE, radius: widths[i] / 2, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
-      found.circles.push({ kind: "circle", center: points[i], radius: widths[i] / 2, stop: s });
+      if (!s.manpower || along[i - 1] || along[i]) return;
+      const t = tangentAt(points, i) ?? { x: 1, y: 0 };
+      const end = (sign) => ({ x: points[i].x + sign * t.x * (BOX_LENGTH / 2), y: points[i].y + sign * t.y * (BOX_LENGTH / 2) });
+      box(bandPolygon(end(-1), end(1), widths[i], widths[i]), s);
     });
     stops.forEach((s, i) => {
       if (!s.manpower || s.loss == null) return;
@@ -223,7 +278,7 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
     drawn = [];
     const top = highest();
     const found = bands.map((band) => drawBand(band, top));
-    shapes = ["wedges", "circles", "polygons", "steps"].flatMap((kind) => found.flatMap((f) => f[kind]));
+    shapes = ["wedges", "boxes", "polygons", "steps"].flatMap((kind) => found.flatMap((f) => f[kind]));
     if (!shapes.length) hideTooltip();
     syncControl();
   }
