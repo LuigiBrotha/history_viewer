@@ -138,3 +138,102 @@ test("every loss line has a count and a crew", () => {
     }
   }
 });
+
+// Bernard Montgomery: the second test of the same rules.
+const MONTY = read("../battles/manschappen.json")["Bernard Montgomery"];
+const MONTY_STEPS = [
+  "Slag om Leuven (1940)", "Second Battle of El Alamein", "Battle of Alam el Halfa", "Battle of El Agheila",
+  "Battle of Tripoli (1943)", "Battle of the Mareth Line", "Battle of Medenine", "Battle of Wadi Akarit",
+  "Battle of Enfidaville", "Operation Vulcan", "Operation Strike", "Operation Turkey Buzzard",
+  "Allied invasion of Sicily", "Operation Baytown", "Barbara Line", "Moro River campaign",
+  "Lądowanie w Normandii", "Pointe du Hoc", "Operation Perch", "Operation Epsom", "Operation Goodwood",
+  "Operation Cobra", "Falaise pocket", "Liberation of Paris", "Operation Market Garden", "Operation Fusilade",
+  "Battle of the Scheldt", "Battle of St. Vith", "Battle of the Nijmegen salient", "Operation Veritable",
+  "Operation Plunder", "Ruhr pocket",
+];
+const MONTY_OWN = {
+  "Second Battle of El Alamein": 195000, "Battle of the Mareth Line": 90000, "Allied invasion of Sicily": 160000,
+  "Pointe du Hoc": 225, "Operation Epsom": 60000, "Operation Goodwood": 139000, "Falaise pocket": 580000,
+  "Operation Market Garden": 84876, "Battle of the Scheldt": 450000, "Battle of St. Vith": 22000,
+  "Operation Veritable": 200000, "Operation Plunder": 1284712,
+};
+const MONTY_DOTTED = [
+  "Slag om Leuven (1940)", "Battle of Alam el Halfa", "Battle of El Agheila", "Battle of Tripoli (1943)",
+  "Battle of Medenine", "Battle of Wadi Akarit", "Battle of Enfidaville", "Operation Vulcan", "Operation Strike",
+  "Operation Turkey Buzzard", "Barbara Line", "Moro River campaign", "Lądowanie w Normandii", "Operation Perch",
+  "Operation Cobra", "Liberation of Paris", "Operation Fusilade", "Battle of the Nijmegen salient", "Ruhr pocket",
+];
+
+test("Montgomery: every step of his Spoor is in the file and names a real Veldslag", () => {
+  const known = new Set(BATTLES.map((b) => b.title));
+  assert.equal(MONTY_STEPS.length, 32);
+  for (const title of [...MONTY_STEPS, "Allied invasion of Italy"]) {
+    assert.ok(MONTY[title], `${title} missing from manschappen.json`);
+    assert.ok(known.has(title), `${title} is not in battles.json`);
+  }
+  assert.equal(Object.keys(MONTY).length, 33);
+});
+
+test("Montgomery: own figures are as in the infobox", () => {
+  for (const [title, soldiers] of Object.entries(MONTY_OWN)) {
+    assert.equal(MONTY[title].soldaten, soldiers, title);
+    assert.equal(MONTY[title].overgenomen_van, null, title);
+  }
+});
+
+test("Montgomery: only Baytown borrows, only from Allied invasion of Italy", () => {
+  for (const [title, entry] of Object.entries(MONTY)) {
+    assert.equal(entry.overgenomen_van, title === "Operation Baytown" ? "Allied invasion of Italy" : null, title);
+  }
+  assert.equal(MONTY["Operation Baytown"].soldaten, null);
+  assert.equal(MONTY["Allied invasion of Italy"].soldaten, 189000);
+});
+
+test("Montgomery: dotted battles have no soldiers and do not borrow", () => {
+  assert.equal(MONTY_DOTTED.length, 19);
+  for (const title of MONTY_DOTTED) {
+    assert.equal(MONTY[title].soldaten, null, title);
+    assert.equal(MONTY[title].overgenomen_van, null, title);
+  }
+});
+
+test("Montgomery: shape and crews of every entry", () => {
+  for (const [title, entry] of Object.entries(MONTY)) {
+    assert.ok([1, 2].includes(entry.kolom), title);
+    assert.ok(entry.tekst && entry.tekst.length > 0, title);
+    assert.doesNotMatch(entry.tekst, /<ref|\{\{|\}\}|<br/, title);
+    assert.ok(entry.bron, title);
+    for (const line of [...entry.tanks, ...entry.vliegtuigen, ...(entry.verliezen?.tanks ?? []), ...(entry.verliezen?.vliegtuigen ?? [])]) {
+      assert.ok(Number.isInteger(line.bemanning) && line.bemanning > 0, title);
+      assert.ok(line.aantal > 0 && line.bron, title);
+      if (line.type === null) assert.equal(line.bemanning, 3, title);
+    }
+  }
+});
+
+test("Montgomery: Second Battle of El Alamein figures", () => {
+  const e = MONTY["Second Battle of El Alamein"];
+  assert.equal(e.kolom, 1);
+  assert.equal(total(e.tanks), 1029);
+  assert.deepEqual(split(e.tanks), [
+    ["M3 Grant", 170, 6], ["M4 Sherman", 252, 5], ["Crusader II", 216, 4], ["Crusader III", 78, 3],
+    ["M3 Stuart", 119, 4], ["Valentine", 194, 3],
+  ]);
+  assert.equal(total(e.vliegtuigen), 740);
+  assert.deepEqual(lost(e), [13560, 416, 97]);
+});
+
+test("Montgomery: Goodwood, Epsom, Market Garden and Plunder", () => {
+  const goodwood = MONTY["Operation Goodwood"];
+  assert.equal(total(goodwood.tanks), 1369);
+  assert.deepEqual(lost(goodwood), [4237, 400, 0]);
+  const epsom = MONTY["Operation Epsom"];
+  assert.equal(total(epsom.tanks), 600);
+  assert.deepEqual(lost(epsom), [4000, 150, 0]);
+  const garden = MONTY["Operation Market Garden"];
+  assert.equal(total(garden.tanks), 800);
+  assert.equal(total(garden.vliegtuigen), 3100);
+  assert.deepEqual(lost(garden), [16263, 88, 377]);
+  assert.deepEqual(lost(MONTY["Operation Plunder"]), [6781, 0, 0]);
+  assert.equal(total(MONTY["Operation Plunder"].tanks), 0);
+});

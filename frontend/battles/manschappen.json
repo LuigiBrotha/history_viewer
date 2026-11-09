@@ -563,5 +563,627 @@
       "bron": "Battle of Gazala infobox",
       "overgenomen_van": null
     }
+  },
+  "Bernard Montgomery": {
+    "Slag om Leuven (1940)": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Slag om Leuven (1940) (nl.wikipedia) infobox",
+      "overgenomen_van": null
+    },
+    "Second Battle of El Alamein": {
+      "kolom": 1,
+      "soldaten": 195000,
+      "tanks": [
+        {
+          "type": "M3 Grant",
+          "aantal": 170,
+          "bemanning": 6,
+          "bron": "Second Battle of El Alamein infobox footnote; M3 Lee, Wikipedia (crew: Grant 6)"
+        },
+        {
+          "type": "M4 Sherman",
+          "aantal": 252,
+          "bemanning": 5,
+          "bron": "Second Battle of El Alamein infobox footnote; M4 Sherman, Wikipedia (crew)"
+        },
+        {
+          "type": "Crusader II",
+          "aantal": 216,
+          "bemanning": 4,
+          "bron": "Second Battle of El Alamein infobox footnote; Crusader tank, Wikipedia (crew: Mk I, II 4 or 5, the lower taken)"
+        },
+        {
+          "type": "Crusader III",
+          "aantal": 78,
+          "bemanning": 3,
+          "bron": "Second Battle of El Alamein infobox footnote; Crusader tank, Wikipedia (crew: Mk III 3)"
+        },
+        {
+          "type": "M3 Stuart",
+          "aantal": 119,
+          "bemanning": 4,
+          "bron": "Second Battle of El Alamein infobox footnote; M3 Stuart, Wikipedia (crew)"
+        },
+        {
+          "type": "Valentine",
+          "aantal": 194,
+          "bemanning": 3,
+          "bron": "Second Battle of El Alamein infobox footnote; Valentine tank, Wikipedia (crew: 3 for most marks)"
+        }
+      ],
+      "vliegtuigen": [
+        {
+          "type": null,
+          "aantal": 740,
+          "bemanning": 3,
+          "bron": "Second Battle of El Alamein infobox (730–750 aircraft, midpoint)"
+        }
+      ],
+      "verliezen": {
+        "manschappen": 13560,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 416,
+            "bemanning": 3,
+            "bron": "Second Battle of El Alamein infobox (losses, 332–500 tanks, midpoint)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 97,
+            "bemanning": 3,
+            "bron": "Second Battle of El Alamein infobox (losses)"
+          }
+        ]
+      },
+      "tekst": "Strength: 195,000; 1,029 tanks (170 M3 Grant, 252 M4 Sherman, 216 Crusader II, 78 Crusader III, 119 M3 Stuart, 194 Valentine); 435 armoured cars; 730–750 aircraft; 892–908 artillery guns; 1,451 anti-tank guns\nCasualties: 13,560 casualties (4,810 killed or missing, 8,950 wounded); 332–500 tanks destroyed; 111 guns destroyed; 97 aircraft destroyed",
+      "bron": "Second Battle of El Alamein infobox",
+      "overgenomen_van": null
+    },
+    "Battle of Alam el Halfa": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 1750,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 68,
+            "bemanning": 3,
+            "bron": "Battle of Alam el Halfa infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 67,
+            "bemanning": 3,
+            "bron": "Battle of Alam el Halfa infobox (losses)"
+          }
+        ]
+      },
+      "tekst": "Strength: 4 Divisions\nCasualties: 1,750 killed, wounded or captured; 68 tanks; 67 aircraft",
+      "bron": "Battle of Alam el Halfa infobox",
+      "overgenomen_van": null
+    },
+    "Battle of El Agheila": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures for the Allied side in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Battle of El Agheila infobox",
+      "overgenomen_van": null
+    },
+    "Battle of Tripoli (1943)": {
+      "kolom": 2,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander2: Bernard Montgomery).",
+      "bron": "Battle of Tripoli (1943) infobox",
+      "overgenomen_van": null
+    },
+    "Battle of the Mareth Line": {
+      "kolom": 1,
+      "soldaten": 90000,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 623,
+          "bemanning": 3,
+          "bron": "Battle of the Mareth Line infobox"
+        }
+      ],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 4000,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 90,000 of 123,690 men; 623 tanks\nCasualties: 4,000",
+      "bron": "Battle of the Mareth Line infobox (soldaten: the 90,000 of the 123,690 men)",
+      "overgenomen_van": null
+    },
+    "Battle of Medenine": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 130,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 6,
+            "bemanning": 3,
+            "bron": "Battle of Medenine infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 2 infantry divisions; 1 armoured division; 1 armoured brigade\nCasualties: 130; 6 tanks; 49 vehicles; 32 guns, anti-tank guns",
+      "bron": "Battle of Medenine infobox",
+      "overgenomen_van": null
+    },
+    "Battle of Wadi Akarit": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 1289,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 32,
+            "bemanning": 3,
+            "bron": "Battle of Wadi Akarit infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 3 divisions\nCasualties: 1,289; 32 tanks",
+      "bron": "Battle of Wadi Akarit infobox",
+      "overgenomen_van": null
+    },
+    "Battle of Enfidaville": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 1100,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: (none given)\nCasualties: 1,100",
+      "bron": "Battle of Enfidaville infobox",
+      "overgenomen_van": null
+    },
+    "Operation Vulcan": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Operation Vulcan infobox",
+      "overgenomen_van": null
+    },
+    "Operation Strike": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength figures and no Allied casualty figures in the infobox (commander1: Bernard Montgomery); the 240,000 captured are on the Axis side.",
+      "bron": "Operation Strike infobox",
+      "overgenomen_van": null
+    },
+    "Operation Turkey Buzzard": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 28,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: (none given)\nCasualties: 3 Handley Page Halifax: 21 aircrew; 5 Airspeed Horsa: 7 aircrew",
+      "bron": "Operation Turkey Buzzard infobox (no commander field; combatant1 is the UK, so column 1; losses 21+7 aircrew as men, the Halifaxes and gliders themselves not counted again)",
+      "overgenomen_van": null
+    },
+    "Allied invasion of Sicily": {
+      "kolom": 1,
+      "soldaten": 160000,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 600,
+          "bemanning": 3,
+          "bron": "Allied invasion of Sicily infobox (initial strength)"
+        }
+      ],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 24900,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: Initial strength: 160,000 personnel; 600 tanks; 14,000 vehicles; 1,800 guns. Peak strength: 467,000 personnel\nCasualties: United Kingdom and Canada: 2,938 killed, 9,212 wounded, 2,782 missing; United States: 2,811 killed, 6,471 wounded, 686 missing",
+      "bron": "Allied invasion of Sicily infobox",
+      "overgenomen_van": null
+    },
+    "Operation Baytown": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Operation Baytown infobox",
+      "overgenomen_van": "Allied invasion of Italy"
+    },
+    "Barbara Line": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Barbara Line infobox",
+      "overgenomen_van": null
+    },
+    "Moro River campaign": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 7339,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 4 infantry divisions; 2 armoured brigades\nCasualties: Canada 2,339 casualties; New Zealand 1,600 casualties; British Raj 3,400 casualties; UK Unknown",
+      "bron": "Moro River campaign infobox (losses: the stated 2,339 + 1,600 + 3,400; the UK figure is unknown)",
+      "overgenomen_van": null
+    },
+    "Lądowanie w Normandii": {
+      "kolom": 2,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [
+        {
+          "type": null,
+          "aantal": 11600,
+          "bemanning": 3,
+          "bron": "Lądowanie w Normandii (pl.wikipedia) infobox (11 600 samolotów)"
+        }
+      ],
+      "verliezen": {
+        "manschappen": 12000,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Siły: 175 000 żołnierzy, 6939 jednostek pływających, 11 600 samolotów\nStraty: 12 000 zabitych, rannych i zaginionych",
+      "bron": "Lądowanie w Normandii (pl.wikipedia) infobox",
+      "overgenomen_van": null
+    },
+    "Pointe du Hoc": {
+      "kolom": 1,
+      "soldaten": 225,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 229,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 225 infantry; 12 Landing Craft Assault; 1 Landing Craft Tank; 4 DUKW; 1 Fairmile B motor launch; offshore US and Royal Navy bombardment\nCasualties: 77 killed and 152 wounded; 2 Landing Craft Assault; 1 DUKW",
+      "bron": "Pointe du Hoc infobox",
+      "overgenomen_van": null
+    },
+    "Operation Perch": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "Strength: 1 armoured division; 2 infantry divisions; 2 armoured brigades\nCasualties: (none given)",
+      "bron": "Operation Perch infobox",
+      "overgenomen_van": null
+    },
+    "Operation Epsom": {
+      "kolom": 1,
+      "soldaten": 60000,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 600,
+          "bemanning": 3,
+          "bron": "Operation Epsom infobox"
+        }
+      ],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 4000,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 150,
+            "bemanning": 3,
+            "bron": "Operation Epsom infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 60,000 men; 600 tanks; 2 infantry divisions; 7 infantry brigades; 1 armoured division; 1 armoured brigade; 1 tank brigade\nCasualties: 4,000 men, 2,331 in 15th (Scottish) Infantry Division; 150 tanks lost",
+      "bron": "Operation Epsom infobox",
+      "overgenomen_van": null
+    },
+    "Operation Goodwood": {
+      "kolom": 1,
+      "soldaten": 139000,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 1369,
+          "bemanning": 3,
+          "bron": "Operation Goodwood infobox"
+        }
+      ],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 4237,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 400,
+            "bemanning": 3,
+            "bron": "Operation Goodwood infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 139,000 men; 3 armoured divisions; 1,369 tanks; 732 guns; 2 infantry divisions; 1 armoured brigade\nCasualties: 3,474–5,000 men; 400 tanks (253 knocked out)",
+      "bron": "Operation Goodwood infobox",
+      "overgenomen_van": null
+    },
+    "Operation Cobra": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 2451,
+          "bemanning": 3,
+          "bron": "Operation Cobra infobox (2,451 tanks and tank destroyers, one figure)"
+        }
+      ],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 18450,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 109,
+            "bemanning": 3,
+            "bron": "Operation Cobra infobox (losses, at least 109 medium tanks destroyed or damaged)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 8 infantry divisions; 3 armored divisions; 2,451 tanks and tank destroyers\nCasualties: 18,450 casualties (5,020+ killed); at least 109 medium tanks destroyed or damaged; unknown number of light tanks and tank destroyers",
+      "bron": "Operation Cobra infobox",
+      "overgenomen_van": null
+    },
+    "Falaise pocket": {
+      "kolom": 1,
+      "soldaten": 580000,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 3000,
+          "bemanning": 3,
+          "bron": "Falaise pocket infobox (3,000 tanks and assault guns, one figure)"
+        }
+      ],
+      "vliegtuigen": [
+        {
+          "type": null,
+          "aantal": 1800,
+          "bemanning": 3,
+          "bron": "Falaise pocket infobox"
+        }
+      ],
+      "verliezen": {
+        "manschappen": 10829,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 580,000 troops (23 divisions); 3,000 tanks and assault guns; 6,780 artillery pieces; 1,800 aircraft; 64,400 vehicles\nCasualties: United States: Unknown; United Kingdom: Unknown; Free French: Unknown; Canada: 5,679 casualties (1,479 killed or died of wounds, 4,023 wounded or injured, 177 captured); Poland: 5,150 casualties in total, of which 2,300 for the 1st Armoured Division",
+      "bron": "Falaise pocket infobox (losses: the stated Canadian 5,679 + Polish 5,150; the other nations are unknown)",
+      "overgenomen_van": null
+    },
+    "Liberation of Paris": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 2049,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: (none given)\nCasualties: French Resistance: 1,600 dead; French liberation army: 130 dead, 319 wounded; United States: Unknown; United Kingdom: Unknown",
+      "bron": "Liberation of Paris infobox (losses: the stated 1,600 + 130 + 319; US and UK unknown)",
+      "overgenomen_van": null
+    },
+    "Operation Market Garden": {
+      "kolom": 1,
+      "soldaten": 84876,
+      "tanks": [
+        {
+          "type": null,
+          "aantal": 800,
+          "bemanning": 3,
+          "bron": "Operation Market Garden infobox"
+        }
+      ],
+      "vliegtuigen": [
+        {
+          "type": null,
+          "aantal": 3100,
+          "bemanning": 3,
+          "bron": "Operation Market Garden infobox (3,600 combined allied aircraft including 500 gliders; the gliders left out)"
+        }
+      ],
+      "verliezen": {
+        "manschappen": 16263,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 88,
+            "bemanning": 3,
+            "bron": "Operation Market Garden infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 377,
+            "bemanning": 3,
+            "bron": "Operation Market Garden infobox (losses: 377 aircraft and gliders, no split given)"
+          }
+        ]
+      },
+      "tekst": "Strength: Airborne: three divisions and one independent brigade, 34,876 troops landed, 3,600 combined allied aircraft (including 1,534–1,550 C-47s and 500 gliders); Armoured: two brigades, motorised infantry: eight brigades, 50,000 troops, 800 tanks\nCasualties: 15,326–17,200 killed, wounded, and captured; 88 tanks destroyed; 377 aircraft and gliders lost",
+      "bron": "Operation Market Garden infobox (soldaten: no total stated, the sum of 34,876 airborne troops landed + 50,000 ground troops)",
+      "overgenomen_van": null
+    },
+    "Operation Fusilade": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "Strength: 2nd Canadian Infantry Division (8th Reconnaissance Regiment); RAF Bomber Command (cancelled)\nCasualties: None",
+      "bron": "Operation Fusilade infobox",
+      "overgenomen_van": null
+    },
+    "Battle of the Scheldt": {
+      "kolom": 1,
+      "soldaten": 450000,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 20873,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: more than 450,000\nCasualties: Canadian: 6,367; Total: 20,873",
+      "bron": "Battle of the Scheldt infobox",
+      "overgenomen_van": null
+    },
+    "Battle of St. Vith": {
+      "kolom": 1,
+      "soldaten": 22000,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 12500,
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 88,
+            "bemanning": 3,
+            "bron": "Battle of St. Vith infobox (losses; the 25 armored cars left out)"
+          }
+        ],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 22,000 men\nCasualties: 12,500 KIA, WIA, POW, or MIA; 88 tanks, 25 armored cars",
+      "bron": "Battle of St. Vith infobox",
+      "overgenomen_van": null
+    },
+    "Battle of the Nijmegen salient": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": null,
+      "tekst": "No strength or casualty figures in the infobox (commander1: Bernard Montgomery).",
+      "bron": "Battle of the Nijmegen salient infobox",
+      "overgenomen_van": null
+    },
+    "Operation Veritable": {
+      "kolom": 1,
+      "soldaten": 200000,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 15634,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 200,000 men; 1,400 guns; 35,000 vehicles\nCasualties: 15,634 casualties",
+      "bron": "Operation Veritable infobox",
+      "overgenomen_van": null
+    },
+    "Operation Plunder": {
+      "kolom": 1,
+      "soldaten": 1284712,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 6781,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 1,284,712 men; 5,481 artillery pieces\nCasualties: United Kingdom 3,968 casualties; United States 2,813 casualties; 6,781 casualties total",
+      "bron": "Operation Plunder infobox",
+      "overgenomen_van": null
+    },
+    "Ruhr pocket": {
+      "kolom": 1,
+      "soldaten": null,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 10000,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: (none given)\nCasualties: 1,500 killed; 8,000 wounded; 500 missing; Total: 10,000",
+      "bron": "Ruhr pocket infobox",
+      "overgenomen_van": null
+    },
+    "Allied invasion of Italy": {
+      "kolom": 1,
+      "soldaten": 189000,
+      "tanks": [],
+      "vliegtuigen": [],
+      "verliezen": {
+        "manschappen": 12560,
+        "tanks": [],
+        "vliegtuigen": []
+      },
+      "tekst": "Strength: 189,000 (by 16 September)\nCasualties: 2,009 killed; 3,501 missing (presumed killed); 7,050 wounded",
+      "bron": "Allied invasion of Italy infobox",
+      "overgenomen_van": null
+    }
   }
 }

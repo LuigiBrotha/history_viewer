@@ -8,7 +8,7 @@ Kies je het Label `Bevelhebber: Erwin Rommel`, dan loopt langs zijn Spoor een ba
 
 ## Buiten deze stap
 
-- Andere Bevelhebbers en Eenheden: hun Spoor blijft zoals het is.
+- Andere Bevelhebbers en Eenheden: hun Spoor blijft zoals het is. Uitzondering: Bernard Montgomery zit ook in het cijferbestand, als tweede proef met dezelfde regels.
 - Een band voor de tegenstander.
 - Kleur naar Winnaar of richting: de band heeft één kleur.
 - Een parser voor de sterktevelden van alle Veldslagen. Het cijferbestand is wel zo opgezet dat die het later kan vullen.
@@ -26,7 +26,7 @@ Kies je het Label `Bevelhebber: Erwin Rommel`, dan loopt langs zijn Spoor een ba
 
 Een Veldslag zonder aantal soldaten, ook als er alleen tanks of vliegtuigen staan, neemt het cijfer over van de kleinste Veldslag eromheen die wel soldaten noemt, **mits dat geen hele veldtocht is**. Anders is dat stuk gestippeld en toont de tooltip de oorspronkelijke tekst.
 
-Een overgenomen cijfer staat in de tooltip als "cijfer van …".
+Een overgenomen cijfer staat in de tooltip als "cijfer van …". Een Veldslag mag zijn cijfer alleen uitlenen aan Veldslagen in hetzelfde gebied.
 
 | # | Veldslag | Manschappen komen uit |
 |---|---|---|
