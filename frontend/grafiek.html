@@ -21,9 +21,16 @@
     </div>
   </header>
   <main id="tonnage-main">
-    <h1>Gezonken tonnage, cumulatief per U-boot</h1>
+    <h1 id="tonnage-title">Gezonken tonnage per periode, per U-boot</h1>
     <p id="tonnage-note">Gezonken en buitgemaakte schepen; beschadigde schepen tellen niet mee. <span id="tonnage-count"></span></p>
     <input type="search" id="tonnage-search" placeholder="Zoek een boot, bijvoorbeeld U-99" aria-label="Zoek een boot" />
+    <div id="tonnage-view" role="group" aria-label="Weergave">
+      <button type="button" data-view="periode" aria-pressed="true">Per periode</button>
+      <button type="button" data-view="rendement" aria-pressed="false">Per boot op zee</button>
+      <button type="button" data-view="amerika" aria-pressed="false">Amerikaanse wateren</button>
+      <button type="button" data-view="cumulatief" aria-pressed="false">Cumulatief</button>
+    </div>
+    <p id="tonnage-view-note"></p>
     <div id="tonnage-unit" role="group" aria-label="Staaf per">
       <button type="button" data-unit="day" aria-pressed="false">Dag</button>
       <button type="button" data-unit="week" aria-pressed="false">Week</button>
@@ -31,7 +38,7 @@
     </div>
     <div id="tonnage-legend"></div>
     <div id="tonnage-plot">
-      <canvas id="tonnage-chart" role="img" aria-label="Gestapelde staven van het cumulatief gezonken tonnage per boot; de tabel hieronder bevat dezelfde totalen"></canvas>
+      <canvas id="tonnage-chart" role="img" aria-label="Gestapelde staven van het gezonken tonnage per boot, met de First en Second Happy Time als banden; de tabel hieronder bevat de totalen per boot"></canvas>
       <div id="tonnage-tooltip" hidden></div>
     </div>
     <table id="tonnage-table">
@@ -40,7 +47,7 @@
       </thead>
       <tbody id="tonnage-rows"></tbody>
     </table>
-    <p id="tonnage-source">Bron: uboat.net</p>
+    <p id="tonnage-source">Bron: uboat.net. Happy Times volgens Wikipedia: juni 1940 – februari 1941 en januari – augustus 1942.</p>
   </main>
   <script type="module" src="js/tonnage.js"></script>
 </body>

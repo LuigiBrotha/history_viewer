@@ -1,16 +1,18 @@
-import { fetchShips, fetchStatus } from "./api.js";
+import { fetchPatrolPeriods, fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, startPolling, statusLine } from "./live.js";
 import { mergeShips } from "./ship-model.js";
 import {
+  barsFor,
   boatSeries,
   colorSlots,
   formatNumber,
   formatTons,
+  happyTimeOf,
+  happyTimeSpans,
   matchSeries,
   niceMax,
   periodLabel,
   segmentAt,
-  stackedBars,
   tableRows,
 } from "./tonnage-model.js";
 
@@ -19,7 +21,27 @@ const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
 const SLOT_COUNT = 8;
 const MAX_TOOLTIP_SHIPS = 4;
 const DIMMED_ALPHA = 0.35;
-const MARGIN = { top: 12, right: 16, bottom: 26, left: 72 };
+// The top margin holds the names of the Happy Times, above the tallest bars.
+const MARGIN = { top: 30, right: 16, bottom: 26, left: 72 };
+const BAND_LABEL_OFFSET = 22;
+const VIEWS = {
+  periode: {
+    title: "Gezonken tonnage per periode, per U-boot",
+    note: "Wat er in elke periode zonk. Beide Happy Times steken boven de maanden ervoor uit.",
+  },
+  rendement: {
+    title: "Gezonken tonnage per U-boot per dag op zee",
+    note: "Gezonken tonnage gedeeld door het aantal dagen dat de boten op zee waren. Hier springt de First Happy Time eruit: met weinig boten werd het meest gezonken per boot.",
+  },
+  amerika: {
+    title: "Gezonken tonnage in Amerikaanse wateren",
+    note: "Alleen schepen ten westen van 50° W en ten zuiden van 52° N: de Amerikaanse kust, de Golf en de Caribische Zee. Hier zie je de Second Happy Time beginnen, in januari 1942.",
+  },
+  cumulatief: {
+    title: "Gezonken tonnage, cumulatief per U-boot",
+    note: "Het totaal tot en met elke periode. Een Happy Time is hier alleen een steiler stuk.",
+  },
+};
 const Y_TICKS = 5;
 const MIN_YEAR_LABEL_GAP = 40;
 
@@ -32,6 +54,9 @@ function main() {
   const countEl = document.getElementById("tonnage-count");
   const searchEl = document.getElementById("tonnage-search");
   const unitEl = document.getElementById("tonnage-unit");
+  const viewEl = document.getElementById("tonnage-view");
+  const titleEl = document.getElementById("tonnage-title");
+  const viewNoteEl = document.getElementById("tonnage-view-note");
   const liveStatusEl = document.getElementById("live-status");
   const rootStyle = getComputedStyle(document.querySelector(".tonnage-page"));
 
@@ -41,6 +66,9 @@ function main() {
   let hovered = null;
   let bars = [];
   let unit = "month";
+  let view = "periode";
+  let patrolPeriods = [];
+  let periodsRevision = null;
   const slots = new Map();
   let scale = null;
 
@@ -56,7 +84,7 @@ function main() {
     if (bars.length === 0) {
       return null;
     }
-    const top = niceMax(bars[bars.length - 1].total);
+    const top = niceMax(Math.max(...bars.map((bar) => bar.total)));
     const plotWidth = Math.max(10, width - MARGIN.left - MARGIN.right);
     const plotHeight = Math.max(10, height - MARGIN.top - MARGIN.bottom);
     const step = plotWidth / bars.length;
@@ -78,6 +106,23 @@ function main() {
     context.fillStyle = fill;
     // A sliver of surface keeps boats apart wherever a block is tall enough to spare it.
     context.fillRect(scale.x(index), y, scale.barWidth, height >= 3 ? height - 1 : Math.max(height, 0.5));
+  }
+
+  function drawHappyTimes() {
+    context.font = "600 12px system-ui, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    for (const { name, short, first, last } of happyTimeSpans(bars, unit)) {
+      const x = scale.x(first);
+      const width = (last - first + 1) * scale.step;
+      const top = MARGIN.top - BAND_LABEL_OFFSET;
+      context.fillStyle = color("--happy-band");
+      context.fillRect(x, top, width, MARGIN.top + scale.plotHeight - top);
+      context.fillStyle = color("--happy-text");
+      const text = context.measureText(name).width <= width ? name : short;
+      context.fillText(text, x + width / 2, top + 4);
+    }
+    context.font = "12px system-ui, sans-serif";
   }
 
   function drawYearLabels() {
@@ -129,6 +174,7 @@ function main() {
       context.textAlign = "right";
       context.fillText(formatNumber(Math.round(tons)), MARGIN.left - 8, y);
     }
+    drawHappyTimes();
     drawYearLabels();
 
     const contextFill = color("--context");
@@ -161,8 +207,14 @@ function main() {
     title.textContent = segment === null ? "Alle boten" : segment.number;
     tooltipEl.append(title);
     line(periodLabel(bar.period, unit));
+    const happyTime = happyTimeOf(bar.period, unit);
+    if (happyTime !== null) {
+      line(happyTime.name);
+    }
     if (segment !== null) {
-      line(`Tot en met deze periode: ${formatTons(segment.to - segment.from)}`);
+      if (view === "cumulatief") {
+        line(`Tot en met deze periode: ${formatTons(segment.to - segment.from)}`);
+      }
       if (segment.ships.length > 0) {
         line(`In deze periode: ${formatTons(segment.added)}`);
         const shown = segment.ships.slice(0, MAX_TOOLTIP_SHIPS).join(", ");
@@ -170,7 +222,12 @@ function main() {
         line(others > 0 ? `${shown} en ${others} andere` : shown);
       }
     }
-    line(`Alle boten samen: ${formatTons(bar.total)}`);
+    if (view === "rendement") {
+      line(`Alle boten: ${formatNumber(Math.round(bar.total))} ton per boot per dag op zee`);
+      line(`${formatNumber(bar.boatDays)} bootdagen op zee`);
+    } else {
+      line(`Alle boten samen: ${formatTons(bar.total)}`);
+    }
     tooltipEl.hidden = false;
     const box = canvas.getBoundingClientRect();
     const left = Math.min(x + 12, box.width - tooltipEl.offsetWidth - 4);
@@ -228,17 +285,40 @@ function main() {
     }
   });
 
+  function redraw() {
+    bars = barsFor(view, { ships, series, periods: patrolPeriods, unit });
+    tooltipEl.hidden = true;
+    draw();
+  }
+
+  function pressOnly(groupEl, button) {
+    for (const other of groupEl.querySelectorAll("button")) {
+      other.setAttribute("aria-pressed", String(other === button));
+    }
+  }
+
   for (const button of unitEl.querySelectorAll("button")) {
     button.addEventListener("click", () => {
       unit = button.dataset.unit;
-      for (const other of unitEl.querySelectorAll("button")) {
-        other.setAttribute("aria-pressed", String(other === button));
-      }
-      bars = stackedBars(series, unit);
-      tooltipEl.hidden = true;
-      draw();
+      pressOnly(unitEl, button);
+      redraw();
     });
   }
+
+  function showViewText() {
+    titleEl.textContent = VIEWS[view].title;
+    viewNoteEl.textContent = VIEWS[view].note;
+  }
+
+  for (const button of viewEl.querySelectorAll("button")) {
+    button.addEventListener("click", () => {
+      view = button.dataset.view;
+      pressOnly(viewEl, button);
+      showViewText();
+      redraw();
+    });
+  }
+  showViewText();
 
   function select(line) {
     selected = line;
@@ -311,7 +391,7 @@ function main() {
     onShips: (changed) => {
       ships = mergeShips(ships, changed);
       series = boatSeries(ships);
-      bars = stackedBars(series, unit);
+      bars = barsFor(view, { ships, series, periods: patrolPeriods, unit });
       colorSlots(series, slots, SLOT_COUNT);
       if (selected !== null) {
         selected = series.find((line) => line.slug === selected.slug) ?? null;
@@ -324,6 +404,20 @@ function main() {
     onError: (error) => console.error(error),
   });
 
+  async function loadPatrolPeriods(revision) {
+    if (revision === periodsRevision) {
+      return;
+    }
+    periodsRevision = revision;
+    try {
+      patrolPeriods = await fetchPatrolPeriods();
+      redraw();
+    } catch (error) {
+      periodsRevision = null;
+      console.error(error);
+    }
+  }
+
   window.addEventListener("resize", draw);
 
   startPolling({
@@ -335,6 +429,7 @@ function main() {
     onStatus: (status) => {
       liveStatusEl.textContent = statusLine(status, new Date());
       loadShips(status.revision);
+      loadPatrolPeriods(status.revision);
     },
     onError: (error) => {
       console.error(error);

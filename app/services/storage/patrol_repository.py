@@ -4,7 +4,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.export.uboats import PatrolRouteOut, RoutePointOut
+from app.services.export.uboats import PatrolPeriodOut, PatrolRouteOut, RoutePointOut
 from app.services.routing.approximate_dates import with_approximate_dates
 from app.services.routing.legs import build_legs
 from app.services.scraping.uboat_net.types import PatrolDetail, PatrolSummary
@@ -38,6 +38,14 @@ def _exclusion_keys(points) -> list[tuple[float, float, int]]:
 class PatrolRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
+
+    async def list_periods(self) -> list[PatrolPeriodOut]:
+        rows = await self._session.execute(
+            select(Patrol.departure_date, Patrol.arrival_date).where(
+                Patrol.departure_date.is_not(None), Patrol.arrival_date.is_not(None)
+            )
+        )
+        return [PatrolPeriodOut(departure, arrival) for departure, arrival in rows]
 
     async def upsert_patrol(self, boat_id: int, summary: PatrolSummary, detail: PatrolDetail) -> None:
         now = datetime.now(timezone.utc)

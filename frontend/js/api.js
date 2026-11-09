@@ -40,6 +40,14 @@ export async function fetchAllRoutes({ pageSize = ROUTES_PAGE_SIZE, onProgress =
   }
 }
 
+export async function fetchPatrolPeriods() {
+  const response = await fetch("api/uboats/patrol-periods", { signal: AbortSignal.timeout(FULL_LOAD_TIMEOUT_MS) });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch patrol periods: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function fetchShips(since = null) {
   const query = since ? `?since=${encodeURIComponent(since)}` : "";
   const response = await fetch(`api/uboats/ships${query}`, { signal: AbortSignal.timeout(since ? REQUEST_TIMEOUT_MS : FULL_LOAD_TIMEOUT_MS) });

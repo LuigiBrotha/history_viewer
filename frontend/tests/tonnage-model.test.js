@@ -2,7 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  atSeaDays,
+  barsFor,
   boatSeries,
+  happyTimeOf,
+  happyTimeSpans,
+  inAmericanWaters,
+  periodBars,
+  ratePerBoatDay,
   colorSlots,
   niceMax,
   tableRows,
@@ -149,4 +156,72 @@ test("periodLabel reads as Dutch text", () => {
   assert.equal(periodLabel("1941-03-01", "month"), "maart 1941");
   assert.equal(periodLabel("1941-03-03", "week"), "week van 3 maart 1941");
   assert.equal(periodLabel("1941-03-16", "day"), "16 maart 1941");
+});
+
+test("per period a bar holds only what sank in that period", () => {
+  const series = boatSeries([hit("u1", "1940-01-10", 100), hit("u1", "1940-03-10", 40), hit("u2", "1940-03-11", 60)]);
+  const bars = periodBars(stackedBars(series, "month"));
+  assert.deepEqual(bars.map((bar) => bar.total), [100, 0, 100]);
+  assert.deepEqual(bars[2].segments.map(({ slug, from, to }) => [slug, from, to]), [["u1", 0, 40], ["u2", 40, 100]]);
+  assert.equal(bars[1].segments.length, 0);
+});
+
+test("days at sea are counted per period, first and last day included", () => {
+  const days = atSeaDays([{ departure_date: "1940-01-30", arrival_date: "1940-02-02" }, { departure_date: "1940-02-01", arrival_date: "1940-02-01" }], "month");
+  assert.equal(days.get("1940-01-01"), 2);
+  assert.equal(days.get("1940-02-01"), 3);
+});
+
+test("the yield of a period is its tonnage divided by the days the boats were at sea", () => {
+  const series = boatSeries([hit("u1", "1940-01-10", 300), hit("u2", "1940-01-11", 100), hit("u1", "1940-02-10", 50)]);
+  const bars = ratePerBoatDay(periodBars(stackedBars(series, "month")), new Map([["1940-01-01", 8]]));
+  assert.equal(bars[0].total, 50);
+  assert.equal(bars[0].boatDays, 8);
+  assert.deepEqual(bars[0].segments.map(({ from, to }) => [from, to]), [[0, 37.5], [37.5, 50]]);
+  assert.deepEqual(bars[1], { period: "1940-02-01", total: 0, boatDays: 0, segments: [] }, "no boat at sea, no yield");
+});
+
+test("American waters are west of 50 degrees west and south of Greenland", () => {
+  assert.equal(inAmericanWaters({ lat: 35, lng: -75 }), true);
+  assert.equal(inAmericanWaters({ lat: 10, lng: -61 }), true);
+  assert.equal(inAmericanWaters({ lat: 55, lng: -20 }), false);
+  assert.equal(inAmericanWaters({ lat: 60, lng: -55 }), false);
+  assert.equal(inAmericanWaters({ lat: null, lng: null }), false);
+});
+
+test("the American view keeps the time axis of the whole war", () => {
+  const ships = [
+    { ...hit("u1", "1940-01-10", 100), lat: 50, lng: -10 },
+    { ...hit("u2", "1942-03-10", 70), lat: 35, lng: -75 },
+    { ...hit("u1", "1942-04-10", 10), lat: 50, lng: -10 },
+  ];
+  const bars = barsFor("amerika", { ships, series: boatSeries(ships), periods: [], unit: "month" });
+  assert.equal(bars[0].period, "1940-01-01");
+  assert.equal(bars.at(-1).period, "1942-04-01");
+  assert.equal(bars.reduce((sum, bar) => sum + bar.total, 0), 70);
+});
+
+test("each view gives its own bars", () => {
+  const ships = [hit("u1", "1940-01-10", 100), hit("u1", "1940-02-10", 50)];
+  const input = { ships, series: boatSeries(ships), periods: [{ departure_date: "1940-02-01", arrival_date: "1940-02-05" }], unit: "month" };
+  assert.deepEqual(barsFor("cumulatief", input).map((bar) => bar.total), [100, 150]);
+  assert.deepEqual(barsFor("periode", input).map((bar) => bar.total), [100, 50]);
+  assert.deepEqual(barsFor("rendement", input).map((bar) => bar.total), [0, 10]);
+});
+
+test("a Happy Time covers the bars of its months and is left out where it falls off the axis", () => {
+  const months = ["1940-05-01", "1940-06-01", "1941-02-01", "1941-03-01"].map((period) => ({ period }));
+  assert.deepEqual(happyTimeSpans(months, "month").map(({ name, first, last }) => [name, first, last]), [["First Happy Time", 1, 2]]);
+});
+
+test("a week that runs into a Happy Time belongs to it", () => {
+  const weeks = [{ period: "1942-08-24" }, { period: "1942-08-31" }, { period: "1942-09-07" }];
+  assert.deepEqual(happyTimeSpans(weeks, "week").map(({ first, last }) => [first, last]), [[0, 1]]);
+  const before = [{ period: "1941-12-22" }, { period: "1941-12-29" }, { period: "1942-01-05" }];
+  assert.deepEqual(happyTimeSpans(before, "week").map(({ first, last }) => [first, last]), [[1, 2]]);
+});
+
+test("the Happy Time of a bar is named in its tooltip", () => {
+  assert.equal(happyTimeOf("1942-03-01", "month")?.name, "Second Happy Time");
+  assert.equal(happyTimeOf("1943-03-01", "month"), null);
 });
