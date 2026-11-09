@@ -11,14 +11,14 @@ test("bandPolygon runs from the width of one end to the width of the other", () 
 test("two battles on the same spot draw no polygon", () =>
   assert.equal(bandPolygon({ x: 1, y: 1 }, { x: 1, y: 1 }, 4, 8), null));
 
-test("a wedge sits on the left edge, 12 px along the band, and is never deeper than the band", () => {
+test("a wedge sits on the edge that looks left on screen (north when heading east), 12 px along the band, and is never deeper than the band", () => {
   const point = { x: 0, y: 0 };
   const tangent = { x: 1, y: 0 };
   const [a, b, apex] = lossWedge(point, tangent, 10, 4);
-  assert.deepEqual([a, b].map((p) => [p.x + 0, p.y + 0]), [[-6, 5], [6, 5]]);
-  assert.deepEqual([apex.x + 0, apex.y + 0], [0, 1]);
-  assert.equal(lossWedge(point, tangent, 10, 99)[2].y, -5);
-  assert.equal(lossWedge(point, tangent, 10, 0.2)[2].y, 4);
+  assert.deepEqual([a, b].map((p) => [p.x + 0, p.y + 0]), [[-6, -5], [6, -5]]);
+  assert.deepEqual([apex.x + 0, apex.y + 0], [0, -1]);
+  assert.equal(lossWedge(point, tangent, 10, 99)[2].y, 5);
+  assert.equal(lossWedge(point, tangent, 10, 0.2)[2].y, -4);
 });
 
 function fakeLeaflet() {
@@ -123,11 +123,28 @@ test("the width follows the slider and every part is redrawn on zoom", () => {
   layer.setMaxWidth(20);
   assert.equal(layer.maxWidth(), 20);
   assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [10, 10]);
+  const before = of(added, "polygon")[0];
+  assert.deepEqual(before.latlngs.map((q) => q[0] + 0), [-10, -10, 10, 10]);
+  const countBefore = added.length;
   map.scale = 2;
   handlers.zoomend();
-  const p = of(added, "polygon")[0];
-  assert.deepEqual(p.latlngs.map((q) => q[1]), [0, 10, 10, 0]);
-  assert.equal(of(added, "circle").length, 2);
+  const after = of(added, "polygon")[0];
+  assert.notEqual(after, before);
+  assert.ok(!added.includes(before));
+  assert.equal(added.length, countBefore);
+  // The band is 20 px wide at every zoom, so its edges lie half as far away in degrees.
+  assert.deepEqual(after.latlngs.map((q) => q[0] + 0), [-5, -5, 5, 5]);
+});
+
+test("setting the same bands twice leaves the same number of layers", () => {
+  const { added, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  const bands = [{ stops: [stop("A", 0, 100, 5), stop("B", 10, 100)], color: "red" }];
+  layer.setBands(bands);
+  const count = added.length;
+  assert.ok(count > 0);
+  layer.setBands(bands);
+  assert.equal(added.length, count);
 });
 
 test("setBands([]) removes everything", () => {

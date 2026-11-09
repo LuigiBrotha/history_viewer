@@ -24,11 +24,11 @@ export function bandPolygon(a, b, widthA, widthB) {
   return [side(a, widthA, 1), side(b, widthB, 1), side(b, widthB, -1), side(a, widthA, -1)];
 }
 
-// A triangle on the left edge of the band (left of the unit vector tangent), 12 px along the
-// band, pointing inward lossPx deep: never deeper than the band, at least 1 px.
+// A triangle on the left edge of the band as seen on screen (y points down) travelling along
+// the unit vector tangent, 12 px along the band, pointing inward lossPx deep: never deeper than the band, at least 1 px.
 export function lossWedge(point, tangent, width, lossPx) {
-  const nx = -tangent.y;
-  const ny = tangent.x;
+  const nx = tangent.y;
+  const ny = -tangent.x;
   const depth = Math.max(1, Math.min(lossPx, width));
   const edge = { x: point.x + nx * (width / 2), y: point.y + ny * (width / 2) };
   const half = WEDGE_BASE / 2;
