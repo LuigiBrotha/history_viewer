@@ -14,8 +14,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 750,
-        "tanks": 37,
-        "vliegtuigen": 0
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 37,
+            "bemanning": 3,
+            "bron": "Battle of Arras (1940) infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
       },
       "tekst": "Strength: 225 tanks (circa); 5,000–10,000 infantry\nCasualties: 350 killed or wounded; 400 PoW; 7th Panzer Division lost 37 tanks",
       "bron": "Battle of Arras (1940) infobox",
@@ -72,8 +79,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 605,
-        "tanks": 3,
-        "vliegtuigen": 0
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 3,
+            "bemanning": 3,
+            "bron": "Operation Brevity infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
       },
       "tekst": "Strength: Parts of several battalions; 30–50 tanks\nCasualties: 605+ casualties; 3 tanks destroyed",
       "bron": "Operation Brevity infobox",
@@ -112,8 +126,22 @@
       ],
       "verliezen": {
         "manschappen": 1270,
-        "tanks": 12,
-        "vliegtuigen": 10
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 12,
+            "bemanning": 3,
+            "bron": "Operation Battleaxe infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 10,
+            "bemanning": 3,
+            "bron": "Operation Battleaxe infobox (losses)"
+          }
+        ]
       },
       "tekst": "Strength: 8th Panzer Regiment began with circa 100 tanks, about 50 being gun tanks; 5th Panzer Regiment had 96 tanks (57 gun tanks); 130 fighters; 84 bombers; 102nd Motorized Division Trento\nCasualties: 1,270 men; 12 tanks; 10 aircraft",
       "bron": "Operation Battleaxe infobox",
@@ -126,8 +154,8 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 7,
-        "tanks": 0,
-        "vliegtuigen": 0
+        "tanks": [],
+        "vliegtuigen": []
       },
       "tekst": "Strength: (none given)\nCasualties: 4 killed; 3 wounded",
       "bron": "Operation Flipper infobox",
@@ -178,8 +206,22 @@
       ],
       "verliezen": {
         "manschappen": 52100,
-        "tanks": 340,
-        "vliegtuigen": 332
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 340,
+            "bemanning": 3,
+            "bron": "Operation Crusader infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 332,
+            "bemanning": 3,
+            "bron": "Operation Crusader infobox (losses, the 228 abandoned aircraft left out)"
+          }
+        ]
       },
       "tekst": "Strength: 119,000 men (65,000 German, 54,000 Italian); 414–552 tanks (70 Panzer II, 139 Panzer III, 35 Panzer IV, 146 Fiat M13/40, and 162 Italian light tanks); 536 aircraft (342 serviceable)\nCasualties: 52,100 (German 14,600: 1,100 killed, 3,400 wounded, 10,100 missing; Italian 23,700: 1,200 killed, 2,700 wounded, 19,800 missing, 13,800 captured); 340 tanks destroyed (German 220, Italian 120); circa 332 aircraft destroyed, circa 228 abandoned",
       "bron": "Operation Crusader infobox (aircraft losses: the 332 destroyed; the 228 abandoned are left out; tank and aircraft losses given as totals, no per type)",
@@ -192,8 +234,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 3836,
-        "tanks": 0,
-        "vliegtuigen": 49
+        "tanks": [],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 49,
+            "bemanning": 3,
+            "bron": "Battle of Bir Hakeim infobox (losses)"
+          }
+        ]
       },
       "tekst": "Strength: 37,000–45,000 men\nCasualties: 3,300 killed or wounded; 227–845 captured; 164 vehicles; 49 aircraft",
       "bron": "Battle of Bir Hakeim infobox",
@@ -206,8 +255,8 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 3360,
-        "tanks": 0,
-        "vliegtuigen": 0
+        "tanks": [],
+        "vliegtuigen": []
       },
       "tekst": "Strength: Deutsches Afrika Korps; XX Corpo d'Armata; XXI Corpo d'Armata; X Corpo d'Armata\nCasualties: circa 3,360",
       "bron": "Axis capture of Tobruk infobox",
@@ -257,8 +306,8 @@
       ],
       "verliezen": {
         "manschappen": 17000,
-        "tanks": 0,
-        "vliegtuigen": 0
+        "tanks": [],
+        "vliegtuigen": []
       },
       "tekst": "Strength: 96,000 troops (56,000 Italian, 40,000 German); 70 tanks initially (585 tanks later); ~500 planes\nCasualties: 10,000 killed or wounded; 7,000 prisoners",
       "bron": "First Battle of El Alamein infobox",
@@ -271,8 +320,22 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 2900,
-        "tanks": 49,
-        "vliegtuigen": 36
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 49,
+            "bemanning": 3,
+            "bron": "Battle of Alam el Halfa infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 36,
+            "bemanning": 3,
+            "bron": "Battle of Alam el Halfa infobox (losses)"
+          }
+        ]
       },
       "tekst": "Strength: 6 Divisions\nCasualties: 2,900 killed, wounded or captured; 49 tanks; 36 aircraft; 60 guns; 400 transport vehicles",
       "bron": "Battle of Alam el Halfa infobox",
@@ -323,8 +386,22 @@
       ],
       "verliezen": {
         "manschappen": 57400,
-        "tanks": 500,
-        "vliegtuigen": 84
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 500,
+            "bemanning": 3,
+            "bron": "Second Battle of El Alamein infobox (losses)"
+          }
+        ],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 84,
+            "bemanning": 3,
+            "bron": "Second Battle of El Alamein infobox (losses)"
+          }
+        ]
       },
       "tekst": "Strength: 116,000; 547 tanks (249 German and 298 Italian: 31 Panzer II, 85 Panzer III short 50mm, 88 Panzer III long 50mm, 8 Panzer IV short 75mm, 30 Panzer IV long 75mm, 7 command tanks, 278 Fiat M13/40 variants and 20 Italian light tanks); 192 armoured cars; 770 – 900 aircraft; 552 artillery pieces; 496 – 1,063 anti-tank guns\nCasualties: 41,800–73,000 casualties; circa 500 tanks destroyed; 254 artillery guns destroyed; 84 aircraft destroyed",
       "bron": "Second Battle of El Alamein infobox",
@@ -371,8 +448,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 1597,
-        "tanks": 20,
-        "vliegtuigen": 0
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 20,
+            "bemanning": 3,
+            "bron": "Battle of Kasserine Pass infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
       },
       "tekst": "Strength: 22,000 infantry; 212 tanks\nCasualties: 989 killed or wounded; 608 captured; 20 tanks lost; 67 vehicles lost; 14 guns lost",
       "bron": "Battle of Kasserine Pass infobox",
@@ -385,8 +469,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 635,
-        "tanks": 47,
-        "vliegtuigen": 0
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 47,
+            "bemanning": 3,
+            "bron": "Battle of Medenine infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
       },
       "tekst": "Strength: 2 infantry divisions; 3 panzer divisions (understrength)\nCasualties: 635; 41–52 tanks",
       "bron": "Battle of Medenine infobox",
@@ -409,8 +500,8 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 6500,
-        "tanks": 0,
-        "vliegtuigen": 0
+        "tanks": [],
+        "vliegtuigen": []
       },
       "tekst": "Straty: 4000–9000 zabitych, rannych i zaginionych",
       "bron": "Lądowanie w Normandii (pl.wikipedia) infobox",
@@ -423,8 +514,15 @@
       "vliegtuigen": [],
       "verliezen": {
         "manschappen": 12296,
-        "tanks": 0,
-        "vliegtuigen": 112
+        "tanks": [],
+        "vliegtuigen": [
+          {
+            "type": null,
+            "aantal": 112,
+            "bemanning": 3,
+            "bron": "Siege of Tobruk infobox (losses)"
+          }
+        ]
       },
       "tekst": "Strength: 35,000\nCasualties: 12,296; 74–150 aircraft",
       "bron": "Siege of Tobruk infobox",
@@ -451,8 +549,15 @@
       ],
       "verliezen": {
         "manschappen": 6360,
-        "tanks": 125,
-        "vliegtuigen": 0
+        "tanks": [
+          {
+            "type": null,
+            "aantal": 125,
+            "bemanning": 3,
+            "bron": "Battle of Gazala infobox (losses)"
+          }
+        ],
+        "vliegtuigen": []
       },
       "tekst": "Strength: 90,000 men (60,000 Italian, 30,000 German); 560 tanks (228 Italian); 542 aircraft\nCasualties: German: 3,360 men (26 May – 24 June); 400 armoured vehicles damaged or destroyed; Italian: 3,000 men; 125 tanks; 44 armoured cars; 39 guns; 74 anti-tank guns; 450 motor vehicles",
       "bron": "Battle of Gazala infobox",

@@ -47,9 +47,9 @@ test("own figures are as in the infobox", () => {
   }
   const arras = FIGURES["Battle of Arras (1940)"];
   assert.equal(arras.tanks.reduce((n, l) => n + l.aantal, 0), 225);
-  assert.deepEqual(arras.verliezen, { manschappen: 750, tanks: 37, vliegtuigen: 0 });
+  assert.deepEqual(lost(arras), [750, 37, 0]);
   assert.equal(FIGURES["Siege of Lille (1940)"].verliezen, null);
-  assert.deepEqual(FIGURES["Battle of Bir Hakeim"].verliezen, { manschappen: 3836, tanks: 0, vliegtuigen: 49 });
+  assert.deepEqual(lost(FIGURES["Battle of Bir Hakeim"]), [3836, 0, 49]);
 });
 
 test("only these battles borrow, and only from real battles", () => {
@@ -88,6 +88,7 @@ test("every tank and aircraft line has a crew and every Veldslag its original te
 });
 
 const total = (lines) => lines.reduce((n, l) => n + l.aantal, 0);
+const lost = (e) => [e.verliezen.manschappen, total(e.verliezen.tanks), total(e.verliezen.vliegtuigen)];
 const split = (lines) => lines.map((l) => [l.type, l.aantal, l.bemanning]);
 
 test("Operation Crusader figures", () => {
@@ -97,34 +98,43 @@ test("Operation Crusader figures", () => {
     ["Panzer II", 70, 3], ["Panzer III", 139, 5], ["Panzer IV", 35, 5], ["Fiat M13/40", 146, 4], [null, 93, 3],
   ]);
   assert.equal(total(e.vliegtuigen), 536);
-  assert.deepEqual(e.verliezen, { manschappen: 52100, tanks: 340, vliegtuigen: 332 });
+  assert.deepEqual(lost(e), [52100, 340, 332]);
 });
 
 test("Second Battle of El Alamein figures", () => {
   const e = FIGURES["Second Battle of El Alamein"];
   assert.equal(total(e.tanks), 547);
   assert.equal(total(e.vliegtuigen), 835);
-  assert.deepEqual(e.verliezen, { manschappen: 57400, tanks: 500, vliegtuigen: 84 });
+  assert.deepEqual(lost(e), [57400, 500, 84]);
 });
 
 test("losses and strengths of the other battles", () => {
   const battleaxe = FIGURES["Operation Battleaxe"];
   assert.deepEqual(battleaxe.tanks.map((l) => l.aantal), [100, 96]);
   assert.deepEqual(battleaxe.vliegtuigen.map((l) => l.aantal), [130, 84]);
-  assert.deepEqual(battleaxe.verliezen, { manschappen: 1270, tanks: 12, vliegtuigen: 10 });
+  assert.deepEqual(lost(battleaxe), [1270, 12, 10]);
   const gazala = FIGURES["Battle of Gazala"];
   assert.equal(gazala.soldaten, 90000);
   assert.equal(total(gazala.tanks), 560);
   assert.equal(total(gazala.vliegtuigen), 542);
-  assert.equal(gazala.verliezen.manschappen, 6360);
-  assert.equal(gazala.verliezen.tanks, 125);
-  assert.equal(FIGURES["Battle of Medenine"].verliezen.manschappen, 635);
-  assert.equal(FIGURES["Battle of Medenine"].verliezen.tanks, 47);
-  assert.deepEqual(FIGURES["Battle of Alam el Halfa"].verliezen, { manschappen: 2900, tanks: 49, vliegtuigen: 36 });
+  assert.deepEqual(lost(gazala), [6360, 125, 0]);
+  assert.deepEqual(lost(FIGURES["Battle of Medenine"]), [635, 47, 0]);
+  assert.deepEqual(lost(FIGURES["Battle of Alam el Halfa"]), [2900, 49, 36]);
 });
 
 test("Siege of Tobruk has no aircraft strength line, its aircraft are losses", () => {
   const e = FIGURES["Siege of Tobruk"];
   assert.deepEqual(e.vliegtuigen, []);
-  assert.equal(e.verliezen.vliegtuigen, 112);
+  assert.equal(lost(e)[2], 112);
+});
+
+test("every loss line has a count and a crew", () => {
+  for (const [title, entry] of Object.entries(FIGURES)) {
+    if (!entry.verliezen) continue;
+    for (const line of [...entry.verliezen.tanks, ...entry.verliezen.vliegtuigen]) {
+      assert.ok(line.aantal > 0, `${title} loss count`);
+      assert.ok(Number.isInteger(line.bemanning) && line.bemanning > 0, `${title} loss crew`);
+      assert.ok(line.bron, `${title} loss source`);
+    }
+  }
 });
