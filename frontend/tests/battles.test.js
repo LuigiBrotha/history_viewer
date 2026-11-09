@@ -24,7 +24,7 @@ const BATTLES = [
   battle({ title: "Atlantic", start: "1939-09-03", end: "1945-05-08", lat: null, lng: null }),
 ];
 
-function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }), loadHints = async () => [], loadHintSummary = async () => ({}), loadManpower = async () => ({}) } = {}) {
+function setup({ mode = "date", load = async () => BATTLES, loadPositions = async () => [], width = 1200, savePosition = async () => {}, clearPosition = async () => {}, download = () => {}, loadArticle = async (title) => ({ html: "", url: `https://en.wikipedia.org/wiki/${title}` }), loadHints = async () => [], loadHintSummary = async () => ({}) } = {}) {
   installDom();
   const layers = new Set();
   const pans = [];
@@ -46,9 +46,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
       };
       return control;
     },
-    DomEvent: { disableClickPropagation() {}, disableScrollPropagation() {} },
-    tooltip: () => ({ setContent() { return this; }, setLatLng() { return this; }, addTo() { return this; }, remove() { return this; } }),
-    DomUtil: { create: (tag, className) => Object.assign(document.createElement(tag), { className }) },
+    DomEvent: { disableClickPropagation() {} },
     divIcon: (options) => ({ ...options }),
     marker: (latlng, options) => {
       const marker = {
@@ -76,17 +74,11 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     },
     layerGroup: () => ({ addTo() { return this; }, addLayer: (l) => layers.add(l), removeLayer: (l) => layers.delete(l) }),
     polyline: (latlngs, options) => ({ latlngs, options: { ...options, icon: { className: "track-line" } } }),
-    polygon: (latlngs, options) => ({ kind: "polygon", latlngs, options: { ...options, icon: { className: "band-polygon" } } }),
-    circleMarker: (latlng, options) => ({ kind: "circle", latlng, options: { ...options, icon: { className: "band-circle" } } }),
   };
   const map = {
     invalidations: 0,
     invalidateSize() { this.invalidations += 1; },
     on() {},
-    createPane() { return { style: {} }; },
-    getPane() { return { style: {} }; },
-    latLngToLayerPoint: ([lat, lng]) => ({ x: lng * 10, y: -lat * 10 }),
-    layerPointToLatLng: (p) => [-p.y / 10, p.x / 10],
     getZoom: () => 4,
     getCenter: () => ({ lat: 10, lng: 20 }),
     getBounds: () => ({ getSouth: () => -90, getWest: () => -180, getNorth: () => 90, getEast: () => 180 }),
@@ -127,7 +119,6 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     download,
     loadHints,
     loadHintSummary,
-    loadManpower,
     loadArticle: async (title) => {
       articles.push(title);
       return loadArticle(title);
@@ -753,64 +744,6 @@ test("a Bevelhebber label draws the Spoor and shows all its battles whatever the
   assert.deepEqual(ctx.squares(), []);
 });
 
-
-const ROMMEL_BATTLES = [
-  battle({ title: "Early", start: "1940-05-10", end: "1940-05-20", lat: 50, lng: 5, commanders: ["Erwin Rommel", "Someone Else"] }),
-  battle({ title: "Late", start: "1942-05-26", end: "1942-06-21", lat: 32, lng: 23, commanders: ["Erwin Rommel", "Someone Else"] }),
-];
-const FIGURES = { "Erwin Rommel": { Early: { soldaten: 100, tanks: [], vliegtuigen: [] }, Late: { soldaten: 200, tanks: [], vliegtuigen: [] } } };
-const bandParts = (ctx) => [...ctx.layers].filter((l) => l.kind === "polygon" || l.kind === "circle");
-
-test("without the figures file the Spoor is drawn as before and no band appears", async () => {
-  const errors = [];
-  const original = console.error;
-  console.error = (...args) => errors.push(args);
-  try {
-    const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: async () => { throw new Error("manschappen.json: 404"); } });
-    await ctx.ready();
-    ctx.controller.addLabel({ kind: "bevelhebber", value: "Erwin Rommel" });
-    const kinds = [...ctx.layers].map((l) => l.options.icon.className);
-    assert.equal(kinds.filter((k) => k === "track-line").length, 1);
-    assert.equal(kinds.filter((k) => k === "track-number").length, 2);
-    assert.equal(bandParts(ctx).length, 0);
-    assert.equal(errors.length, 1);
-  } finally {
-    console.error = original;
-  }
-});
-
-test("only the Label of Erwin Rommel gets a band", async () => {
-  const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: async () => FIGURES });
-  await ctx.ready();
-  ctx.controller.addLabel({ kind: "bevelhebber", value: "Someone Else" });
-  assert.equal(bandParts(ctx).length, 0);
-  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Erwin Rommel" }]);
-  assert.equal(bandParts(ctx).filter((l) => l.kind === "polygon").length, 1);
-  assert.equal(bandParts(ctx).filter((l) => l.kind === "circle").length, 0);
-  ctx.controller.setLabels([]);
-  assert.equal(bandParts(ctx).length, 0);
-});
-
-test("the band replaces the Spoor line of its Bevelhebber; without figures the line stays", async () => {
-  const lines = (ctx) => [...ctx.layers].filter((l) => l.options?.icon?.className === "track-line");
-  const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: async () => FIGURES });
-  await ctx.ready();
-  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Erwin Rommel" }]);
-  assert.equal(lines(ctx).length, 0);
-  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Someone Else" }]);
-  assert.equal(lines(ctx).length, 1);
-});
-
-test("a label chosen before the figures arrive gets its band when they do", async () => {
-  let give;
-  const ctx = setup({ load: async () => ROMMEL_BATTLES, loadManpower: () => new Promise((resolve) => { give = resolve; }) });
-  await ctx.ready();
-  ctx.controller.addLabel({ kind: "bevelhebber", value: "Erwin Rommel" });
-  assert.equal(bandParts(ctx).length, 0);
-  give(FIGURES);
-  await ctx.ready();
-  assert.equal(bandParts(ctx).length, 1);
-});
 
 test("Exporteren downloads the listed battles as CSV or GeoJSON", async () => {
   const files = [];

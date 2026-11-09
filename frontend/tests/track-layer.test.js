@@ -31,14 +31,6 @@ function fakeLeaflet() {
   return added;
 }
 
-test("a track with a band keeps its arrows and numbers but draws no line", () => {
-  const added = fakeLeaflet();
-  const layer = createTrackLayer({});
-  layer.setTracks([{ battles: [{ lat: 0, lng: 0, title: "A" }, { lat: 0, lng: 10, title: "B" }], color: TRACK_COLORS[0], noLine: true }]);
-  assert.equal(added.filter((l) => l.kind === "line").length, 0);
-  assert.equal(added.filter((l) => l.kind === "marker").length, 3);
-});
-
 test("each track is a coloured line with an arrow per step and a number per battle", () => {
   const added = fakeLeaflet();
   const layer = createTrackLayer({});

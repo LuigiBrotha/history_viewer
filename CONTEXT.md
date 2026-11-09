@@ -104,14 +104,6 @@ _Avoid_: Natie, partij
 De Veldslagen van één Eenheid of Bevelhebber op volgorde van datum, op de kaart verbonden door een lijn met pijlen. Een Veldslag die een kortere Veldslag uit hetzelfde Spoor helemaal omvat, telt niet mee.
 _Avoid_: Route (dat is van een boot), pad
 
-**Manschappen**:
-Het aantal mensen dat een kant in een Veldslag inzette: soldaten plus de bemanning van tanks en vliegtuigen. Is het type tank of vliegtuig bekend, dan telt de bemanning van dat type; anders drie man per stuk.
-_Avoid_: Troepen, sterkte, gewicht
-
-**Manschappenband**:
-Een band langs een Spoor waarvan de breedte de Manschappen van de eigen kant in elke Veldslag toont, naar het voorbeeld van Minard, met een wig voor de verliezen. Noemt een Veldslag geen soldaten, dan geldt het cijfer van de kleinste Veldslag eromheen die dat wel doet, mits dat geen hele veldtocht is; anders is dat stuk gestippeld.
-_Avoid_: Minard-lijn, sterktelijn
-
 **Label**:
 Een filter boven de Veldslagenlijst, gekozen via het zoekveld, zoals 'Land: Polen' of 'Winnaar: As'. Met EN moet een Veldslag aan alle labels voldoen, met OF aan minstens één.
 _Avoid_: Tag, chip
