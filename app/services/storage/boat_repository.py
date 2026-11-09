@@ -43,15 +43,17 @@ class BoatRepository:
 
     async def list_summaries(self) -> list[BoatSummary]:
         patrol_count = func.count(Patrol.id).label("patrol_count")
+        tonnage = func.coalesce(func.sum(Patrol.tonnage), 0).label("tonnage")
         stmt = (
-            select(Boat.slug, Boat.number, Boat.type, Boat.fate, patrol_count)
+            select(Boat.slug, Boat.number, Boat.type, Boat.fate, patrol_count, tonnage)
             .outerjoin(Patrol, Patrol.boat_id == Boat.id)
             .group_by(Boat.id)
             .order_by(Boat.slug)
         )
         result = await self._session.execute(stmt)
         return [
-            BoatSummary(slug=row.slug, number=row.number, type=row.type, fate=row.fate, patrol_count=row.patrol_count)
+            BoatSummary(slug=row.slug, number=row.number, type=row.type, fate=row.fate, patrol_count=row.patrol_count,
+                        tonnage=row.tonnage)
             for row in result.all()
         ]
 

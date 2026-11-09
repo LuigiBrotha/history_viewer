@@ -31,7 +31,7 @@ async def test_returns_the_details_and_every_hit_of_the_ship(tmp_path):
         )
         await ShipDetailRepository(session).save("408", ShipDetails(owner="Canada Steamship Lines Ltd, Montreal"))
 
-    result = await RequestHandler(session_factory).handle_request("408")
+    result = await RequestHandler(session_factory, None).handle_request("408")
 
     assert result.ship_external_id == "408"
     assert result.details.owner == "Canada Steamship Lines Ltd, Montreal"
@@ -44,7 +44,7 @@ async def test_details_are_null_until_the_page_is_fetched(tmp_path):
     async with session_factory() as session:
         await ShipHitRepository(session).upsert_refs([_ref("408", "u99", date(1940, 7, 5))])
 
-    result = await RequestHandler(session_factory).handle_request("408")
+    result = await RequestHandler(session_factory, None).handle_request("408")
 
     assert result.details is None
     assert len(result.hits) == 1
@@ -55,7 +55,7 @@ async def test_unknown_ship_is_a_404(tmp_path):
     engine, session_factory = await _session_factory(tmp_path)
 
     with pytest.raises(HTTPException) as error:
-        await RequestHandler(session_factory).handle_request("nope")
+        await RequestHandler(session_factory, None).handle_request("nope")
 
     assert error.value.status_code == 404
     await engine.dispose()

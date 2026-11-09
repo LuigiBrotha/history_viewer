@@ -1,4 +1,5 @@
 import asyncio
+import json
 from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,6 +16,8 @@ from app.services.wiki.render import render_article
 from app.services.wiki.titles import wiki_url
 
 CACHE_SIZE = 64
+# The "language" under which the Dutch texts of boats and ships are kept.
+UBOAT_TEXTS = "uboat.net"
 
 
 @dataclass
@@ -87,6 +90,31 @@ class ArticleService:
                                                  content=html, made_at=datetime.now(timezone.utc)))
                 await session.commit()
         return ArticleOut(original.title, html, original.url, source="vertaald", from_lang=lang)
+
+    async def dutch_texts(self, key: str, texts: dict[str, str | None]) -> dict[str, str] | None:
+        """Loose English texts of a boat or ship in Dutch, made once and kept under key; None
+        when no model can make them."""
+        wanted = {name: text for name, text in texts.items() if text}
+        if not wanted:
+            return {}
+        stored_key = (UBOAT_TEXTS, key)
+        async with self._busy.setdefault(stored_key, asyncio.Lock()):
+            async with self._session_factory() as session:
+                stored = await session.get(DutchArticle, stored_key)
+            kept = json.loads(stored.content) if stored is not None else {}
+            if wanted.keys() <= kept.keys():
+                return kept
+            if not self.models.can_reach_dutch("en"):
+                return None
+            names = list(wanted)
+            translated = await asyncio.to_thread(self.models.to_dutch, "en", [wanted[name] for name in names])
+            made = dict(zip(names, translated))
+            async with self._session_factory() as session:
+                await session.merge(DutchArticle(lang=UBOAT_TEXTS, title=key, kind="vertaald", nl_title=None,
+                                                 content=json.dumps(made, ensure_ascii=False),
+                                                 made_at=datetime.now(timezone.utc)))
+                await session.commit()
+        return made
 
     async def _from_stored(self, stored: DutchArticle, original: ArticleOut) -> ArticleOut:
         if stored.kind == "vertaald":

@@ -11,6 +11,7 @@ class BoatSummary:
     type: str | None
     fate: str | None
     patrol_count: int
+    tonnage: int = 0
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,8 @@ class BoatDetail:
     commissioned: date | None
     fate: str | None
     patrols: list[PatrolSummaryOut] = field(default_factory=list)
+    # Whether the running text is the Dutch version.
+    translated: bool = False
 
 
 @dataclass(frozen=True)
@@ -119,3 +122,5 @@ class ShipDetailOut:
     ship_external_id: str
     details: ShipDetails | None
     hits: list[ShipHitOut] = field(default_factory=list)
+    # Whether the running text is the Dutch version.
+    translated: bool = False

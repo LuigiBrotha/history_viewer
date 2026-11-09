@@ -18,7 +18,7 @@ async def test_handle_request_returns_boat_detail(tmp_path):
             laid_down=None, launched=None, commissioned=None, fate=None,
         ))
 
-    result = await RequestHandler(session_factory).handle_request("u99")
+    result = await RequestHandler(session_factory, None).handle_request("u99")
 
     assert result.slug == "u99"
     assert result.type == "VIIB"
@@ -32,7 +32,7 @@ async def test_handle_request_raises_404_for_unknown_slug(tmp_path):
     session_factory = create_session_factory(engine)
 
     with pytest.raises(HTTPException) as exc_info:
-        await RequestHandler(session_factory).handle_request("unknown")
+        await RequestHandler(session_factory, None).handle_request("unknown")
 
     assert exc_info.value.status_code == 404
 
@@ -63,7 +63,7 @@ async def test_handle_request_includes_each_patrols_description(tmp_path):
             PatrolDetail(description="Sank a ship.", route_points=[]),
         )
 
-    result = await RequestHandler(session_factory).handle_request("u99")
+    result = await RequestHandler(session_factory, None).handle_request("u99")
 
     assert result.patrols[0].description == "Sank a ship."
 

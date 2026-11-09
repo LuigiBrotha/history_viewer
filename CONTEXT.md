@@ -33,8 +33,12 @@ Een routepunt dat de gebruiker als onbetrouwbaar heeft aangemerkt en dat daarom 
 _Avoid_: Verwijderd punt
 
 **Gevolgde boot**:
-De aangeklikte boot, gevolgd over al zijn patrouilles heen.
+De aangeklikte boot, gevolgd over al zijn patrouilles heen, zolang het Artikel over die boot of een van zijn schepen gaat.
 _Avoid_: Gevolgde patrouille
+
+**Schip**:
+Een schip dat door een boot is geraakt, met zijn eigen gegevens. Staat één keer in de kolom Onderwerpen, ook als het meerdere Scheepstreffers heeft.
+_Avoid_: Slachtoffer, doelwit
 
 **Scheepstreffer**:
 Een schip dat door een boot is gezonken, beschadigd of buitgemaakt, op een datum. Hetzelfde schip kan meerdere treffers hebben. De positie komt van de pagina van het schip en ontbreekt soms: dan telt de treffer mee in de totalen maar staat er geen punt op de kaart.
@@ -44,12 +48,16 @@ _Avoid_: Succes, slachtoffer
 Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen artikel op een Wikipedia, met een begin- en einddatum en soms een positie. Artikelen in meerdere talen over dezelfde slag (verbonden door taallinks) vormen één Veldslag.
 _Avoid_: Operatie, gevecht
 
+**Onderwerp**:
+Een Veldslag, boot of Schip: alles wat in de gelijknamige kolom staat en waarover het vak Artikel iets kan tonen.
+_Avoid_: Item, topic
+
 **Artikel**:
-De tekst van het Wikipedia-artikel van een Veldslag, zoals de app die zelf weergeeft naast de lijst met Veldslagen.
-_Avoid_: Wikipedia-pagina (als de weergave in de app wordt bedoeld)
+Wat de app over een Onderwerp toont in het vak Artikel: bij een Veldslag de tekst van het Wikipedia-artikel, bij een boot of Schip de gegevens van uboat.net. Er staat altijd maar één Onderwerp in.
+_Avoid_: Wikipedia-pagina (als de weergave in de app wordt bedoeld), paneel
 
 **Nederlandse versie**:
-Het Artikel in het Nederlands: het artikel van de Nederlandse Wikipedia over dezelfde slag als dat er is, anders een machinevertaling van het origineel. Tegenover het origineel (het Artikel in zijn eigen taal).
+Het Artikel in het Nederlands: bij een Veldslag het artikel van de Nederlandse Wikipedia over dezelfde slag als dat er is, anders een machinevertaling van het origineel; bij een boot of Schip altijd een machinevertaling. Tegenover het origineel (het Artikel in zijn eigen taal).
 _Avoid_: Vertaling (als het ook een Nederlands Wikipedia-artikel kan zijn)
 
 **Kaartuitsnede**:

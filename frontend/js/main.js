@@ -3,7 +3,8 @@ import { activeBoatsOnDate, dateRange, followView, notOnPatrolMessage, parseDate
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
-import { createBoatPanel } from "./boat-panel.js";
+import { createSubjects } from "./subjects.js";
+import { firstPatrolDate } from "./subject-model.js";
 import { createMapSearch } from "./map-search.js";
 import { createShortcutHelp } from "./shortcut-help.js";
 import { installShortcuts, pageActions } from "./shortcuts.js";
@@ -25,7 +26,7 @@ import {
 import { initTimeline } from "./timeline.js";
 import { readView } from "./url-state.js";
 import { createUrlSync } from "./url-sync.js";
-import { boatsHeading, renderBoatList, renderExcludedPoints, renderShipSummary, updateDateLabel } from "./sidebar.js";
+import { boatsHeading, renderExcludedPoints, renderShipSummary, updateDateLabel } from "./sidebar.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsUpToDate } from "./ship-model.js";
@@ -41,7 +42,6 @@ function main() {
   const playPauseEl = document.getElementById("play-pause");
   const dateDisplayEl = document.getElementById("date-display");
   const labelEl = document.getElementById("boat-date-label");
-  const listEl = document.getElementById("boat-list");
   const followStatusEl = document.getElementById("follow-status");
   const liveStatusEl = document.getElementById("live-status");
   const excludedEl = document.getElementById("excluded-points");
@@ -75,6 +75,7 @@ function main() {
   let atlas = { setDate() {} };
   let battles = { setDate() {}, setEditable() {}, allBattles: () => [] };
   let mapSearch = null;
+  let subjects = null;
   let routeToggle = null;
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => mapSearch, help: createShortcutHelp() }) });
   let ships = [];
@@ -130,7 +131,7 @@ function main() {
     renderShips(date);
 
     boatsHeadingEl.textContent = boatsHeading(active.length);
-    renderBoatList({ listEl, activeBoats: active, followedSlug, onBoatSelect, boatsBySlug });
+    subjects?.setDate(date.toISOString().slice(0, 10), new Set(active.map((boat) => boat.boatSlug)));
   }
 
   function renderShips(date) {
@@ -144,6 +145,7 @@ function main() {
     fetchShips,
     onShips: (changed) => {
       ships = mergeShips(ships, changed);
+      subjects?.setShips(ships);
       if (currentDate !== null) {
         renderShips(currentDate);
       }
@@ -184,15 +186,43 @@ function main() {
     onData([updated]);
   }
 
-  const boatPanel = createBoatPanel({
-    rootEl: document.getElementById("boat-panel"),
-    getShips: () => ships,
-    onShowPatrol: (patrol, boat) => {
+  // What choosing an Onderwerp does on this page's map (see subjects.js).
+  const subjectHooks = {
+    follow(slug, { fromList }) {
+      const boatRoutes = routesBySlug.get(slug);
+      if (boatRoutes === undefined) {
+        stopFollowing();
+        return;
+      }
+      if (fromList && !activeBoatsOnDate(routes, currentDate).some((boat) => boat.boatSlug === slug)) {
+        const first = firstPatrolDate(boatRoutes);
+        if (first !== null) timeline?.setDate(parseDate(first));
+      }
+      followBoat(slug);
+    },
+    stopFollow: stopFollowing,
+    followed: () => followedSlug,
+    showShip(hit, { fromList }) {
+      if (!fromList) return;
+      if (hit.date) timeline?.setDate(parseDate(hit.date));
+      if (hit.lat != null && hit.lng != null) mapState.map.setView([hit.lat, hit.lng], Math.max(mapState.map.getZoom(), 6));
+    },
+    showPatrol(patrol, boat) {
       routeToggle?.show();
       followBoat(boat.slug);
       timeline?.setDate(parseDate(patrol.departure_date));
     },
-  });
+  };
+
+  function stopFollowing() {
+    if (followedSlug === null) return;
+    followedSlug = null;
+    urlSync.update({ boat: null });
+    resetButton.hidden = true;
+    clearEditError(editState);
+    clearDrawnRoute();
+    render(currentDate, true);
+  }
 
   function followBoat(slug) {
     followedSlug = slug;
@@ -215,11 +245,9 @@ function main() {
       ],
       onPick: ({ group, item }) => {
         if (group === "Boten") {
-          onBoatSelect(item.slug);
+          subjects.openBoat(item.slug, { fromList: true });
         } else if (group === "Schepen") {
-          boatPanel.openShip(item);
-          if (item.date) timeline?.setDate(parseDate(item.date));
-          if (item.lat != null && item.lng != null) map.setView([item.lat, item.lng], Math.max(map.getZoom(), 6));
+          subjects.openShip(item, { fromList: true });
         } else if (group === "Veldslagen") {
           battles.selectBattle(item.title);
         } else if (group === "Filters") {
@@ -235,19 +263,11 @@ function main() {
   }
 
   function onBoatSelect(slug) {
-    boatPanel.open(slug);
-    followBoat(slug);
+    subjects.openBoat(slug);
   }
 
-  resetButton.addEventListener("click", () => {
-    followedSlug = null;
-    urlSync.update({ boat: null });
-    boatPanel.close();
-    resetButton.hidden = true;
-    clearEditError(editState);
-    clearDrawnRoute();
-    render(currentDate, true);
-  });
+  // The boat is followed for as long as the Artikel is open.
+  resetButton.addEventListener("click", () => battles.closeArticle());
 
   // Showing a battle moves the map, so the pinned Kaartuitsnede is applied again once it shows.
   function onBattleChange(title) {
@@ -274,8 +294,11 @@ function main() {
   function restoreView() {
     restoring = true;
     try {
-      if (initialView.boat !== undefined && routesBySlug.has(initialView.boat)) {
-        followBoat(initialView.boat);
+      if (initialView.boat !== undefined) {
+        subjects.openBoat(initialView.boat);
+      }
+      if (initialView.ship !== undefined) {
+        subjects.restoreShip(initialView.ship);
       }
       if (initialView.date !== undefined) {
         timeline.setDate(parseDate(initialView.date));
@@ -350,7 +373,7 @@ function main() {
     } else if (timeline === null) {
       if (mapState === null) {
         mapState = createMap("map");
-        shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
+        shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => subjects.openShip(ship) });
         battles = initBattles({
           map: mapState.map,
           mode: "date",
@@ -358,6 +381,8 @@ function main() {
           onBattleChange,
           onNoposChange: (on) => urlSync.update({ nopos: on || null }),
         });
+        subjects = createSubjects({ battles, urlSync, getShips: () => ships, hooks: subjectHooks });
+        subjects.setShips(ships);
         mapState.map.on("moveend", () => {
           const center = mapState.map.getCenter();
           urlSync.update({ map: { lat: center.lat, lng: center.lng, zoom: mapState.map.getZoom() } });

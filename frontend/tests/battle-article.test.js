@@ -206,3 +206,56 @@ test("a Dutch article needs no buttons", async () => {
   await pane.show({ title: "Slag om de Grebbeberg", lang: "nl", url: "u" });
   assert.equal(rootEl.byClass("article-versions")[0].hidden, true);
 });
+
+const subject = (load) => ({ title: "U-99", load });
+
+test("a boat or ship shows its nodes, without winner or language label", async () => {
+  const { rootEl, pane } = setup(async () => null);
+  const node = new Element("p");
+  node.textContent = "Inhoud";
+  await pane.showSubject(subject(async () => ({ title: "U-99 (geladen)", nodes: [node], translated: false })));
+  assert.equal(rootEl.byTag("h2")[0].textContent, "U-99 (geladen)");
+  assert.match(rootEl.allText(), /Inhoud/);
+  assert.equal(rootEl.byClass("article-winner")[0].hidden, true);
+  assert.equal(rootEl.byClass("article-versions")[0].hidden, false);
+});
+
+test("the version buttons load a boat again in that version and say it is a translation", async () => {
+  const asked = [];
+  const { rootEl, pane } = setup(async () => null);
+  await pane.showSubject(subject(async (version) => {
+    asked.push(version);
+    return { title: "U-99", nodes: [], translated: version === "nl" };
+  }));
+  rootEl.byClass("article-version")[1].dispatch("click");
+  await pane.settled();
+  assert.deepEqual(asked, ["origineel", "nl"]);
+  assert.match(rootEl.byClass("article-origin")[0].allText(), /Machinevertaling uit het Engels/);
+  assert.equal(rootEl.byClass("article-version")[1].getAttribute("aria-pressed"), "true");
+});
+
+test("without a translation the original is shown and the pane says so", async () => {
+  const { rootEl, pane } = setup(async () => null);
+  pane.setVersion("nl");
+  await pane.showSubject(subject(async () => ({ title: "U-99", nodes: [], translated: false })));
+  assert.match(rootEl.byClass("article-origin")[0].allText(), /Geen vertaling beschikbaar/);
+  assert.equal(rootEl.byClass("article-version")[1].disabled, true);
+});
+
+test("a later choice wins over a slow boat", async () => {
+  const slow = deferred();
+  const { rootEl, pane } = setup(async () => null);
+  const first = pane.showSubject(subject(() => slow.promise));
+  await pane.showSubject({ title: "U-47", load: async () => ({ title: "U-47", nodes: [], translated: false }) });
+  slow.resolve({ title: "U-99", nodes: [], translated: false });
+  await first;
+  assert.equal(rootEl.byTag("h2")[0].textContent, "U-47");
+});
+
+test("a failing boat says so", async () => {
+  const { rootEl, pane } = setup(async () => null);
+  await pane.showSubject(subject(async () => {
+    throw new Error("boom");
+  }));
+  assert.match(rootEl.allText(), /Artikel kon niet worden geladen\./);
+});

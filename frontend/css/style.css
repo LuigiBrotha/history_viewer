@@ -62,28 +62,6 @@ html, body {
   display: none;
 }
 
-#boat-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-#boat-list li {
-  padding: 6px 4px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-  font-size: 14px;
-}
-
-#boat-list li:hover {
-  background: #f0f0f0;
-}
-
-#boat-list li.following {
-  font-weight: bold;
-  background: #e0f0ff;
-}
-
 #reset-follow {
   margin-top: 8px;
   width: 100%;
@@ -168,10 +146,6 @@ html, body {
   text-align: center;
   font-size: 16px;
   font-variant-numeric: tabular-nums;
-}
-
-#boat-list li {
-  min-height: 28px;
 }
 
 #reset-follow,
@@ -498,57 +472,22 @@ html, body {
   --panel-bottom: 0px;
 }
 
-#boat-panel {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: var(--panel-bottom);
-  z-index: 1100;
-  max-height: 45vh;
-  max-height: 45dvh;
-  overflow-y: auto;
-  padding: 12px 16px 16px;
-  box-sizing: border-box;
-  background: white;
-  border-radius: 10px 10px 0 0;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-  font-size: 14px;
-  line-height: 1.4;
-}
-
-#boat-panel[hidden] {
-  display: none;
-}
-
-.boat-panel-close {
-  position: sticky;
-  top: 0;
-  float: right;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  background: #eee;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-#boat-panel h2 {
+.subject-article h2 {
   margin: 8px 0 2px;
   font-size: 20px;
 }
 
-#boat-panel h3 {
+.subject-article h3 {
   margin: 16px 0 4px;
   font-size: 15px;
 }
 
-#boat-panel h4 {
+.subject-article h4 {
   margin: 0 0 2px;
   font-size: 14px;
 }
 
-#boat-panel p {
+.subject-article p {
   margin: 0 0 2px;
 }
 
@@ -556,18 +495,18 @@ html, body {
   color: #555;
 }
 
-#boat-panel dl {
+.subject-article dl {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 2px 12px;
   margin: 8px 0 0;
 }
 
-#boat-panel dt {
+.subject-article dt {
   color: #555;
 }
 
-#boat-panel dd {
+.subject-article dd {
   margin: 0;
 }
 
@@ -589,18 +528,18 @@ html, body {
   padding-left: 8px;
 }
 
-#boat-panel details summary {
+.subject-article details summary {
   min-height: 28px;
   cursor: pointer;
 }
 
-#boat-panel ul {
+.subject-article ul {
   margin: 0 0 8px;
   padding: 0;
   list-style: none;
 }
 
-#boat-panel li {
+.subject-article li {
   padding: 3px 0;
 }
 
@@ -627,14 +566,6 @@ html, body {
     --panel-bottom: 16px;
   }
 
-  #boat-panel {
-    left: 56px;
-    right: auto;
-    width: 360px;
-    max-height: calc(100vh - var(--panel-bottom) - 160px);
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  }
 }
 
 #load-indicator {
@@ -784,11 +715,6 @@ html, body {
   min-height: 0;
 }
 
-/* Fixed to the window, it would cover the pane: keep it inside the map side. */
-#map-side #boat-panel {
-  position: absolute;
-}
-
 #battle-split.resizing {
   user-select: none;
 }
@@ -913,7 +839,8 @@ html, body {
   padding: 8px 12px 4px;
 }
 
-.battle-pane-title {
+.battle-pane-title,
+.subject-column-title {
   margin: 0;
   font-size: 16px;
   white-space: nowrap;
@@ -1965,8 +1892,7 @@ select {
 }
 
 /* Boats and their panel. */
-#sidebar,
-#boat-panel {
+#sidebar {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
@@ -1974,8 +1900,8 @@ select {
 }
 
 #sidebar h2,
-#boat-panel h2,
-#boat-panel h3 {
+.subject-article h2,
+.subject-article h3 {
   font-family: var(--serif);
 }
 
@@ -1984,7 +1910,7 @@ select {
 #live-status,
 #ship-unknown,
 .boat-panel-summary,
-#boat-panel dt {
+.subject-article dt {
   color: var(--ink-soft);
 }
 
@@ -1992,29 +1918,16 @@ select {
   color: var(--accent);
 }
 
-#boat-list li,
 .boat-panel-patrol {
   border-bottom-color: var(--rule);
 }
 
-#boat-list li:hover,
 .boat-panel-patrol.clickable:hover {
   background: var(--paper-dark);
 }
 
-#boat-list li.following {
-  background: var(--paper-dark);
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-
 .boat-panel-patrol.selected {
   box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.boat-panel-close {
-  border-radius: 0;
-  background: var(--paper-dark);
-  color: var(--ink);
 }
 
 .boat-panel-ship {
@@ -2668,4 +2581,124 @@ select {
 
 .battle-refine {
   color: #7a2a1c;
+}
+
+/* The column Onderwerpen: foldable sections that share its height. */
+.subject-section {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.subject-section.open {
+  flex: 1 1 0;
+}
+
+/* The Veldslagen also hold their filters. */
+.subject-section.open:first-of-type {
+  flex-grow: 2;
+}
+
+.subject-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: var(--paper-dark);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.subject-toggle .battle-pane-title,
+.subject-toggle-text {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.subject-toggle-icon::after {
+  content: "▸";
+}
+
+.subject-section.open .subject-toggle-icon::after {
+  content: "▾";
+}
+
+.subject-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.subject-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.subject-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subject-row {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+.subject-row:hover {
+  background: var(--paper-dark);
+}
+
+.subject-row.active {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.subject-row.dimmed {
+  opacity: 0.5;
+}
+
+.subject-row.selected {
+  background: var(--paper-dark);
+  font-weight: 600;
+}
+
+.subject-row-title {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--serif);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subject-row-meta {
+  color: var(--ink-soft);
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+}
+
+.subject-empty {
+  padding: 8px 12px;
+}
+
+.subject-article {
+  font-family: var(--serif);
+  line-height: 1.55;
+}
+
+.subject-article .boat-panel-ship {
+  font-family: var(--sans);
 }
