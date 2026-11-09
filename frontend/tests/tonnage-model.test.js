@@ -21,6 +21,7 @@ import {
   dotAt,
   outcomeLabel,
   shipDots,
+  shipLink,
 } from "../js/tonnage-model.js";
 
 const hit = (boat, date, tons, outcome = "sunk", name = "Ship") => ({
@@ -269,4 +270,8 @@ test("outcomeLabel gives each outcome in Dutch", () => {
   assert.equal(outcomeLabel("sunk"), "Gezonken");
   assert.equal(outcomeLabel("captured"), "Buitgemaakt");
   assert.equal(outcomeLabel("damaged"), "Beschadigd");
+});
+
+test("shipLink goes to the Tijdlijn on the date of this hit, with the Artikel of the ship", () => {
+  assert.equal(shipLink({ ship_external_id: "408", date: "1940-07-05" }), "dag-tot-dag?datum=1940-07-05&schip=408");
 });

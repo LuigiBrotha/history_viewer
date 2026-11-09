@@ -1,3 +1,5 @@
+import { writeView } from "./url-state.js";
+
 const COUNTED_OUTCOMES = new Set(["sunk", "captured"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 // West of here and south of Greenland lie the American coasts, the Gulf and the Caribbean.
@@ -244,6 +246,11 @@ export function dotAt(dots, x, y, reach) {
     }
   }
   return best;
+}
+
+// The Tijdlijn on the date of this hit, with the Artikel of the ship.
+export function shipLink(ship) {
+  return `dag-tot-dag${writeView({ date: ship.date, ship: ship.ship_external_id }, "date")}`;
 }
 
 const OUTCOME_LABELS = { sunk: "Gezonken", captured: "Buitgemaakt", damaged: "Beschadigd" };

@@ -17,6 +17,7 @@ import {
   periodLabel,
   segmentAt,
   shipDots,
+  shipLink,
   tableRows,
 } from "./tonnage-model.js";
 
@@ -242,6 +243,7 @@ function main() {
       periodLabel(dot.ship.date, "day"),
       formatTons(dot.ship.tons),
       outcomeLabel(dot.ship.outcome),
+      "Klik voor het Artikel",
     ];
     for (const content of lines) {
       const row = document.createElement("div");
@@ -259,6 +261,7 @@ function main() {
     const box = dotsCanvas.getBoundingClientRect();
     const dot = dotAt(dots, event.clientX - box.left, event.clientY - box.top, DOT_REACH);
     const next = dot?.ship ?? null;
+    dotsCanvas.style.cursor = next === null ? "" : "pointer";
     if (next !== hoveredDot) {
       hoveredDot = next;
       drawDots();
@@ -270,6 +273,13 @@ function main() {
     }
   }
 
+  dotsCanvas.addEventListener("click", (event) => {
+    const box = dotsCanvas.getBoundingClientRect();
+    const dot = dotAt(dots, event.clientX - box.left, event.clientY - box.top, DOT_REACH);
+    if (dot !== null) {
+      window.open(shipLink(dot.ship), "_blank", "noopener");
+    }
+  });
   dotsCanvas.addEventListener("pointermove", showDotAt);
   dotsCanvas.addEventListener("pointerdown", showDotAt);
   dotsCanvas.addEventListener("pointerleave", (event) => {
