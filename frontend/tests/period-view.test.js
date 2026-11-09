@@ -153,6 +153,19 @@ test("the Spreiding range is restored, and its changes reach the URL", () => {
   assert.deepEqual(writes, [{ spread: null }, { spread: "0-100" }]);
 });
 
+test("the width of the band is restored, and its changes reach the URL", () => {
+  const { view, writes, slider, battles } = fakes("?banddikte=64");
+  const calls = [];
+  let listener;
+  Object.assign(battles, { setBandWidth: (px) => calls.push(px), onBandWidthChange: (fn) => (listener = fn) });
+  view.restore({ slider, battles });
+  assert.deepEqual(calls, [64]);
+  writes.length = 0;
+  listener(48);
+  listener(72);
+  assert.deepEqual(writes, [{ bandWidth: undefined }, { bandWidth: 72 }]);
+});
+
 test("a restored Kaartuitsnede stays in the URL when the next change is written", () => {
   const { view, writes, slider, battles } = fakes("?kaart=40,-40,4");
   view.restore({ slider, battles });

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bandPolygon, createManpowerLayer, lossWedge } from "../js/manpower-layer.js";
+import { bandPolygon, clampBandWidth, createManpowerLayer, lossWedge, scaleBar } from "../js/manpower-layer.js";
 
 test("bandPolygon runs from the width of one end to the width of the other", () => {
   const [p1, p2, p3, p4] = bandPolygon({ x: 0, y: 0 }, { x: 10, y: 0 }, 4, 8);
@@ -40,7 +40,22 @@ function fakeLeaflet() {
     polyline: shape("polyline"),
     circleMarker: shape("circle"),
   };
-  globalThis.document = { createElement: (tag) => ({ tag, className: "", textContent: "" }) };
+  const element = (tag) => {
+    const el = { tag, className: "", textContent: "", style: {}, children: [], listeners: {},
+      append(...nodes) { el.children.push(...nodes); },
+      addEventListener(type, fn) { el.listeners[type] = fn; } };
+    return el;
+  };
+  const controls = [];
+  globalThis.L.control = (options) => {
+    const control = { options, onMap: null,
+      addTo(m) { control.onMap = m; control.element ??= control.onAdd(m); controls.push(control); return control; },
+      remove() { control.onMap = null; controls.splice(controls.indexOf(control), 1); return control; } };
+    return control;
+  };
+  globalThis.L.DomUtil = { create: (tag, className) => Object.assign(element(tag), { className }) };
+  globalThis.L.DomEvent = { disableClickPropagation(el) { el.clickDisabled = true; } };
+  globalThis.document = { createElement: (tag) => element(tag) };
   const map = {
     scale: 1,
     createPane(name) { panes[name] = { style: {} }; return panes[name]; },
@@ -49,7 +64,7 @@ function fakeLeaflet() {
     latLngToLayerPoint: ([lat, lng]) => ({ x: lng * map.scale, y: -lat * map.scale }),
     layerPointToLatLng: (p) => [-p.y / map.scale, p.x / map.scale],
   };
-  return { added, panes, handlers, map };
+  return { added, panes, handlers, map, controls };
 }
 
 const battle = (title, lat, lng) => ({ title, lat, lng });
@@ -155,4 +170,73 @@ test("setBands([]) removes everything", () => {
   layer.setBands([]);
   assert.equal(added.length, 0);
   assert.equal(layer.highest(), 0);
+});
+
+const texts = (el) => [el.textContent, ...el.children.flatMap((c) => (typeof c === "string" ? [c] : texts(c)))];
+const find = (el, tag) => (el.tag === tag ? el : el.children.map((c) => (typeof c === "string" ? null : find(c, tag))).find(Boolean));
+const twoStops = [{ stops: [stop("A", 0, 100), stop("B", 10, 100)], color: "red" }];
+
+test("clampBandWidth accepts whole numbers from 8 to 96 and nothing else", () => {
+  assert.equal(clampBandWidth(48), 48);
+  assert.equal(clampBandWidth("64"), 64);
+  assert.equal(clampBandWidth(8), 8);
+  assert.equal(clampBandWidth(96), 96);
+  for (const bad of [0, 7, 97, 9999, "0", "9999", "abc", "", null, undefined, 12.5, "12.5", NaN])
+    assert.equal(clampBandWidth(bad), undefined, String(bad));
+});
+
+test("the scale bar shows 50.000 Manschappen on the scale of the band", () => {
+  const bar = scaleBar(162646, 48);
+  assert.equal(bar.men, 50000);
+  assert.ok(Math.abs(bar.px - 14.756) < 0.001);
+});
+
+test("the slider and the legend only show while there is a band, and are added once", () => {
+  const { controls, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  assert.equal(controls.length, 0);
+  layer.setBands(twoStops);
+  layer.setBands(twoStops);
+  assert.equal(controls.length, 1);
+  assert.equal(controls[0].options.position, "bottomleft");
+  const all = texts(controls[0].element);
+  assert.ok(all.includes("Dikte band"));
+  assert.ok(all.includes("50.000 Manschappen"));
+  assert.ok(all.includes("Cijfer per kant, niet per Bevelhebber"));
+  assert.equal(controls[0].element.clickDisabled, true);
+  layer.setBands([]);
+  assert.equal(controls.length, 0);
+  layer.setBands(twoStops);
+  assert.equal(controls.length, 1);
+});
+
+test("moving the slider sets the width and reports it; the URL sets it silently", () => {
+  const { controls, added, map } = fakeLeaflet();
+  const reported = [];
+  const layer = createManpowerLayer(map, { onWidthChange: (px) => reported.push(px) });
+  layer.setBands(twoStops);
+  const input = find(controls[0].element, "input");
+  assert.equal(input.type, "range");
+  assert.deepEqual([input.min, input.max, input.step, input.value], [8, 96, 1, 48]);
+  input.value = "20";
+  input.listeners.input();
+  assert.equal(layer.maxWidth(), 20);
+  assert.deepEqual(reported, [20]);
+  assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [10, 10]);
+  layer.setMaxWidth(64);
+  assert.deepEqual(reported, [20]);
+  assert.equal(String(input.value), "64");
+});
+
+test("the scale bar follows the slider and the highest figure, and is left out without a figure", () => {
+  const { controls, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 162646), stop("B", 10, 100)], color: "red" }]);
+  const bar = controls[0].element.bar;
+  assert.ok(Math.abs(parseFloat(bar.style.width) - 14.756) < 0.001);
+  layer.setMaxWidth(96);
+  assert.ok(Math.abs(parseFloat(bar.style.width) - 29.512) < 0.001);
+  layer.setBands([{ stops: [stop("A", 0, null), stop("B", 10, null)], color: "red" }]);
+  assert.equal(controls.length, 1);
+  assert.equal(bar.style.display, "none");
 });

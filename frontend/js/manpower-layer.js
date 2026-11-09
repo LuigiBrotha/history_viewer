@@ -5,6 +5,9 @@
 import { bandSteps, highestManpower, stopText, widthOf } from "./manpower.js";
 
 export const DEFAULT_MAX_WIDTH = 48;
+export const MIN_BAND_WIDTH = 8;
+export const MAX_BAND_WIDTH = 96;
+const SCALE_MEN = 50000;
 const PANE = "manpower";
 const LOSS_PANE = "manpower-losses";
 const LOSS_COLOR = "#2a2521";
@@ -39,6 +42,18 @@ export function lossWedge(point, tangent, width, lossPx) {
   ];
 }
 
+// The width in px from a number or numeric string: a whole number from 8 to 96, else undefined.
+export function clampBandWidth(value) {
+  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return undefined;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= MIN_BAND_WIDTH && number <= MAX_BAND_WIDTH ? number : undefined;
+}
+
+// The length in px of the scale bar for 50.000 Manschappen, when the highest figure is maxPx wide.
+export function scaleBar(highest, maxPx) {
+  return { men: SCALE_MEN, px: highest > 0 ? widthOf(SCALE_MEN, highest, maxPx) : 0 };
+}
+
 function tooltipElement(text) {
   const element = document.createElement("div");
   element.className = "manpower-tooltip";
@@ -64,7 +79,7 @@ function tangentAt(points, i) {
   return null;
 }
 
-export function createManpowerLayer(map) {
+export function createManpowerLayer(map, { onWidthChange } = {}) {
   for (const [name, z] of [[PANE, 395], [LOSS_PANE, 396]]) {
     map.createPane(name);
     map.getPane(name).style.zIndex = z;
@@ -110,11 +125,69 @@ export function createManpowerLayer(map) {
     });
   }
 
+  // The slider and the legend, in the corner for as long as there is a band.
+  let control = null;
+  let shown = false;
+  let slider = null;
+  let bar = null;
+  const buildControl = () => {
+    const box = L.DomUtil.create("div", "manpower-control");
+    L.DomEvent.disableClickPropagation(box);
+    const label = document.createElement("label");
+    label.className = "manpower-control-label";
+    label.textContent = "Dikte band";
+    slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = MIN_BAND_WIDTH;
+    slider.max = MAX_BAND_WIDTH;
+    slider.step = 1;
+    slider.value = maxWidth;
+    slider.addEventListener("input", () => {
+      const px = clampBandWidth(slider.value);
+      if (px === undefined) return;
+      maxWidth = px;
+      redraw();
+      onWidthChange?.(px);
+    });
+    label.append(slider);
+    const scale = document.createElement("div");
+    scale.className = "manpower-scale";
+    bar = document.createElement("span");
+    bar.className = "manpower-scale-bar";
+    const barText = document.createElement("span");
+    barText.textContent = "50.000 Manschappen";
+    scale.append(bar, barText);
+    const note = document.createElement("div");
+    note.className = "manpower-note";
+    note.textContent = "Cijfer per kant, niet per Bevelhebber";
+    box.append(label, scale, note);
+    box.bar = bar;
+    return box;
+  };
+  function syncControl() {
+    if (!bands.length) {
+      if (shown) control.remove();
+      shown = false;
+      return;
+    }
+    if (!control) {
+      control = L.control({ position: "bottomleft" });
+      control.onAdd = buildControl;
+    }
+    if (!shown) control.addTo(map);
+    shown = true;
+    slider.value = maxWidth;
+    const { px } = scaleBar(highest(), maxWidth);
+    bar.style.display = px > 0 ? "" : "none";
+    bar.style.width = `${px}px`;
+  }
+
   function redraw() {
     drawn.forEach((layer) => group.removeLayer(layer));
     drawn = [];
     const top = highest();
     bands.forEach((band) => drawBand(band, top));
+    syncControl();
   }
   map.on("zoomend", redraw);
 
@@ -124,6 +197,7 @@ export function createManpowerLayer(map) {
       bands = next;
       redraw();
     },
+    // From the URL or the page: not reported back.
     setMaxWidth(px) {
       maxWidth = px;
       redraw();

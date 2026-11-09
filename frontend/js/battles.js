@@ -104,6 +104,8 @@ export function initBattles({
       onShowAllChange() {},
       setSpreadRange() {},
       onSpreadChange() {},
+      setBandWidth() {},
+      onBandWidthChange() {},
       labels: () => [],
       onLabelsChange() {},
       setSort() {},
@@ -161,6 +163,7 @@ export function initBattles({
   let hintSummary = {};
   let spreadRange = FULL_RANGE;
   const spreadListeners = [];
+  const bandWidthListeners = [];
   const labelListeners = [];
   const labelModeListeners = [];
   const showAllListeners = [];
@@ -259,7 +262,9 @@ export function initBattles({
   });
 
   const trackLayer = createTrackLayer(map);
-  const manpowerLayer = createManpowerLayer(map);
+  const manpowerLayer = createManpowerLayer(map, {
+    onWidthChange: (px) => bandWidthListeners.forEach((listener) => listener(px)),
+  });
   // The Manschappen per Bevelhebber and Veldslag; stays empty if the file cannot be loaded.
   let manpowerTable = {};
 
@@ -644,6 +649,9 @@ export function initBattles({
       drawSquares();
     },
     onSpreadChange: (listener) => spreadListeners.push(listener),
+    // The band width from the URL: applied without being reported back.
+    setBandWidth: (px) => manpowerLayer.setMaxWidth(px),
+    onBandWidthChange: (listener) => bandWidthListeners.push(listener),
     setSort: (next) => pane.setSort(next),
     setArticleVersion: (version) => articlePane.setVersion(version),
     articleVersion: () => articlePane.version(),

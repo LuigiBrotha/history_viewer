@@ -47,6 +47,7 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
       return control;
     },
     DomEvent: { disableClickPropagation() {} },
+    DomUtil: { create: (tag, className) => Object.assign(document.createElement(tag), { className }) },
     divIcon: (options) => ({ ...options }),
     marker: (latlng, options) => {
       const marker = {

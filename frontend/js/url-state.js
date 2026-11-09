@@ -1,6 +1,8 @@
 // The view of a page (date or period, Veldslag, Gevolgde boot, Kaartuitsnede, Alleen zonder
 // positie) as a URL search string. Pure: no DOM, no history; the pages decide when to read and write.
 
+import { clampBandWidth, DEFAULT_MAX_WIDTH } from "./manpower-layer.js";
+
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const BOAT_PATTERN = /^[a-z0-9-]+$/;
 const SHIP_PATTERN = /^[\w.-]+$/;
@@ -64,6 +66,7 @@ export function readView(search, kind) {
     ["namesOff", params.get("namen") === "uit" ? true : undefined],
     ["shipsOff", params.get("schepen") === "uit" ? true : undefined],
     ["spread", /^\d+-\d*$/.test(params.get("spreiding") ?? "") ? params.get("spreiding") : undefined],
+    ["bandWidth", clampBandWidth(params.get("banddikte"))],
   );
   return Object.fromEntries(fields.filter(([, value]) => value !== undefined));
 }
@@ -97,14 +100,15 @@ export function writeView(view, kind) {
   add("namen", view.namesOff === true && "uit");
   add("schepen", view.shipsOff === true && "uit");
   add("spreiding", view.spread && encode(view.spread));
+  add("banddikte", view.bandWidth !== DEFAULT_MAX_WIDTH && clampBandWidth(view.bandWidth));
   add("artikel", view.version === "nl" && "nl");
   return pairs.length ? `?${pairs.join("&")}` : "";
 }
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, shipsOff } = view;
+  const { battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, bandWidth, version, routesOff, boatsOff, namesOff, shipsOff } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, shipsOff }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, bandWidth, version, routesOff, boatsOff, namesOff, shipsOff }).filter(([, value]) => value !== undefined),
   );
 }

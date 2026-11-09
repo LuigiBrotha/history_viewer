@@ -160,3 +160,18 @@ test("routes that are switched off stay off in the URL and in links to other pag
   assert.deepEqual(carriedView({ boatsOff: true, date: "1942-01-01" }), { boatsOff: true });
   for (const bad of ["aan", "1", ""]) assert.deepEqual(readView(`?routes=${bad}`, "date"), {});
 });
+
+test("the width of the band can be read from and written to the URL", () => {
+  assert.equal(writeView({ bandWidth: 64 }, "date"), "?banddikte=64");
+  assert.deepEqual(readView("?banddikte=64", "date"), { bandWidth: 64 });
+  assert.deepEqual(carriedView({ date: "1942-01-01", bandWidth: 64 }), { bandWidth: 64 });
+});
+
+test("a width outside the slider is ignored", () => {
+  for (const value of ["0", "9999", "abc"]) assert.deepEqual(readView(`?banddikte=${value}`, "date"), {});
+});
+
+test("the default width stays out of the URL", () => {
+  assert.equal(writeView({ bandWidth: 48 }, "date"), "");
+  assert.equal(writeView({}, "date"), "");
+});
