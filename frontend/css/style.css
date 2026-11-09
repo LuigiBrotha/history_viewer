@@ -2753,3 +2753,13 @@ select {
   text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
   pointer-events: none;
 }
+
+.battle-filter-clear {
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--accent, #7a2a1c);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

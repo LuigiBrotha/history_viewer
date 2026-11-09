@@ -229,6 +229,10 @@ export function initBattles({
     onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
     onNoposChange,
     onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
+    onLabelsClear: () => {
+      setLabelModeReported("en");
+      changeLabels([]);
+    },
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
     onLabelModeChange: (next) => {
       labelMode = next;
@@ -344,6 +348,13 @@ export function initBattles({
   const allOnMap = (own) => own.length > 0
     && own.every((label) => labels.some((l) => labelKey(l) === labelKey(label)));
 
+  function setLabelModeReported(next) {
+    if (labelMode === next) return;
+    labelMode = next;
+    pane.setLabelMode(labelMode);
+    labelModeListeners.forEach((listener) => listener(labelMode));
+  }
+
   const groupLabels = (battle, kind) => (kind === "eenheid" ? unitLabels(battle) : commanderLabels(battle));
 
   // Adds every Bevelhebber or Eenheid of a Veldslag to the Labels, on OF so the list holds all their
@@ -355,11 +366,7 @@ export function initBattles({
       changeLabels(labels.filter((l) => !keys.has(labelKey(l))));
       return;
     }
-    if (labelMode !== "of") {
-      labelMode = "of";
-      pane.setLabelMode(labelMode);
-      labelModeListeners.forEach((listener) => listener(labelMode));
-    }
+    setLabelModeReported("of");
     const present = new Set(labels.map(labelKey));
     changeLabels([...labels, ...own.filter((label) => !present.has(labelKey(label)))]);
     const places = new Map();

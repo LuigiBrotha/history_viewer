@@ -252,6 +252,27 @@ test("the Eenheden button adds every Eenheid of the Article and leaves the Bevel
   assert.deepEqual(keys(ctx), []);
 });
 
+test("Wis alles removes every Label, back on EN, reports it, and is gone without Labels", async () => {
+  const ctx = setup({ load: async () => WAR });
+  await ctx.ready();
+  const clearButton = () => ctx.elements["battle-pane"].byClass("battle-filter-clear")[0];
+  const modes = [];
+  const reported = [];
+  ctx.controller.onLabelModeChange((m) => modes.push(m));
+  ctx.controller.onLabelsChange((l) => reported.push(l.length));
+  ctx.controller.addLabel({ kind: "land", value: "Polen" });
+  ctx.controller.selectBattle("Gazala");
+  await ctx.ready();
+  commandersButton(ctx).dispatch("click");
+  assert.equal(clearButton().textContent, "Wis alles");
+  clearButton().dispatch("click");
+  assert.deepEqual(keys(ctx), []);
+  assert.deepEqual(modes, ["of", "en"]);
+  assert.equal(reported.at(-1), 0);
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (2)");
+  assert.equal(ctx.elements["battle-pane"].byClass("battle-filter").length, 0);
+});
+
 test("a second click takes only the Bevelhebbers of this Article away again, and moves no map", async () => {
   const ctx = setup({ load: async () => WAR });
   await ctx.ready();
