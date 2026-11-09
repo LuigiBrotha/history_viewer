@@ -519,7 +519,7 @@ test("a patrol arriving during a selection is grey when it belongs to another bo
 
 test("the routes of the period page go off the map and come back with the chosen one on top", async () => {
   const log = fakeLeaflet();
-  const { setRoutesVisible, updateRoutes } = await import("../js/status-map.js");
+  const { setBoatsVisible, updateRoutes } = await import("../js/status-map.js");
   const state = newState("red");
   const onMap = new Set([state.layer]);
   state.map.hasLayer = (layer) => onMap.has(layer);
@@ -531,11 +531,11 @@ test("the routes of the period page go off the map and come back with the chosen
   state.polylines.get("red").id = "red";
   log.length = 0;
 
-  setRoutesVisible(state, false);
+  setBoatsVisible(state, false);
   assert.equal(onMap.has(state.layer), false);
   assert.deepEqual(log, []);
 
-  setRoutesVisible(state, true);
+  setBoatsVisible(state, true);
   assert.equal(onMap.has(state.layer), true);
   assert.deepEqual(log, ["red"]);
 });

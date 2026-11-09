@@ -37,5 +37,5 @@ export function createRouteToggle(options) {
 }
 
 export function createBoatToggle(options) {
-  return createMapToggle({ ...options, id: "boat-toggle", label: "U-boten", title: "De U-boten zelf aan of uit" });
+  return createMapToggle({ ...options, id: "boat-toggle", label: "U-boten", title: "U-boten aan of uit; de gezonken schepen blijven staan" });
 }
