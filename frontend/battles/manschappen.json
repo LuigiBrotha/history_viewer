@@ -178,11 +178,11 @@
       ],
       "verliezen": {
         "manschappen": 52100,
-        "tanks": 0,
-        "vliegtuigen": 0
+        "tanks": 340,
+        "vliegtuigen": 332
       },
-      "tekst": "Strength: 119,000 men (65,000 German, 54,000 Italian); 414–552 tanks (70 Panzer II, 139 Panzer III, 35 Panzer IV, 146 Fiat M13/40, and 162 Italian light tanks); 536 aircraft (342 serviceable)\nCasualties: 52,100",
-      "bron": "Operation Crusader infobox",
+      "tekst": "Strength: 119,000 men (65,000 German, 54,000 Italian); 414–552 tanks (70 Panzer II, 139 Panzer III, 35 Panzer IV, 146 Fiat M13/40, and 162 Italian light tanks); 536 aircraft (342 serviceable)\nCasualties: 52,100 (German 14,600: 1,100 killed, 3,400 wounded, 10,100 missing; Italian 23,700: 1,200 killed, 2,700 wounded, 19,800 missing, 13,800 captured); 340 tanks destroyed (German 220, Italian 120); circa 332 aircraft destroyed, circa 228 abandoned",
+      "bron": "Operation Crusader infobox (aircraft losses: the 332 destroyed; the 228 abandoned are left out; tank and aircraft losses given as totals, no per type)",
       "overgenomen_van": null
     },
     "Battle of Bir Hakeim": {
@@ -420,14 +420,7 @@
       "kolom": 2,
       "soldaten": 35000,
       "tanks": [],
-      "vliegtuigen": [
-        {
-          "type": null,
-          "aantal": 112,
-          "bemanning": 3,
-          "bron": "Siege of Tobruk infobox (74–150 aircraft: midpoint)"
-        }
-      ],
+      "vliegtuigen": [],
       "verliezen": {
         "manschappen": 12296,
         "tanks": 0,

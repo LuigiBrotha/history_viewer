@@ -86,3 +86,45 @@ test("every tank and aircraft line has a crew and every Veldslag its original te
     if (entry.verliezen) assert.ok(Number.isFinite(entry.verliezen.manschappen), title);
   }
 });
+
+const total = (lines) => lines.reduce((n, l) => n + l.aantal, 0);
+const split = (lines) => lines.map((l) => [l.type, l.aantal, l.bemanning]);
+
+test("Operation Crusader figures", () => {
+  const e = FIGURES["Operation Crusader"];
+  assert.equal(total(e.tanks), 483);
+  assert.deepEqual(split(e.tanks), [
+    ["Panzer II", 70, 3], ["Panzer III", 139, 5], ["Panzer IV", 35, 5], ["Fiat M13/40", 146, 4], [null, 93, 3],
+  ]);
+  assert.equal(total(e.vliegtuigen), 536);
+  assert.deepEqual(e.verliezen, { manschappen: 52100, tanks: 340, vliegtuigen: 332 });
+});
+
+test("Second Battle of El Alamein figures", () => {
+  const e = FIGURES["Second Battle of El Alamein"];
+  assert.equal(total(e.tanks), 547);
+  assert.equal(total(e.vliegtuigen), 835);
+  assert.deepEqual(e.verliezen, { manschappen: 57400, tanks: 500, vliegtuigen: 84 });
+});
+
+test("losses and strengths of the other battles", () => {
+  const battleaxe = FIGURES["Operation Battleaxe"];
+  assert.deepEqual(battleaxe.tanks.map((l) => l.aantal), [100, 96]);
+  assert.deepEqual(battleaxe.vliegtuigen.map((l) => l.aantal), [130, 84]);
+  assert.deepEqual(battleaxe.verliezen, { manschappen: 1270, tanks: 12, vliegtuigen: 10 });
+  const gazala = FIGURES["Battle of Gazala"];
+  assert.equal(gazala.soldaten, 90000);
+  assert.equal(total(gazala.tanks), 560);
+  assert.equal(total(gazala.vliegtuigen), 542);
+  assert.equal(gazala.verliezen.manschappen, 6360);
+  assert.equal(gazala.verliezen.tanks, 125);
+  assert.equal(FIGURES["Battle of Medenine"].verliezen.manschappen, 635);
+  assert.equal(FIGURES["Battle of Medenine"].verliezen.tanks, 47);
+  assert.deepEqual(FIGURES["Battle of Alam el Halfa"].verliezen, { manschappen: 2900, tanks: 49, vliegtuigen: 36 });
+});
+
+test("Siege of Tobruk has no aircraft strength line, its aircraft are losses", () => {
+  const e = FIGURES["Siege of Tobruk"];
+  assert.deepEqual(e.vliegtuigen, []);
+  assert.equal(e.verliezen.vliegtuigen, 112);
+});
