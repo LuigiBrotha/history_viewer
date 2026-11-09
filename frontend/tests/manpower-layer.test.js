@@ -382,3 +382,16 @@ test("the shapes follow a zoom: after it the hit test uses the new layer points"
   move(handlers, 40, 0);
   assert.equal(first(tooltips[0]), "A");
 });
+
+test("a viewreset (the pixel origin moves at the same zoom) rebuilds the shapes too", () => {
+  const { added, handlers, counts, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 100), stop("B", 100, 100)], color: "red" }]);
+  const before = of(added, "polygon")[0];
+  map.scale = 2;
+  handlers.viewreset();
+  assert.equal(counts.viewreset, 1);
+  assert.notEqual(of(added, "polygon")[0], before);
+  move(handlers, 150, 0);
+  assert.equal(first(tooltips[0]), "B");
+});

@@ -228,6 +228,7 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
     syncControl();
   }
   map.on("zoomend", redraw);
+  map.on("viewreset", redraw);
 
   // One hit test for the whole map: the band lets every mouse event through.
   function hideTooltip() {
