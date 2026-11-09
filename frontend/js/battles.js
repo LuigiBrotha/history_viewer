@@ -5,6 +5,8 @@ import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-
 import { createHintLayer } from "./hint-layer.js";
 import { FULL_RANGE, inSpreadRange, squareSize } from "./spread.js";
 import { createTrackLayer, trackColor } from "./track-layer.js";
+import { bandStops } from "./manpower.js";
+import { createManpowerLayer } from "./manpower-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -24,6 +26,16 @@ async function loadBattles() {
     throw new Error(`${BATTLES_URL}: not a list`);
   }
   return battles;
+}
+
+const MANPOWER_URL = "battles/manschappen.json";
+
+async function loadManpowerTable() {
+  const response = await fetch(MANPOWER_URL);
+  if (!response.ok) {
+    throw new Error(`${MANPOWER_URL}: ${response.status}`);
+  }
+  return response.json();
 }
 
 const ARTICLE_VERSION_KEY = "uboats.articleVersion";
@@ -55,6 +67,7 @@ export function initBattles({
   doc = document,
   win = window,
   load = loadBattles,
+  loadManpower = loadManpowerTable,
   loadArticle = fetchArticle,
   loadHints = fetchHints,
   loadHintSummary = fetchHintSummary,
@@ -246,6 +259,9 @@ export function initBattles({
   });
 
   const trackLayer = createTrackLayer(map);
+  const manpowerLayer = createManpowerLayer(map);
+  // The Manschappen per Bevelhebber and Veldslag; stays empty if the file cannot be loaded.
+  let manpowerTable = {};
 
   // Plaatshints of the selected battle while it has no position; a click while placing that
   // battle moves its square to the hint.
@@ -288,6 +304,12 @@ export function initBattles({
     }));
     trackLayer.setTracks(tracks);
     pane.setTracks(tracks);
+    manpowerLayer.setBands(tracked
+      .filter((label) => label.kind === "bevelhebber" && manpowerTable[label.value])
+      .map((label) => ({
+        stops: bandStops(track(battles, label), manpowerTable[label.value]),
+        color: trackColor(labels, label),
+      })));
   }
 
   // A file for the viewer to save; the page's own download unless one is given (tests).
@@ -548,6 +570,14 @@ export function initBattles({
       pane.setPlaceSummary(hintSummary);
       layer.setSizes((battle) => squareSize(hintSummary[battle.title]));
       drawSquares();
+    },
+    (error) => console.error(error),
+  );
+
+  startAfter.then(() => loadManpower()).then(
+    (table) => {
+      manpowerTable = table ?? {};
+      if (loaded) drawTracks();
     },
     (error) => console.error(error),
   );

@@ -2724,3 +2724,8 @@ select {
 #load-indicator.background .load-bar {
   display: none;
 }
+
+/* The tooltip of the Manschappenband: the lines of the text under one another. */
+.manpower-tooltip {
+  white-space: pre-line;
+}
