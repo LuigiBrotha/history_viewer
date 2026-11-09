@@ -2747,3 +2747,26 @@ select {
 #load-indicator.background .load-bar {
   display: none;
 }
+
+/* The Artikel of a ship beside the charts of the tonnage page. */
+#tonnage-layout {
+  display: flex;
+  align-items: flex-start;
+}
+
+#tonnage-layout #tonnage-main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+#tonnage-layout #article-pane {
+  position: sticky;
+  top: 0;
+  flex: 0 0 clamp(340px, 32vw, 620px);
+  height: 100vh;
+  border-left: 1px solid var(--grid);
+}
+
+#tonnage-layout #article-pane[hidden] {
+  display: none;
+}

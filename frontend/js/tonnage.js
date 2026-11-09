@@ -17,9 +17,9 @@ import {
   periodLabel,
   segmentAt,
   shipDots,
-  shipLink,
   tableRows,
 } from "./tonnage-model.js";
+import { createShipArticle } from "./tonnage-article.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -86,6 +86,12 @@ function main() {
   let scale = null;
   let dots = [];
   let hoveredDot = null;
+  // The charts take the width the panel leaves them, so they are drawn again when it comes or goes.
+  const shipArticle = createShipArticle({
+    rootEl: document.getElementById("article-pane"),
+    getShips: () => ships,
+    onToggle: () => draw(),
+  });
 
   function color(name) {
     return rootStyle.getPropertyValue(name).trim();
@@ -227,9 +233,11 @@ function main() {
         paintDot(dot, FOCUS_DOT_RADIUS, lit);
       }
     }
-    const active = dots.find((dot) => dot.ship === hoveredDot);
-    if (active !== undefined) {
-      paintDot(active, FOCUS_DOT_RADIUS + 1.5, color("--text-primary"));
+    for (const ship of [shipArticle.current(), hoveredDot]) {
+      const active = dots.find((dot) => dot.ship === ship);
+      if (active !== undefined) {
+        paintDot(active, FOCUS_DOT_RADIUS + 1.5, color("--text-primary"));
+      }
     }
   }
 
@@ -277,7 +285,8 @@ function main() {
     const box = dotsCanvas.getBoundingClientRect();
     const dot = dotAt(dots, event.clientX - box.left, event.clientY - box.top, DOT_REACH);
     if (dot !== null) {
-      window.open(shipLink(dot.ship), "_blank", "noopener");
+      shipArticle.open(dot.ship);
+      drawDots();
     }
   });
   dotsCanvas.addEventListener("pointermove", showDotAt);
