@@ -1,8 +1,11 @@
-import { fetchBoats } from "./api.js";
+import { fetchBoats, fetchSearch } from "./api.js";
 import { createBoatPanel } from "./boat-panel.js";
 import { createSubjectList } from "./subject-list.js";
 import { boatSubjects, hitByDate, hitInPeriod, shipSubjects } from "./subject-model.js";
 import { inPeriod } from "./status-map.js";
+
+const MIN_SEARCH_LENGTH = 3;
+const SEARCH_DELAY_MS = 200;
 
 const INERT = { openBoat() {}, openShip() {}, restoreShip() {}, setDate() {}, setPeriod() {}, setRoutes() {}, setShips() {} };
 
@@ -12,7 +15,7 @@ const INERT = { openBoat() {}, openShip() {}, restoreShip() {}, setDate() {}, se
 //   follow(slug, { fromList }), stopFollow(), followed() the followed slug or null,
 //   showShip(hit, { fromList }), showPatrol(patrol, boat).
 // fromList is a choice in the column or the search field, not on the map.
-export function createSubjects({ battles, urlSync, getShips, hooks = {}, ready = Promise.resolve(), loadBoats = fetchBoats, panel = createBoatPanel }) {
+export function createSubjects({ battles, urlSync, getShips, hooks = {}, ready = Promise.resolve(), loadBoats = fetchBoats, search = fetchSearch, panel = createBoatPanel }) {
   const column = battles.column;
   if (!column) return INERT;
   const { follow = () => {}, stopFollow = () => {}, followed = () => null, showShip = () => {}, showPatrol = null } = hooks;
@@ -36,9 +39,37 @@ export function createSubjects({ battles, urlSync, getShips, hooks = {}, ready =
     onPick: (item) => openShip(item.hits[0], { fromList: true }),
     onCount: (count) => column.setCount("ships", count),
   });
+  function showHits(found) {
+    const use = (keys) => (found === null ? null : keys);
+    battles.setTextHits(use(found?.battles));
+    boatList.setHits(use(found?.boats));
+    shipList.setHits(use(found?.ships));
+  }
+
+  // The names filter at once; the texts follow when the typing has paused. The last search wins.
+  let searchTimer = null;
+  let latestSearch = 0;
+  async function searchTexts(text) {
+    const mine = ++latestSearch;
+    try {
+      const found = await search(text);
+      if (mine === latestSearch) showHits(found.available ? found : null);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   column.onSearch((text) => {
     boatList.setSearch(text);
     shipList.setSearch(text);
+    clearTimeout(searchTimer);
+    latestSearch += 1;
+    const query = text.trim();
+    if (query.length < MIN_SEARCH_LENGTH) {
+      showHits(null);
+      return;
+    }
+    searchTimer = setTimeout(() => searchTexts(query), SEARCH_DELAY_MS);
   });
 
   const boatPanel = panel({

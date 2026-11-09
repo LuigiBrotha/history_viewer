@@ -69,3 +69,16 @@ test("new items keep the chosen row and the marks", () => {
   assert.equal(row("u2").classes.has("selected"), true);
   assert.equal(row("u2").classes.has("active"), true);
 });
+
+test("rows found in the texts come first, best first, and go back when the search ends", () => {
+  const { rootEl, list, row, counts } = setup();
+  const keys = () => rootEl.byClass("subject-row").map((r) => r.getAttribute("data-key"));
+  list.setSearch("woord");
+  list.setHits(["u3", "u1"]);
+  assert.deepEqual(keys(), ["u3", "u1", "u2"]);
+  assert.equal(row("u1").hidden, false);
+  assert.equal(row("u2").hidden, true);
+  assert.equal(counts.at(-1), 2);
+  list.setHits(null);
+  assert.deepEqual(keys(), ["u1", "u2", "u3"]);
+});

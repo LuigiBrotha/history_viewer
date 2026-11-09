@@ -57,6 +57,8 @@ export function createBattlePane({
   // Every battle listed, those outside the labels dimmed.
   let showAll = false;
   let sort = "datum";
+  // title → place among the battles found in the texts, best first; null without such a search.
+  let textHits = null;
   let editable = false;
   let actionsEl = null;
   let selection = null;
@@ -191,7 +193,12 @@ export function createBattlePane({
 
   function applyOrder() {
     const byBattle = new Map(rows.map((r) => [r.battle, r]));
-    order = sortBattles(rows.map((r) => r.battle), sort).map((battle) => byBattle.get(battle));
+    const sorted = sortBattles(rows.map((r) => r.battle), sort);
+    if (textHits !== null) {
+      const placeOf = (battle) => textHits.get(battle.title) ?? textHits.size;
+      sorted.sort((a, b) => placeOf(a) - placeOf(b));
+    }
+    order = sorted.map((battle) => byBattle.get(battle));
     list.replaceChildren(...order.map((r) => r.el));
   }
 
@@ -287,9 +294,13 @@ export function createBattlePane({
     const widened = showAll && labels.length > 0;
     const inSpread = (battle) => inSpreadRange(placeSummary[battle.title], spreadRange);
     const battles = (widened ? all : all.filter((battle) => matching.has(battle))).filter(inSpread);
-    const unplaced = withoutPosition(battles, mode, selection, search.value);
+    const found = (list) => {
+      const byName = new Set(filterBattles(list, search.value));
+      return list.filter((battle) => byName.has(battle) || textHits?.has(battle.title) === true);
+    };
+    const unplaced = found(withoutPosition(battles, mode, selection, ""));
     noposText.textContent = `Alleen zonder positie (${unplaced.length})`;
-    const shown = new Set(noposBox.checked ? unplaced : filterBattles(battles, search.value));
+    const shown = new Set(noposBox.checked ? unplaced : found(battles));
     if (noposBox.checked && revealed !== null) shown.add(revealed.battle);
     for (const row of rows) {
       row.el.hidden = !shown.has(row.battle);
@@ -415,6 +426,12 @@ export function createBattlePane({
       revealed.el.classList.toggle("selected", false);
       revealed = null;
       refreshActions();
+      applyFilter();
+    },
+    // The titles found in the texts, best first: those battles are listed too, at the top. Null ends it.
+    setTextHits(titles) {
+      textHits = titles === null ? null : new Map(titles.map((title, place) => [title, place]));
+      applyOrder();
       applyFilter();
     },
     // The visible battle before (-1) or after (1) the selected one; without one, the last or first.

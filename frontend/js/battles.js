@@ -96,6 +96,7 @@ export function initBattles({
       setSort() {},
       onSortChange() {},
       setNamesVisible() {},
+      setTextHits() {},
       column: null,
       showSubject() {},
       closeArticle() {},
@@ -652,6 +653,7 @@ export function initBattles({
       else split.open();
     },
     setNamesVisible: (visible) => layer.setNamesVisible(visible),
+    setTextHits: (titles) => pane.setTextHits(titles),
     column,
     showSubject,
     closeArticle,

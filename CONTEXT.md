@@ -84,6 +84,10 @@ _Avoid_: Overwinnaar
 Het zoekveld linksboven op de kaartpagina's (Ctrl+K) om een boot, schip, Veldslag of plaats te kiezen; een keuze doet hetzelfde als erop klikken.
 _Avoid_: kaartzoeker
 
+**Zoeken in de onderwerpen**:
+Het zoekveld boven de kolom Onderwerpen. Zoekt op naam en in de volledige tekst van elk Onderwerp, in alle talen, en laat een woord met een tikfout meetellen als het woord dat bedoeld was. De best passende Onderwerpen staan bovenaan.
+_Avoid_: Fuzzy search (in de app), zoekfilter
+
 **Eenheid**:
 Een militaire eenheid met een eigen Wikipedia-artikel, zoals een divisie, brigade, leger, regiment of vloot. Gekoppeld aan een Veldslag wanneer de infobox van die Veldslag haar noemt.
 _Avoid_: Krijgseenheid, troepen, unit
