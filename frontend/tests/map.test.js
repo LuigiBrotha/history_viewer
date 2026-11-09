@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
 import { boatColor } from "../js/boat-color.js";
-import { dotRadius, pointPopup, renderActiveBoats, renderFollowedRoute, setRoutesVisible } from "../js/map.js";
+import { dotRadius, pointPopup, renderActiveBoats, renderFollowedRoute, setBoatsVisible, setRoutesVisible } from "../js/map.js";
 import { installFakeDom } from "./fake-dom.js";
 
 function setup() {
@@ -435,7 +435,22 @@ test("the tail of an active boat is a route, its marker is not", () => {
   renderActiveBoats({ activeBoatsLayer: { clearLayers() {} } }, [boat], () => {});
 
   for (const line of made.filter((m) => m.kind === "polyline")) assert.equal(line.args[1].pane, "routes");
-  assert.equal(made.find((m) => m.kind === "circleMarker").args[1].pane, undefined);
+  assert.equal(made.find((m) => m.kind === "circleMarker").args[1].pane, "boats");
+});
+
+test("hiding the boats hides only their pane and closes a popup on the followed boat", () => {
+  let closed = 0;
+  const panes = { boats: { style: {} }, routes: { style: {} } };
+  const state = { map: { getPane: (name) => panes[name], closePopup: () => { closed += 1; } } };
+
+  setBoatsVisible(state, false);
+  assert.equal(panes.boats.style.display, "none");
+  assert.equal(panes.routes.style.display, undefined);
+  assert.equal(closed, 1);
+
+  setBoatsVisible(state, true);
+  assert.equal(panes.boats.style.display, "");
+  assert.equal(closed, 1);
 });
 
 test("hiding the routes hides their pane and closes a popup on one of their dots", () => {

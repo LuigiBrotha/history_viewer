@@ -8,6 +8,9 @@ const ROUTE_UNCERTAIN = " — route onzeker";
 const ROUTES_PANE = "routes";
 // Below Leaflet's overlay pane (400), so that the boats lie on their routes.
 const ROUTES_Z_INDEX = 390;
+const BOATS_PANE = "boats";
+// Above the routes, below the ships (450).
+const BOATS_Z_INDEX = 410;
 
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
@@ -16,6 +19,8 @@ export function createMap(containerId) {
 
   map.createPane(ROUTES_PANE);
   map.getPane(ROUTES_PANE).style.zIndex = ROUTES_Z_INDEX;
+  map.createPane(BOATS_PANE);
+  map.getPane(BOATS_PANE).style.zIndex = BOATS_Z_INDEX;
 
   const activeBoatsLayer = L.layerGroup().addTo(map);
   const followedRouteLayer = L.layerGroup().addTo(map);
@@ -57,6 +62,7 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
       color,
       fillColor: color,
       fillOpacity: boat.dateApproximate ? APPROXIMATE_FILL : 0.85,
+      pane: BOATS_PANE,
     });
     const uncertain = leg !== null && UNCERTAIN.has(leg.status);
     marker.bindTooltip(uncertain ? `${positionLabel(boat)}${ROUTE_UNCERTAIN}` : positionLabel(boat));
@@ -161,6 +167,7 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       color: "#000000",
       fillColor: color,
       fillOpacity: currentPosition.dateApproximate ? APPROXIMATE_FILL : 1,
+      pane: BOATS_PANE,
     })
       .bindTooltip(
         positionLabel({
@@ -185,7 +192,16 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
 
 // Hides what the boats sailed; the boats themselves stay. A popup may hang on a hidden dot.
 export function setRoutesVisible(mapState, visible) {
-  mapState.map.getPane(ROUTES_PANE).style.display = visible ? "" : "none";
+  setPaneVisible(mapState, ROUTES_PANE, visible);
+}
+
+// Hides the boats, the followed one too; what they sailed stays. A popup may hang on the followed boat.
+export function setBoatsVisible(mapState, visible) {
+  setPaneVisible(mapState, BOATS_PANE, visible);
+}
+
+function setPaneVisible(mapState, pane, visible) {
+  mapState.map.getPane(pane).style.display = visible ? "" : "none";
   if (!visible) mapState.map.closePopup();
 }
 

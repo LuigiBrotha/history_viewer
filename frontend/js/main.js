@@ -10,8 +10,8 @@ import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
-import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setRoutesVisible } from "./map.js";
-import { createRouteToggle } from "./route-toggle.js";
+import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setBoatsVisible, setRoutesVisible } from "./map.js";
+import { createBoatToggle, createRouteToggle } from "./map-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -370,6 +370,14 @@ function main() {
           onChange: (visible) => {
             setRoutesVisible(mapState, visible);
             urlSync.update({ routesOff: visible ? null : true });
+          },
+        });
+        createBoatToggle({
+          map: mapState.map,
+          visible: !initialView.boatsOff,
+          onChange: (visible) => {
+            setBoatsVisible(mapState, visible);
+            urlSync.update({ boatsOff: visible ? null : true });
           },
         });
         initAtlas(mapState.map).then((loaded) => {

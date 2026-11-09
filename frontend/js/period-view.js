@@ -72,6 +72,9 @@ export function createPeriodView({ search, urlSync, map }) {
         urlSync.update({ nopos: true });
         battles.setOnlyWithoutPosition(true);
       }
+      // Not used on every period page, but kept for the way back to the page that does.
+      if (initial.routesOff) urlSync.update({ routesOff: true });
+      if (initial.boatsOff) urlSync.update({ boatsOff: true });
       restoreLabels(initial, urlSync, battles);
       if (initial.battle !== undefined) {
         pinnedBattle = initial.battle;

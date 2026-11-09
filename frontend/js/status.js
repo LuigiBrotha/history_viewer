@@ -15,7 +15,7 @@ import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
-import { createRouteToggle } from "./route-toggle.js";
+import { createRouteToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
 import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setPeriod, setRoutesVisible, visibleCount } from "./status-map.js";
 

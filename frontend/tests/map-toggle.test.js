@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createRouteToggle } from "../js/route-toggle.js";
+import { createBoatToggle, createRouteToggle } from "../js/map-toggle.js";
 
 function fakeDoc() {
   return {
@@ -17,22 +17,31 @@ function fakeDoc() {
   };
 }
 
-function setup(visible) {
+function setup(visible, create = createRouteToggle) {
   let control;
   globalThis.L = {
     control: () => (control = { addTo() { this.element = this.onAdd(); } }),
     DomEvent: { disableClickPropagation() {} },
   };
   const changes = [];
-  const toggle = createRouteToggle({ map: {}, doc: fakeDoc(), visible, onChange: (shown) => changes.push(shown) });
+  const toggle = create({ map: {}, doc: fakeDoc(), visible, onChange: (shown) => changes.push(shown) });
   return { toggle, changes, button: control.element };
 }
 
 test("the button sits in the map controls and starts as the URL said", () => {
   const { button, changes } = setup(false);
+  assert.equal(button.id, "route-toggle");
   assert.equal(button.textContent, "Routes");
   assert.equal(button.attributes["aria-pressed"], "false");
   assert.deepEqual(changes, [false]);
+});
+
+test("the U-boats have a button of their own", () => {
+  const { button, changes } = setup(true, createBoatToggle);
+  assert.equal(button.id, "boat-toggle");
+  assert.equal(button.textContent, "U-boten");
+  button.click();
+  assert.deepEqual(changes, [true, false]);
 });
 
 test("clicking switches the routes off and on again", () => {

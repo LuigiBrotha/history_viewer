@@ -1,13 +1,13 @@
-// The button in the row of map controls that switches the routes of the U-boats on and off.
+// A button in the row of map controls that switches something on the map on and off.
 // `onChange` hears the state at once and after every change, so the page draws it and keeps
 // it in the URL in one place.
-export function createRouteToggle({ map, doc = document, visible = true, onChange }) {
+function createMapToggle({ map, doc = document, id, label, title, visible = true, onChange }) {
   let shown = visible;
   const button = doc.createElement("button");
-  button.id = "route-toggle";
-  button.textContent = "Routes";
+  button.id = id;
+  button.textContent = label;
   button.setAttribute("type", "button");
-  button.setAttribute("title", "Routes van de U-boten aan of uit");
+  button.setAttribute("title", title);
 
   function apply() {
     button.setAttribute("aria-pressed", String(shown));
@@ -30,4 +30,12 @@ export function createRouteToggle({ map, doc = document, visible = true, onChang
   apply();
 
   return { show: () => set(true) };
+}
+
+export function createRouteToggle(options) {
+  return createMapToggle({ ...options, id: "route-toggle", label: "Routes", title: "Routes van de U-boten aan of uit" });
+}
+
+export function createBoatToggle(options) {
+  return createMapToggle({ ...options, id: "boat-toggle", label: "U-boten", title: "De U-boten zelf aan of uit" });
 }

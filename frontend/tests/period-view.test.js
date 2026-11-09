@@ -158,3 +158,10 @@ test("a restored Kaartuitsnede stays in the URL when the next change is written"
   view.restore({ slider, battles });
   assert.ok(writes.some((partial) => partial.map?.lat === 40 && partial.map.zoom === 4));
 });
+
+test("switched-off routes and boats stay in the URL for the way back", () => {
+  const { view, writes, slider, battles } = fakes("?routes=uit&boten=uit");
+  view.restore({ slider, battles });
+  assert.ok(writes.some((partial) => partial.routesOff === true));
+  assert.ok(writes.some((partial) => partial.boatsOff === true));
+});
