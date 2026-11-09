@@ -69,13 +69,6 @@ def test_reload_server_creates_tables_on_a_fresh_database(reload_server):
     assert response.json() == []
 
 
-def test_reload_server_serves_the_map_at_the_root(reload_server):
-    response = requests.get(f"{reload_server}/", timeout=5)
-
-    assert response.status_code == 200
-    assert '<div id="map">' in response.text
-
-
 def test_reload_server_serves_frontend_assets(reload_server):
     response = requests.get(f"{reload_server}/js/main.js", timeout=5)
 
@@ -83,7 +76,7 @@ def test_reload_server_serves_frontend_assets(reload_server):
     assert "javascript" in response.headers["content-type"]
 
 
-@pytest.mark.parametrize("path", ["/", "/status", "/heatmap", "/js/main.js", "/css/style.css"])
+@pytest.mark.parametrize("path", ["/", "/dag-tot-dag", "/heatmap", "/js/main.js", "/css/style.css"])
 def test_pages_and_assets_must_be_revalidated_after_an_update(reload_server, path):
     response = requests.get(f"{reload_server}{path}", timeout=5)
     assert response.status_code == 200
@@ -103,11 +96,41 @@ def test_reload_server_serves_the_heatmap_without_a_redirect(reload_server):
     assert "js/heatmap.js" in response.text
 
 
-def test_reload_server_serves_the_status_map_without_a_redirect(reload_server):
-    response = requests.get(f"{reload_server}/status", timeout=5, allow_redirects=False)
+def test_the_root_is_the_map_of_all_routes(reload_server):
+    response = requests.get(f"{reload_server}/", timeout=5, allow_redirects=False)
 
     assert response.status_code == 200
     assert '<div id="status-map">' in response.text
+    assert "js/status.js" in response.text
+
+
+def test_the_timeline_is_at_dag_tot_dag(reload_server):
+    response = requests.get(f"{reload_server}/dag-tot-dag", timeout=5, allow_redirects=False)
+
+    assert response.status_code == 200
+    assert "js/main.js" in response.text
+
+
+@pytest.mark.parametrize(
+    ("path", "location"),
+    [
+        ("/status", "./"),
+        ("/status?van=1942-01-01&kaart=1,2,3", "./?van=1942-01-01&kaart=1,2,3"),
+        ("/?datum=1942-05-15&boot=u172", "dag-tot-dag?datum=1942-05-15&boot=u172"),
+    ],
+)
+def test_old_addresses_lead_to_the_right_page_with_their_view(reload_server, path, location):
+    response = requests.get(f"{reload_server}{path}", timeout=5, allow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == location
+
+
+def test_a_view_without_a_date_stays_on_the_root(reload_server):
+    response = requests.get(f"{reload_server}/?van=1942-01-01", timeout=5, allow_redirects=False)
+
+    assert response.status_code == 200
+    assert "js/status.js" in response.text
 
 
 async def _seed_two_patrols(db_path):
