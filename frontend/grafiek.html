@@ -41,6 +41,12 @@
       <canvas id="tonnage-chart" role="img" aria-label="Gestapelde staven van het gezonken tonnage per boot, met de First en Second Happy Time als banden; de tabel hieronder bevat de totalen per boot"></canvas>
       <div id="tonnage-tooltip" hidden></div>
     </div>
+    <h2 id="tonnage-dots-title">Elk getroffen schip op datum en tonnage</h2>
+    <p id="tonnage-dots-note"><span aria-hidden="true">●</span> gezonken of buitgemaakt · <span aria-hidden="true">○</span> beschadigd. Selecteer een boot om zijn schepen te kleuren.</p>
+    <div id="tonnage-dots-plot">
+      <canvas id="tonnage-dots" role="img" aria-label="Puntenwolk: elk getroffen schip als stip, met de datum op de x-as en het tonnage op de y-as"></canvas>
+      <div id="tonnage-dots-tooltip" hidden></div>
+    </div>
     <table id="tonnage-table">
       <thead>
         <tr><th scope="col">Boot</th><th scope="col">Ton</th><th scope="col">Schepen</th></tr>

@@ -1263,14 +1263,16 @@ html, body {
   min-height: 280px;
 }
 
-#tonnage-chart {
+#tonnage-chart,
+#tonnage-dots {
   display: block;
   width: 100%;
   height: 100%;
   touch-action: pan-y;
 }
 
-#tonnage-tooltip {
+#tonnage-tooltip,
+#tonnage-dots-tooltip {
   position: absolute;
   z-index: 10;
   max-width: 260px;
@@ -1282,8 +1284,27 @@ html, body {
   pointer-events: none;
 }
 
-#tonnage-tooltip[hidden] {
+#tonnage-tooltip[hidden],
+#tonnage-dots-tooltip[hidden] {
   display: none;
+}
+
+#tonnage-dots-plot {
+  position: relative;
+  height: 44vh;
+  min-height: 260px;
+}
+
+#tonnage-dots-title {
+  margin: 24px 0 4px;
+  font-family: var(--serif);
+  font-size: 19px;
+}
+
+#tonnage-dots-note {
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 #tonnage-table {
@@ -2380,11 +2401,13 @@ select {
 #tonnage-search,
 #tonnage-view button,
 #tonnage-unit button,
-#tonnage-tooltip {
+#tonnage-tooltip,
+#tonnage-dots-tooltip {
   border-radius: 0;
 }
 
-#tonnage-tooltip {
+#tonnage-tooltip,
+#tonnage-dots-tooltip {
   border: 1px solid var(--ink);
   box-shadow: none;
 }
