@@ -15,7 +15,9 @@ import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
-import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setPeriod, visibleCount } from "./status-map.js";
+import { createRouteToggle } from "./route-toggle.js";
+import { readView } from "./url-state.js";
+import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setPeriod, setRoutesVisible, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -32,9 +34,10 @@ function main() {
     return;
   }
 
+  const urlSync = createUrlSync({ kind: "period" });
   const periodView = createPeriodView({
     search: location.search,
-    urlSync: createUrlSync({ kind: "period" }),
+    urlSync,
     map: state.map,
   });
   if (periodView.mapPinned()) state.fitted = true;
@@ -44,7 +47,10 @@ function main() {
   const boatPanel = createBoatPanel({
     rootEl: document.getElementById("boat-panel"),
     getShips: () => ships,
-    onShowPatrol: (patrol) => highlightPatrol(state, patrol.external_id),
+    onShowPatrol: (patrol) => {
+      routeToggle.show();
+      highlightPatrol(state, patrol.external_id);
+    },
     onOpenBoat: (slug) => selectBoat(state, slug),
     onClose: () => selectBoat(state, null),
   });
@@ -124,6 +130,14 @@ function main() {
     fetchPlaces,
   });
   battles.placeToggle();
+  const routeToggle = createRouteToggle({
+    map: state.map,
+    visible: !readView(location.search, "period").routesOff,
+    onChange: (visible) => {
+      setRoutesVisible(state, visible);
+      urlSync.update({ routesOff: visible ? null : true });
+    },
+  });
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   const slider = initPeriodSlider({

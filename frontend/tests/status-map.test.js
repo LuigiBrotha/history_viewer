@@ -516,3 +516,26 @@ test("a patrol arriving during a selection is grey when it belongs to another bo
 
   assert.equal(state.polylines.get("n").style.color, "#9a9a9a");
 });
+
+test("the routes of the period page go off the map and come back with the chosen one on top", async () => {
+  const log = fakeLeaflet();
+  const { setRoutesVisible, updateRoutes } = await import("../js/status-map.js");
+  const state = newState("red");
+  const onMap = new Set([state.layer]);
+  state.map.hasLayer = (layer) => onMap.has(layer);
+  state.map.addLayer = (layer) => onMap.add(layer);
+  state.map.removeLayer = (layer) => onMap.delete(layer);
+  const pts = [{ sequence: 0, lat: 1, lng: 1 }, { sequence: 1, lat: 2, lng: 2 }];
+  const legs = [{ from_sequence: 0, to_sequence: 1, status: "ok", path: [[1, 1], [2, 2]] }];
+  updateRoutes(state, [{ external_id: "red", boat_number: "U-1", points: pts, legs }]);
+  state.polylines.get("red").id = "red";
+  log.length = 0;
+
+  setRoutesVisible(state, false);
+  assert.equal(onMap.has(state.layer), false);
+  assert.deepEqual(log, []);
+
+  setRoutesVisible(state, true);
+  assert.equal(onMap.has(state.layer), true);
+  assert.deepEqual(log, ["red"]);
+});

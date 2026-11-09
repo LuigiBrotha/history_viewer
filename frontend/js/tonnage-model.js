@@ -1,5 +1,14 @@
 const COUNTED_OUTCOMES = new Set(["sunk", "captured"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
+// West of here and south of Greenland lie the American coasts, the Gulf and the Caribbean.
+const AMERICAN_WEST_OF = -50;
+const AMERICAN_SOUTH_OF = 52;
+// English Wikipedia: "June 1940 – February 1941 (The Happy Time)" in Battle of the Atlantic,
+// "January–August 1942" in Torpedo Alley.
+export const HAPPY_TIMES = [
+  { name: "First Happy Time", short: "1e", from: "1940-06-01", to: "1941-02-28" },
+  { name: "Second Happy Time", short: "2e", from: "1942-01-01", to: "1942-08-31" },
+];
 const MONTHS = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
 
 export function formatNumber(value) {
@@ -74,14 +83,15 @@ function nextPeriod(period, unit) {
   return isoDay(Date.parse(period) + (unit === "week" ? 7 : 1) * DAY_MS);
 }
 
-// One bar per day, week or month from the first ship to the last, also when nothing sank.
+// One bar per day, week or month from the first ship to the last, also when nothing sank;
+// `span` ([first, last] date) sets a wider axis, so that a part of the ships can be compared.
 // A bar stacks each boat's running total up to and including that period, biggest boat first;
 // added and ships tell what that boat sank in the period itself.
-export function stackedBars(series, unit) {
-  if (series.length === 0) {
+export function stackedBars(series, unit, span = shipsSpan(series)) {
+  if (span === null) {
     return [];
   }
-  const dates = series.flatMap(({ steps }) => [steps[0].date, steps[steps.length - 1].date]).sort();
+  const dates = span;
   const last = periodStart(dates[dates.length - 1], unit);
   const cursors = series.map(() => 0);
   const bars = [];
@@ -107,6 +117,90 @@ export function stackedBars(series, unit) {
     bars.push({ period, total: height, segments });
   }
   return bars;
+}
+
+function shipsSpan(series) {
+  if (series.length === 0) {
+    return null;
+  }
+  const dates = series.flatMap(({ steps }) => [steps[0].date, steps[steps.length - 1].date]).sort();
+  return [dates[0], dates[dates.length - 1]];
+}
+
+// The same bars with only what sank in each period itself.
+export function periodBars(bars) {
+  return bars.map(({ period, segments }) => {
+    let height = 0;
+    const kept = [];
+    for (const segment of segments) {
+      if (segment.added > 0) {
+        kept.push({ ...segment, from: height, to: height + segment.added });
+        height += segment.added;
+      }
+    }
+    return { period, total: height, segments: kept };
+  });
+}
+
+// How many U-boat days at sea each period has, under its periodStart.
+export function atSeaDays(patrols, unit) {
+  const days = new Map();
+  for (const { departure_date: departure, arrival_date: arrival } of patrols) {
+    const last = Date.parse(arrival);
+    for (let time = Date.parse(departure); time <= last; time += DAY_MS) {
+      const period = periodStart(isoDay(time), unit);
+      days.set(period, (days.get(period) ?? 0) + 1);
+    }
+  }
+  return days;
+}
+
+// Tons per U-boat per day at sea: what made the Happy Times, more than the tonnage itself.
+export function ratePerBoatDay(bars, boatDays) {
+  return bars.map(({ period, total, segments }) => {
+    const days = boatDays.get(period) ?? 0;
+    if (days === 0) {
+      return { period, total: 0, boatDays: 0, segments: [] };
+    }
+    return {
+      period,
+      total: total / days,
+      boatDays: days,
+      segments: segments.map((segment) => ({ ...segment, from: segment.from / days, to: segment.to / days })),
+    };
+  });
+}
+
+export function inAmericanWaters({ lat, lng }) {
+  return lat != null && lng != null && lng < AMERICAN_WEST_OF && lat < AMERICAN_SOUTH_OF;
+}
+
+// The bars of a view of the chart.
+export function barsFor(view, { ships, series, periods, unit }) {
+  if (view === "amerika") {
+    return periodBars(stackedBars(boatSeries(ships.filter(inAmericanWaters)), unit, shipsSpan(series)));
+  }
+  const bars = stackedBars(series, unit);
+  if (view === "cumulatief") {
+    return bars;
+  }
+  return view === "rendement" ? ratePerBoatDay(periodBars(bars), atSeaDays(periods, unit)) : periodBars(bars);
+}
+
+function overlaps(period, unit, { from, to }) {
+  return period <= to && nextPeriod(period, unit) > from;
+}
+
+// Where each Happy Time lies on the axis, as the indexes of its first and last bar.
+export function happyTimeSpans(bars, unit) {
+  return HAPPY_TIMES.flatMap((time) => {
+    const inside = bars.flatMap(({ period }, index) => (overlaps(period, unit, time) ? [index] : []));
+    return inside.length === 0 ? [] : [{ ...time, first: inside[0], last: inside[inside.length - 1] }];
+  });
+}
+
+export function happyTimeOf(period, unit) {
+  return HAPPY_TIMES.find((time) => overlaps(period, unit, time)) ?? null;
 }
 
 export function segmentAt(bar, tons) {

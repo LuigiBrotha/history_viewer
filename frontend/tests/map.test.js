@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { activeBoatsOnDate, parseDate } from "../js/time-model.js";
 import { boatColor } from "../js/boat-color.js";
-import { dotRadius, pointPopup, renderActiveBoats, renderFollowedRoute } from "../js/map.js";
+import { dotRadius, pointPopup, renderActiveBoats, renderFollowedRoute, setRoutesVisible } from "../js/map.js";
 import { installFakeDom } from "./fake-dom.js";
 
 function setup() {
@@ -412,4 +412,42 @@ test("a read-only current-position popup shows only the date", () => {
 test("route dots are larger for a finger than for a mouse", () => {
   assert.ok(dotRadius(true) > dotRadius(false));
   assert.equal(dotRadius(false), 3);
+});
+
+test("the lines and dots of a route can be hidden, the boat's own marker stays", () => {
+  const made = recordingLeaflet();
+  const state = { map: { fitBounds() {} }, followedRouteLayer: { clearLayers() {} }, fittedExternalId: null };
+  renderFollowedRoute(state, legPatrol, { lat: 5, lng: 7, sequence: 3 }, { fit: false });
+
+  const inRoutes = (m) => m.args[1].pane === "routes";
+  assert.ok(made.filter((m) => m.kind === "polyline").every(inRoutes));
+  assert.ok(made.filter((m) => m.kind === "marker").every(inRoutes));
+  assert.ok(made.filter((m) => m.kind === "circleMarker" && m.args[1].radius === 3).every(inRoutes));
+  assert.ok(!inRoutes(made.find((m) => m.kind === "circleMarker" && m.args[1].radius === 8)));
+});
+
+test("the tail of an active boat is a route, its marker is not", () => {
+  const made = recordingLeaflet();
+  const boat = {
+    boatSlug: "u1", boatNumber: "U-1", lat: 2, lng: 2, positionDate: "2020-01-02",
+    patrol: legPatrol, sequence: 1,
+  };
+  renderActiveBoats({ activeBoatsLayer: { clearLayers() {} } }, [boat], () => {});
+
+  for (const line of made.filter((m) => m.kind === "polyline")) assert.equal(line.args[1].pane, "routes");
+  assert.equal(made.find((m) => m.kind === "circleMarker").args[1].pane, undefined);
+});
+
+test("hiding the routes hides their pane and closes a popup on one of their dots", () => {
+  let closed = 0;
+  const pane = { style: {} };
+  const state = { map: { getPane: () => pane, closePopup: () => { closed += 1; } } };
+
+  setRoutesVisible(state, false);
+  assert.equal(pane.style.display, "none");
+  assert.equal(closed, 1);
+
+  setRoutesVisible(state, true);
+  assert.equal(pane.style.display, "");
+  assert.equal(closed, 1);
 });

@@ -793,7 +793,8 @@ html, body {
   user-select: none;
 }
 
-#battle-toggle {
+#battle-toggle,
+#route-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -809,11 +810,13 @@ html, body {
 }
 
 /* Once placed in the row of map controls it flows with them. */
-#battle-toggle.leaflet-control {
+#battle-toggle.leaflet-control,
+#route-toggle.leaflet-control {
   position: static;
 }
 
-#battle-toggle[aria-expanded="true"] {
+#battle-toggle[aria-expanded="true"],
+#route-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -1186,6 +1189,8 @@ html, body {
   --text-secondary: #52514e;
   --grid: #e7e6e2;
   --context: #c4c3bc;
+  --happy-band: rgba(235, 161, 0, 0.2);
+  --happy-text: #7a4b00;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
@@ -1227,6 +1232,7 @@ html, body {
 }
 
 #tonnage-note,
+#tonnage-view-note,
 #tonnage-source {
   margin: 0 0 8px;
   color: var(--text-secondary);
@@ -1281,14 +1287,18 @@ html, body {
   border-radius: 2px;
 }
 
+#tonnage-view,
 #tonnage-unit {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-top: 8px;
 }
 
+#tonnage-view button,
 #tonnage-unit button {
   min-width: 64px;
+  padding: 0 12px;
   min-height: 44px;
   border: 1px solid var(--context);
   border-radius: 4px;
@@ -1298,6 +1308,7 @@ html, body {
   cursor: pointer;
 }
 
+#tonnage-view button[aria-pressed="true"],
 #tonnage-unit button[aria-pressed="true"] {
   background: var(--text-primary);
   color: var(--surface);
@@ -2145,14 +2156,16 @@ select {
   font-family: var(--sans);
 }
 
-#battle-toggle {
+#battle-toggle,
+#route-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
   color: var(--ink);
 }
 
-#battle-toggle[aria-expanded="true"] {
+#battle-toggle[aria-expanded="true"],
+#route-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }
@@ -2418,6 +2431,8 @@ select {
   --text-secondary: var(--ink-soft);
   --grid: var(--rule);
   --context: #b9ad98;
+  --happy-band: rgba(122, 42, 28, 0.13);
+  --happy-text: #7a2a1c;
 }
 
 #tonnage-main h1 {
@@ -2426,6 +2441,7 @@ select {
 }
 
 #tonnage-search,
+#tonnage-view button,
 #tonnage-unit button,
 #tonnage-tooltip {
   border-radius: 0;

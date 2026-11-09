@@ -93,6 +93,12 @@ class CrawlStatusOut:
 
 
 @dataclass(frozen=True)
+class PatrolPeriodOut:
+    departure_date: date
+    arrival_date: date
+
+
+@dataclass(frozen=True)
 class ShipHitOut:
     ship_external_id: str
     boat_slug: str
