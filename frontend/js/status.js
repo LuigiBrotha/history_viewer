@@ -10,14 +10,14 @@ import { createShortcutHelp } from "./shortcut-help.js";
 import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
-import { createBoatPanel } from "./boat-panel.js";
+import { createSubjects } from "./subjects.js";
 import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
 import { createBoatToggle, createNamesToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
-import { createStatusMap, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
+import { createStatusMap, fitBoat, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -42,22 +42,9 @@ function main() {
   });
   if (periodView.mapPinned()) state.fitted = true;
 
-  const shipLayer = createShipLayer(state.map, { onShipClick: (ship) => boatPanel.openShip(ship) });
+  const shipLayer = createShipLayer(state.map, { onShipClick: (ship) => subjects.openShip(ship) });
   let ships = [];
-  const boatPanel = createBoatPanel({
-    rootEl: document.getElementById("boat-panel"),
-    getShips: () => ships,
-    onShowPatrol: (patrol) => {
-      boatToggle.show();
-      highlightPatrol(state, patrol.external_id);
-    },
-    onOpenBoat: (slug) => selectBoat(state, slug),
-    onClose: () => selectBoat(state, null),
-  });
-  state.onRouteClick = (patrol) => {
-    selectBoat(state, patrol.boat_slug);
-    boatPanel.open(patrol.boat_slug);
-  };
+  state.onRouteClick = (patrol) => subjects.openBoat(patrol.boat_slug);
 
   function renderShips() {
     shipLayer.setShips(shipsInPeriod(ships, state.from, state.to));
@@ -67,6 +54,7 @@ function main() {
     fetchShips,
     onShips: (changed) => {
       ships = mergeShips(ships, changed);
+      subjects.setShips(ships);
       renderShips();
     },
     onError: (error) => console.error(error),
@@ -112,6 +100,27 @@ function main() {
   });
   battles.setPeriod(null, null);
 
+  const subjects = createSubjects({
+    battles,
+    urlSync,
+    getShips: () => ships,
+    hooks: {
+      follow(slug, { fromList }) {
+        selectBoat(state, slug);
+        if (fromList) fitBoat(state, slug);
+      },
+      stopFollow: () => selectBoat(state, null),
+      followed: () => state.selectedSlug,
+      showShip(hit, { fromList }) {
+        if (fromList && hit.lat != null && hit.lng != null) state.map.setView([hit.lat, hit.lng], Math.max(state.map.getZoom(), 6));
+      },
+      showPatrol(patrol) {
+        boatToggle.show();
+        highlightPatrol(state, patrol.external_id);
+      },
+    },
+  });
+
   const search = createMapSearch({
     map: state.map,
     sources: [
@@ -153,6 +162,7 @@ function main() {
       periodView.onPeriod({ from, to });
       setPeriod(state, from, to);
       battles.setPeriod(from, to);
+      subjects.setPeriod(from, to);
       renderShips();
       renderCount();
       renderAtlas();
@@ -160,6 +170,9 @@ function main() {
   });
   renderCount();
   periodView.restore({ slider, battles });
+  const restored = readView(location.search, "period");
+  if (restored.boat !== undefined) subjects.openBoat(restored.boat);
+  if (restored.ship !== undefined) subjects.restoreShip(restored.ship);
 
   const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
 
@@ -171,6 +184,7 @@ function main() {
     onData: (changed) => {
       try {
         routes = mergeRoutes(routes, changed);
+        subjects.setRoutes(routes);
         renderStatusLine();
         updateRoutes(state, changed);
         if (state.history !== null) {

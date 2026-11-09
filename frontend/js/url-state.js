@@ -3,6 +3,7 @@
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const BOAT_PATTERN = /^[a-z0-9-]+$/;
+const SHIP_PATTERN = /^[\w.-]+$/;
 const MAP_DECIMALS = 4;
 const MAX_ZOOM = 18;
 // The sort orders other than the default (by date).
@@ -17,6 +18,10 @@ function validDate(text) {
 
 function validBoat(text) {
   return text && BOAT_PATTERN.test(text) ? text : undefined;
+}
+
+function validShip(text) {
+  return text && SHIP_PATTERN.test(text) ? text : undefined;
 }
 
 function validBattle(text) {
@@ -46,6 +51,7 @@ export function readView(search, kind) {
   fields.push(
     ["battle", validBattle(params.get("veldslag"))],
     ["boat", validBoat(params.get("boot"))],
+    ["ship", validShip(params.get("schip"))],
     ["map", validMap(params.get("kaart"))],
     ["nopos", params.get("zonderpositie") === "1" ? true : undefined],
     ["filter", params.get("filter") || undefined],
@@ -75,6 +81,7 @@ export function writeView(view, kind) {
   }
   add("veldslag", view.battle && encode(view.battle.replaceAll(" ", "_")));
   add("boot", view.boat && encode(view.boat));
+  add("schip", view.ship && encode(view.ship));
   if (view.map) {
     const { lat, lng, zoom } = view.map;
     add("kaart", `${lat.toFixed(MAP_DECIMALS)},${lng.toFixed(MAP_DECIMALS)},${zoom}`);
@@ -94,8 +101,8 @@ export function writeView(view, kind) {
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff } = view;
+  const { battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff }).filter(([, value]) => value !== undefined),
   );
 }

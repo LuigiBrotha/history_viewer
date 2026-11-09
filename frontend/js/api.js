@@ -118,20 +118,28 @@ export function restorePoint(externalId, sequence) {
   return editPoint("DELETE", externalId, sequence, "Herstellen mislukt");
 }
 
-export async function fetchBoat(slug) {
-  const response = await fetch(`api/uboats/boten/${encodeURIComponent(slug)}`, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+// A Dutch version may first have to be translated, which takes up to a few minutes.
+const TRANSLATION_TIMEOUT_MS = 300000;
+
+function versionRequest(version) {
+  return {
+    query: version === "nl" ? "?versie=nl" : "",
+    signal: AbortSignal.timeout(version === "nl" ? TRANSLATION_TIMEOUT_MS : REQUEST_TIMEOUT_MS),
+  };
+}
+
+export async function fetchBoat(slug, version = "origineel") {
+  const { query, signal } = versionRequest(version);
+  const response = await fetch(`api/uboats/boten/${encodeURIComponent(slug)}${query}`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch boat: ${response.status}`);
   }
   return response.json();
 }
 
-export async function fetchShip(shipExternalId) {
-  const response = await fetch(`api/uboats/ships/${encodeURIComponent(shipExternalId)}`, {
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+export async function fetchShip(shipExternalId, version = "origineel") {
+  const { query, signal } = versionRequest(version);
+  const response = await fetch(`api/uboats/ships/${encodeURIComponent(shipExternalId)}${query}`, { signal });
   if (!response.ok) {
     throw new Error(`Failed to fetch ship: ${response.status}`);
   }
@@ -168,9 +176,6 @@ export async function clearBattlePosition(title) {
     throw new Error(`Failed to clear battle position: ${response.status}`);
   }
 }
-
-// A Dutch version may first have to be translated, which takes up to a few minutes.
-const TRANSLATION_TIMEOUT_MS = 300000;
 
 // The sanitised article of a battle in its language, or with version "nl" its Dutch version;
 // null when there is none.

@@ -19,5 +19,6 @@ async def test_handle_request_returns_boat_summaries(tmp_path):
 
     assert len(result) == 1
     assert result[0].slug == "u99"
+    assert result[0].tonnage == 0
 
     await engine.dispose()

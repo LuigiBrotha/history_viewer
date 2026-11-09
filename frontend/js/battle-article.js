@@ -127,7 +127,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     if (value === version) return;
     version = value;
     onVersionChange?.(value);
-    if (current) pending = present(current);
+    if (current) pending = current.load ? presentSubject(current) : present(current);
   }
 
   function render(html) {
@@ -196,10 +196,55 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     }
   }
 
+  // A boat or ship: `load(version)` gives { title, nodes, translated }. The nodes are built from
+  // text only; translated says the running text really is the Dutch version.
+  async function presentSubject(subject) {
+    const ticket = ++latest;
+    title.textContent = subject.title ?? "";
+    title.setAttribute("title", "");
+    langLabel.hidden = true;
+    versions.hidden = false;
+    winner.hidden = true;
+    origin.hidden = true;
+    body.replaceChildren();
+    source.hidden = true;
+    setStatus(LOADING);
+    const wantDutch = version === "nl";
+    const slow = wantDutch ? setTimeout(() => ticket === latest && setStatus(TRANSLATING), SLOW_AFTER_MS) : null;
+    let result;
+    try {
+      result = await subject.load(wantDutch ? "nl" : "origineel");
+    } catch (error) {
+      console.error(error);
+      if (ticket === latest) setStatus(LOAD_FAILED);
+      return;
+    } finally {
+      clearTimeout(slow);
+    }
+    if (ticket !== latest) return;
+    setStatus("");
+    title.textContent = result.title;
+    body.replaceChildren(...result.nodes);
+    scroll.scrollTop = 0;
+    showVersions(result.translated ? "nl" : "origineel", result.translated || !wantDutch);
+    if (result.translated) {
+      origin.replaceChildren("Machinevertaling uit het Engels");
+      origin.hidden = false;
+    } else if (wantDutch) {
+      origin.replaceChildren(`${NO_DUTCH}; het origineel staat hieronder.`);
+      origin.hidden = false;
+    }
+  }
+
   return {
     show(battle) {
       current = battle;
       pending = present(battle);
+      return pending;
+    },
+    showSubject(subject) {
+      current = subject;
+      pending = presentSubject(subject);
       return pending;
     },
     // Sets the version for the next article (from the URL or the last choice), without telling.

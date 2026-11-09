@@ -559,12 +559,16 @@ test("a row shows the English title, with the original in its tooltip", () => {
   assert.equal(name.getAttribute("title"), "Ржевская битва");
 });
 
-test("the minimise button in the head asks the page to fold the list away", () => {
+test("a search field and title of the column stay where the column put them", () => {
   installDom();
   const rootEl = new Element("aside");
-  let minimized = 0;
-  const pane = createBattlePane({ rootEl, mode: "date", onSelect() {}, onMinimize: () => { minimized += 1; } });
+  const searchEl = new Element("input");
+  const titleEl = new Element("span");
+  const pane = createBattlePane({ rootEl, mode: "date", searchEl, titleEl, onSelect() {} });
   pane.setBattles(LIST);
-  rootEl.byClass("battle-pane-minimize")[0].dispatch("click");
-  assert.equal(minimized, 1);
+  assert.equal(searchEl.parent, null);
+  assert.equal(titleEl.parent, null);
+  assert.equal(titleEl.textContent, `Veldslagen (${LIST.length})`);
+  assert.equal(rootEl.byClass("battle-pane-head").length, 0);
+  assert.equal(searchEl.getAttribute("placeholder"), null);
 });

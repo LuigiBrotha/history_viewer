@@ -202,7 +202,7 @@ test("selectBattle selects like a row click, without picking the date", async ()
   assert.equal(controller.selectBattle("Midway"), true);
   assert.deepEqual(picked, []);
   assert.deepEqual(pans, [[30, -178]]);
-  assert.equal(elements["battle-split"].classes.has("pane-hidden"), false);
+  assert.equal(elements["article-split"].classes.has("pane-hidden"), false);
   const row = rows().find((r) => titleOf(r) === "Midway");
   assert.equal(row.classes.has("selected"), true);
   assert.equal(row.scrolled, 1);
@@ -226,14 +226,15 @@ test("allBattles gives the battles with their Eigen posities", async () => {
   assert.equal(all.find((b) => b.title === "Midway").lat, 1);
 });
 
-test("a click on a square opens a hidden pane and scrolls to the row", async () => {
+test("a click on a square leaves a minimised column closed, but opens the Artikel and marks the row", async () => {
   const { controller, elements, rows, titleOf, layers, ready } = setup({ mode: "period", width: 800 });
   await ready();
   controller.setPeriod(null, null);
   assert.equal(elements["battle-split"].classes.has("pane-hidden"), true);
   const square = [...layers].find((m) => m.options.battleTitle === "Midway");
   square.events.click();
-  assert.equal(elements["battle-split"].classes.has("pane-hidden"), false);
+  assert.equal(elements["battle-split"].classes.has("pane-hidden"), true);
+  assert.equal(elements["article-split"].classes.has("pane-hidden"), false);
   const row = rows().find((r) => titleOf(r) === "Midway");
   assert.equal(row.classes.has("selected"), true);
   assert.equal(row.scrolled, 1);

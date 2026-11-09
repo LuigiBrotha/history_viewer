@@ -41,7 +41,7 @@ function percent(value) {
 // While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
 export function createBattlePane({
-  rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onMinimize, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
+  rootEl, mode, searchEl = null, titleEl = null, onSearchCleared, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
   onLabelModeChange, onShowAllChange, onSpreadChange,
 }) {
   let rows = [];
@@ -62,19 +62,17 @@ export function createBattlePane({
   let selection = null;
   let revealed = null;
 
-  const title = element("h2", "battle-pane-title", "Veldslagen");
-  const search = element("input", "battle-search");
-  search.setAttribute("type", "search");
-  search.setAttribute("placeholder", "Zoek op naam of plaats");
-  search.setAttribute("aria-label", "Zoek een veldslag");
-  search.setAttribute("autocomplete", "off");
+  // In the column Onderwerpen the search field and the title are the column's.
+  const title = titleEl ?? element("h2", "battle-pane-title", "Veldslagen");
+  const search = searchEl ?? element("input", "battle-search");
+  if (!searchEl) {
+    search.setAttribute("type", "search");
+    search.setAttribute("placeholder", "Zoek op naam of plaats");
+    search.setAttribute("aria-label", "Zoek een veldslag");
+    search.setAttribute("autocomplete", "off");
+  }
   const head = element("div", "battle-pane-head");
-  const minimize = element("button", "battle-pane-minimize", "−");
-  minimize.setAttribute("type", "button");
-  minimize.setAttribute("aria-label", "Lijst minimaliseren");
-  minimize.setAttribute("title", "Lijst minimaliseren; de knop Veldslagen haalt hem terug");
-  minimize.addEventListener("click", () => onMinimize?.());
-  head.append(title, search, minimize);
+  if (!searchEl) head.append(title, search);
   const noposBox = element("input", "battle-nopos-filter");
   noposBox.setAttribute("type", "checkbox");
   noposBox.checked = false;
@@ -170,7 +168,7 @@ export function createBattlePane({
     restoreInput,
   );
 
-  rootEl.replaceChildren(head, noposRow, spreadRow, labelsEl, axis, scroll, tools, source);
+  rootEl.replaceChildren(...(searchEl ? [] : [head]), noposRow, spreadRow, labelsEl, axis, scroll, tools, source);
 
   function renderLabels() {
     labelsEl.replaceChildren(...labels.map((label) => {
@@ -405,10 +403,19 @@ export function createBattlePane({
       if (row.el.hidden) {
         search.value = "";
         applyFilter();
+        onSearchCleared?.();
       }
       row.el.classList.toggle("selected", true);
       refreshActions();
       row.el.scrollIntoView?.({ block: "center" });
+    },
+    // No battle is chosen any more: the vak Artikel shows something else.
+    unreveal() {
+      if (revealed === null) return;
+      revealed.el.classList.toggle("selected", false);
+      revealed = null;
+      refreshActions();
+      applyFilter();
     },
     // The visible battle before (-1) or after (1) the selected one; without one, the last or first.
     neighbour(direction) {

@@ -252,6 +252,15 @@ export function setBoatsVisible(state, visible) {
   raiseChosen(state);
 }
 
+// All routes of a boat in view.
+export function fitBoat(state, slug) {
+  const points = [];
+  for (const [id, patrol] of state.patrols) {
+    if (patrol.boat_slug === slug && state.extents.has(id)) points.push(...state.extents.get(id));
+  }
+  if (points.length > 0) state.map.fitBounds(points, { padding: [40, 40] });
+}
+
 // Shows one patrol's route clearly among all the others.
 export function highlightPatrol(state, externalId) {
   const polyline = state.polylines.get(externalId);

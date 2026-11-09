@@ -11,7 +11,7 @@ export const SHORTCUTS = [
   { keys: ["Esc"], text: "Annuleer het aanpassen, of sluit de zoeklijst" },
   { keys: ["W"], text: "Eigen positie wissen (na bevestiging)" },
   { keys: ["A"], text: "Artikel open / dicht" },
-  { keys: ["V"], text: "Veldslagenlijst open / dicht" },
+  { keys: ["V"], text: "Kolom Onderwerpen open / dicht" },
   { keys: ["/", "Ctrl+K"], text: "Zoeken op de kaart" },
   { keys: ["?"], text: "Dit overzicht" },
 ];

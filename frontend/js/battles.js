@@ -8,6 +8,7 @@ import { createTrackLayer, trackColor } from "./track-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
+import { createSubjectColumn } from "./subject-column.js";
 import { createArticlePane } from "./battle-article.js";
 import { fetchArticle, fetchHintSummary, fetchHints } from "./api.js";
 
@@ -93,6 +94,11 @@ export function initBattles({
       setSort() {},
       onSortChange() {},
       setNamesVisible() {},
+      column: null,
+      showSubject() {},
+      closeArticle() {},
+      onArticleClosed() {},
+      onBattleSelected() {},
       setArticleVersion() {},
       articleVersion: () => "origineel",
       onArticleVersionChange() {},
@@ -150,6 +156,8 @@ export function initBattles({
   });
 
   const versionListeners = [];
+  const articleClosedListeners = [];
+  const battleSelectedListeners = [];
   const articlePane = createArticlePane({
     rootEl: doc.getElementById("article-pane"),
     load: loadArticle,
@@ -178,19 +186,40 @@ export function initBattles({
     articlePane.clear();
     selected = null;
     onBattleChange(null);
+    articleClosedListeners.forEach((listener) => listener());
   }
 
-  const pane = createBattlePane({
+  // A boat or ship goes into the vak Artikel; no battle is chosen any more.
+  function showSubject(subject) {
+    cancelEdit();
+    selected = null;
+    layer.setSelected(null);
+    showHints(null);
+    pane.unreveal();
+    onBattleChange(null);
+    articleSplit.open();
+    return articlePane.showSubject(subject);
+  }
+
+  const column = createSubjectColumn({
     rootEl: paneEl,
-    mode,
-    onEdit: (battle) => startEdit(battle),
-    onClear: (battle) => clearOwn(battle),
-    onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
-    onNoposChange,
+    storage,
     onMinimize: () => {
       split.close();
       doc.getElementById("battle-toggle")?.focus();
     },
+  });
+
+  const pane = createBattlePane({
+    rootEl: column.sections.battles.bodyEl,
+    mode,
+    searchEl: column.search,
+    titleEl: column.sections.battles.titleEl,
+    onSearchCleared: () => column.searchChanged(),
+    onEdit: (battle) => startEdit(battle),
+    onClear: (battle) => clearOwn(battle),
+    onSelect: (battle) => selectBattle(battle.title, { pickDate: true }),
+    onNoposChange,
     onLabelRemove: (label) => changeLabels(labels.filter((l) => labelKey(l) !== labelKey(label))),
     onSortChange: (next) => sortListeners.forEach((listener) => listener(next)),
     onLabelModeChange: (next) => {
@@ -451,7 +480,6 @@ export function initBattles({
       onPickDate?.(battle.start);
     }
     selected = battle.title;
-    split.open();
     layer.setSelected(battle);
     layer.showBattle(battle);
     showHints(battle);
@@ -459,6 +487,7 @@ export function initBattles({
     articleSplit.open();
     articlePane.show(battle);
     onBattleChange(battle.title);
+    battleSelectedListeners.forEach((listener) => listener());
     onResolved?.(true);
     return true;
   }
@@ -621,6 +650,11 @@ export function initBattles({
       else split.open();
     },
     setNamesVisible: (visible) => layer.setNamesVisible(visible),
+    column,
+    showSubject,
+    closeArticle,
+    onArticleClosed: (listener) => articleClosedListeners.push(listener),
+    onBattleSelected: (listener) => battleSelectedListeners.push(listener),
     // Moves the Veldslagen button into the top-left row of map controls, after the ones
     // already there, so the page decides its place in that row.
     placeToggle() {

@@ -1,5 +1,5 @@
 import { addBaseMaps } from "./base-maps.js";
-import { canEdit, fetchPlaces, fetchStatus } from "./api.js";
+import { canEdit, fetchPlaces, fetchShips, fetchStatus } from "./api.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
@@ -10,7 +10,9 @@ import { matchBattles } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { rampGradient } from "./color-ramp.js";
 import { CELL_DEGREES, COLUMNS, densityGrid, gridMax, heatColor, patrolCells, ROWS, smooth } from "./heat-model.js";
-import { mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
+import { createSubjects } from "./subjects.js";
+import { mergeShips } from "./ship-model.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
@@ -134,6 +136,7 @@ function main() {
       periodView.onPeriod(next);
       period = next;
       battles.setPeriod(next.from, next.to);
+      subjects.setPeriod(next.from, next.to);
       renderHeat();
       renderAtlas();
     },
@@ -146,7 +149,21 @@ function main() {
     onNoposChange: periodView.onNoposChange,
   });
   battles.setPeriod(null, null);
+  // This map draws no boats or ships: a choice only goes into the vak Artikel.
+  let ships = [];
+  const subjects = createSubjects({ battles, urlSync, getShips: () => ships });
+  const loadShips = createShipLoader({
+    fetchShips,
+    onShips: (changed) => {
+      ships = mergeShips(ships, changed);
+      subjects.setShips(ships);
+    },
+    onError: (error) => console.error(error),
+  });
   periodView.restore({ slider, battles });
+  const restored = readView(location.search, "period");
+  if (restored.boat !== undefined) subjects.openBoat(restored.boat);
+  if (restored.ship !== undefined) subjects.restoreShip(restored.ship);
 
   const search = createMapSearch({
     map: map,
@@ -184,6 +201,7 @@ function main() {
     onData: (changed) => {
       try {
         routes = mergeRoutes(routes, changed);
+        subjects.setRoutes(routes);
         for (const patrol of changed) {
           entries.set(patrol.external_id, { patrol, cells: patrolCells(patrol) });
         }
@@ -209,6 +227,7 @@ function main() {
       lastStatus = status;
       battles.setEditable(canEdit(status));
       renderStatusLine();
+      loadShips(status.revision);
     },
     onError: (error) => {
       console.error(error);

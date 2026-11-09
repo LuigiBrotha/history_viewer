@@ -1,12 +1,12 @@
 import { fetchBoat, fetchShip } from "./api.js";
 
-const OUTCOME_TEXT = { sunk: "gezonken", damaged: "beschadigd", captured: "buitgemaakt" };
+export const OUTCOME_TEXT = { sunk: "gezonken", damaged: "beschadigd", captured: "buitgemaakt" };
 const SOURCE_URL = "https://uboat.net/boats/";
 const NOT_FETCHED = "Meer gegevens zijn nog niet opgehaald.";
 const FETCH_FAILED = "Meer gegevens konden niet worden geladen.";
 const SHIP_SOURCE_URL = "https://uboat.net/allies/merchants/ship/";
 
-function dutchNumber(value) {
+export function dutchNumber(value) {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
@@ -154,26 +154,19 @@ function makeClickable(section, action) {
   });
 }
 
-// Text from the source only ever goes in through textContent. `getShips` returns all
-// loaded ship hits; `onShowPatrol`, when given, makes each patrol clickable to show its route on the map.
-// Whatever was opened last wins: an answer that arrives after another open or a close is dropped.
-export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenBoat = null, onClose = null }) {
-  const closeEl = element("button", "×", "boat-panel-close");
-  closeEl.type = "button";
-  closeEl.setAttribute("aria-label", "Paneel sluiten");
-  const bodyEl = element("div");
-  rootEl.append(closeEl, bodyEl);
-
-  let generation = 0;
-
-  function close() {
-    generation += 1;
-    rootEl.hidden = true;
+// What the vak Artikel shows of a boat or ship. Text from the source only ever goes in through
+// textContent. `getShips` returns all loaded ship hits; `onShowPatrol`, when given, makes each
+// patrol clickable to show its route on the map. `article.showSubject` puts it in the vak.
+export function createBoatPanel({ article, getShips, onShowPatrol = null, onOpenBoat = null, onOpenShip = null, load = { boat: fetchBoat, ship: fetchShip } }) {
+  function articleRoot(nodes) {
+    const root = element("div", undefined, "subject-article");
+    root.append(...nodes);
+    return [root];
   }
 
-  function render(boat) {
+  function boatNodes(boat) {
     const ships = boatShips(getShips(), boat.slug);
-    const nodes = [element("h2", boat.number), element("p", boatSummary(boat, ships), "boat-panel-summary")];
+    const nodes = [element("p", boatSummary(boat, ships), "boat-panel-summary")];
 
     const facts = element("dl");
     for (const [label, value] of boatFacts(boat)) {
@@ -185,6 +178,7 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenB
     if (boat.patrols.length === 0) {
       nodes.push(element("p", "Geen patrouilles bekend."));
     }
+    const sections = [];
     for (const patrol of boat.patrols) {
       const { title, lines } = patrolLines(patrol);
       const section = element("section", undefined, "boat-panel-patrol");
@@ -199,13 +193,14 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenB
       }
       if (onShowPatrol !== null && patrol.departure_date) {
         makeClickable(section, () => {
-          for (const other of bodyEl.querySelectorAll(".boat-panel-patrol.selected")) {
+          for (const other of sections) {
             other.classList.remove("selected");
           }
           section.classList.add("selected");
           onShowPatrol(patrol, boat);
         });
       }
+      sections.push(section);
       nodes.push(section);
     }
 
@@ -216,7 +211,7 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenB
         const item = element("li");
         const button = element("button", shipLine(ship), "boat-panel-ship");
         button.type = "button";
-        button.addEventListener("click", () => openShip(ship));
+        button.addEventListener("click", () => onOpenShip?.(ship));
         item.append(button);
         list.append(item);
       }
@@ -228,57 +223,35 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenB
     source.target = "_blank";
     source.rel = "noopener";
     nodes.push(source);
-
-    bodyEl.replaceChildren(...nodes);
-    rootEl.scrollTop = 0;
+    return articleRoot(nodes);
   }
 
-  async function open(slug) {
-    const mine = ++generation;
-    rootEl.hidden = false;
-    bodyEl.replaceChildren(element("p", "Laden…"));
-    try {
-      const boat = await fetchBoat(slug);
-      if (generation === mine) {
-        render(boat);
-      }
-    } catch (error) {
-      console.error(error);
-      if (generation === mine) {
-        bodyEl.replaceChildren(element("p", "Gegevens konden niet worden geladen."));
-      }
-    }
-  }
+  // `more` is what the ship's own page adds: its details and the other hits, or a message
+  // when they are missing or could not be loaded.
+  function shipNodes(ship, more) {
+    const nodes = [element("p", hitSummary(ship), "boat-panel-summary")];
 
-  // `more` is what the ship's own page adds: its details and the other hits, a message
-  // when they are missing or could not be loaded, nothing while they are still coming.
-  function renderShip(ship, more, scrollToTop) {
-    const nodes = [element("h2", ship.name), element("p", hitSummary(ship), "boat-panel-summary")];
-
-    if (more?.details?.notes) {
+    if (more.details?.notes) {
       nodes.push(element("h3", "Wat er gebeurde"), element("p", more.details.notes));
     }
-    if (more?.message) {
+    if (more.message) {
       nodes.push(element("p", more.message));
     }
 
     const by = element("button", hitBy(ship), "boat-panel-ship");
     by.type = "button";
-    by.addEventListener("click", () => {
-      onOpenBoat?.(ship.boat_slug);
-      open(ship.boat_slug);
-    });
+    by.addEventListener("click", () => onOpenBoat?.(ship.boat_slug));
     nodes.push(by);
 
     const facts = element("dl");
-    for (const [label, value] of shipFacts(ship, more?.details ?? null)) {
+    for (const [label, value] of shipFacts(ship, more.details ?? null)) {
       facts.append(element("dt", label), element("dd", value));
     }
     const factsBox = element("details");
     factsBox.append(element("summary", "Gegevens"), facts);
     nodes.push(factsBox);
 
-    const others = otherHits(ship, more?.hits ?? []);
+    const others = otherHits(ship, more.hits ?? []);
     if (others.length > 0) {
       nodes.push(element("h3", "Ook getroffen"));
       const list = element("ul");
@@ -293,41 +266,38 @@ export function createBoatPanel({ rootEl, getShips, onShowPatrol = null, onOpenB
     source.target = "_blank";
     source.rel = "noopener";
     nodes.push(source);
-
-    bodyEl.replaceChildren(...nodes);
-    if (scrollToTop) {
-      rootEl.scrollTop = 0;
-    }
+    return articleRoot(nodes);
   }
 
-  async function openShip(ship) {
-    const mine = ++generation;
-    rootEl.hidden = false;
-    renderShip(ship, null, true);
-    let more;
+  async function loadShip(ship, version) {
     try {
-      const { details, hits } = await fetchShip(ship.ship_external_id);
-      more = { details, hits, message: details ? null : NOT_FETCHED };
+      const { details, hits, translated } = await load.ship(ship.ship_external_id, version);
+      return { details, hits, translated: translated === true, message: details ? null : NOT_FETCHED };
     } catch (error) {
       console.error(error);
-      more = { details: null, hits: [], message: FETCH_FAILED };
-    }
-    if (generation === mine) {
-      renderShip(ship, more, false);
+      return { details: null, hits: [], translated: false, message: FETCH_FAILED };
     }
   }
 
-  closeEl.addEventListener("click", () => {
-    close();
-    onClose?.();
-  });
-  rootEl.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      close();
-      onClose?.();
-    }
-  });
-  close();
-
-  return { open, openShip, close };
+  return {
+    // `number` is the title while the boat is still loading.
+    open(slug, number) {
+      return article.showSubject({
+        title: number,
+        load: async (version) => {
+          const boat = await load.boat(slug, version);
+          return { title: boat.number, nodes: boatNodes(boat), translated: boat.translated === true };
+        },
+      });
+    },
+    openShip(ship) {
+      return article.showSubject({
+        title: ship.name,
+        load: async (version) => {
+          const more = await loadShip(ship, version);
+          return { title: ship.name, nodes: shipNodes(ship, more), translated: more.translated };
+        },
+      });
+    },
+  };
 }
