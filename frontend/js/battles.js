@@ -5,6 +5,8 @@ import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-
 import { createHintLayer } from "./hint-layer.js";
 import { FULL_RANGE, inSpreadRange, squareSize } from "./spread.js";
 import { createTrackLayer, trackColor } from "./track-layer.js";
+import { bandStops } from "./manpower.js";
+import { createManpowerLayer } from "./manpower-layer.js";
 import { createBattleLayer } from "./battle-layer.js";
 import { createBattlePane } from "./battle-pane.js";
 import { initBattleSplit } from "./battle-split.js";
@@ -24,6 +26,16 @@ async function loadBattles() {
     throw new Error(`${BATTLES_URL}: not a list`);
   }
   return battles;
+}
+
+const MANPOWER_URL = "battles/manschappen.json";
+
+async function loadManpowerTable() {
+  const response = await fetch(MANPOWER_URL);
+  if (!response.ok) {
+    throw new Error(`${MANPOWER_URL}: ${response.status}`);
+  }
+  return response.json();
 }
 
 const ARTICLE_VERSION_KEY = "uboats.articleVersion";
@@ -55,6 +67,7 @@ export function initBattles({
   doc = document,
   win = window,
   load = loadBattles,
+  loadManpower = loadManpowerTable,
   loadArticle = fetchArticle,
   loadHints = fetchHints,
   loadHintSummary = fetchHintSummary,
@@ -91,6 +104,8 @@ export function initBattles({
       onShowAllChange() {},
       setSpreadRange() {},
       onSpreadChange() {},
+      setBandWidth() {},
+      onBandWidthChange() {},
       labels: () => [],
       onLabelsChange() {},
       setSort() {},
@@ -148,6 +163,7 @@ export function initBattles({
   let hintSummary = {};
   let spreadRange = FULL_RANGE;
   const spreadListeners = [];
+  const bandWidthListeners = [];
   const labelListeners = [];
   const labelModeListeners = [];
   const showAllListeners = [];
@@ -246,6 +262,11 @@ export function initBattles({
   });
 
   const trackLayer = createTrackLayer(map);
+  const manpowerLayer = createManpowerLayer(map, {
+    onWidthChange: (px) => bandWidthListeners.forEach((listener) => listener(px)),
+  });
+  // The Manschappen per Bevelhebber and Veldslag; stays empty if the file cannot be loaded.
+  let manpowerTable = {};
 
   // Plaatshints of the selected battle while it has no position; a click while placing that
   // battle moves its square to the hint.
@@ -288,6 +309,12 @@ export function initBattles({
     }));
     trackLayer.setTracks(tracks);
     pane.setTracks(tracks);
+    manpowerLayer.setBands(tracked
+      .filter((label) => label.kind === "bevelhebber" && manpowerTable[label.value])
+      .map((label) => ({
+        stops: bandStops(track(battles, label), manpowerTable[label.value]),
+        color: trackColor(labels, label),
+      })));
   }
 
   // A file for the viewer to save; the page's own download unless one is given (tests).
@@ -552,6 +579,14 @@ export function initBattles({
     (error) => console.error(error),
   );
 
+  startAfter.then(() => loadManpower()).then(
+    (table) => {
+      manpowerTable = table ?? {};
+      if (loaded) drawTracks();
+    },
+    (error) => console.error(error),
+  );
+
   let loaded = false;
   startAfter.then(() => load()).then(
     async (result) => {
@@ -614,6 +649,9 @@ export function initBattles({
       drawSquares();
     },
     onSpreadChange: (listener) => spreadListeners.push(listener),
+    // The band width from the URL: applied without being reported back.
+    setBandWidth: (px) => manpowerLayer.setMaxWidth(px),
+    onBandWidthChange: (listener) => bandWidthListeners.push(listener),
     setSort: (next) => pane.setSort(next),
     setArticleVersion: (version) => articlePane.setVersion(version),
     articleVersion: () => articlePane.version(),

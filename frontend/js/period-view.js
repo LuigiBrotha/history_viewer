@@ -29,6 +29,10 @@ export function restoreLabels(initial, urlSync, battles) {
     urlSync.update({ spread: initial.spread });
     battles.setSpreadRange?.(readRange(initial.spread));
   }
+  if (initial.bandWidth !== undefined) {
+    urlSync.update({ bandWidth: initial.bandWidth });
+    battles.setBandWidth?.(initial.bandWidth);
+  }
   if (initial.version !== undefined) {
     urlSync.update({ version: initial.version });
     battles.setArticleVersion?.(initial.version);
@@ -38,6 +42,7 @@ export function restoreLabels(initial, urlSync, battles) {
   battles.onArticleVersionChange?.((version) => urlSync.update({ version: version === "nl" ? "nl" : null }));
   battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
   battles.onSpreadChange?.((range) => urlSync.update({ spread: writeRange(range) }));
+  battles.onBandWidthChange?.((px) => urlSync.update({ bandWidth: px }));
   battles.onLabelModeChange?.((mode) => urlSync.update({ labelMode: mode === "of" ? "of" : null }));
   battles.onShowAllChange?.((on) => urlSync.update({ showAll: on || null }));
   battles.onSortChange?.((sort) => urlSync.update({ sort: sort === "datum" ? null : sort }));
