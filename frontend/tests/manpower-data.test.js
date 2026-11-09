@@ -22,7 +22,7 @@ const BORROWERS = {
 };
 const DOTTED = [
   "Combat de Pont-de-l'Arche", "Battle of Mersa Matruh", "Battle of Alam el Halfa",
-  "Battle of Tripoli (1943)", "Battle of Medenine", "Operation Achse", "Lądowanie w Normandii",
+  "Battle of Tripoli (1943)", "Battle of Medenine", "Operation Achse",
 ];
 
 test("every step of Rommel's Spoor is in the file and names a real Veldslag", () => {
@@ -40,6 +40,7 @@ test("own figures are as in the infobox", () => {
     "Battle of Arras (1940)": 7500, "Siege of Lille (1940)": 160000, "Operation Crusader": 119000,
     "Battle of Bir Hakeim": 41000, "First Battle of El Alamein": 96000,
     "Second Battle of El Alamein": 116000, "Battle of El Agheila": 60000, "Battle of Kasserine Pass": 22000,
+    "Lądowanie w Normandii": 10000,
   };
   for (const [title, soldiers] of Object.entries(own)) {
     assert.equal(FIGURES[title].soldaten, soldiers, title);
@@ -155,12 +156,12 @@ const MONTY_OWN = {
   "Second Battle of El Alamein": 195000, "Battle of the Mareth Line": 90000, "Allied invasion of Sicily": 160000,
   "Pointe du Hoc": 225, "Operation Epsom": 60000, "Operation Goodwood": 139000, "Falaise pocket": 580000,
   "Operation Market Garden": 84876, "Battle of the Scheldt": 450000, "Battle of St. Vith": 22000,
-  "Operation Veritable": 200000, "Operation Plunder": 1284712,
+  "Operation Veritable": 200000, "Operation Plunder": 1284712, "Lądowanie w Normandii": 175000,
 };
 const MONTY_DOTTED = [
   "Slag om Leuven (1940)", "Battle of Alam el Halfa", "Battle of El Agheila", "Battle of Tripoli (1943)",
   "Battle of Medenine", "Battle of Wadi Akarit", "Battle of Enfidaville", "Operation Vulcan", "Operation Strike",
-  "Operation Turkey Buzzard", "Barbara Line", "Moro River campaign", "Lądowanie w Normandii", "Operation Perch",
+  "Operation Turkey Buzzard", "Barbara Line", "Moro River campaign", "Operation Perch",
   "Operation Cobra", "Liberation of Paris", "Operation Fusilade", "Battle of the Nijmegen salient", "Ruhr pocket",
 ];
 
@@ -190,7 +191,7 @@ test("Montgomery: only Baytown borrows, only from Allied invasion of Italy", () 
 });
 
 test("Montgomery: dotted battles have no soldiers and do not borrow", () => {
-  assert.equal(MONTY_DOTTED.length, 19);
+  assert.equal(MONTY_DOTTED.length, 18);
   for (const title of MONTY_DOTTED) {
     assert.equal(MONTY[title].soldaten, null, title);
     assert.equal(MONTY[title].overgenomen_van, null, title);

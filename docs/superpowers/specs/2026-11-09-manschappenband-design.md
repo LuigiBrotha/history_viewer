@@ -49,7 +49,7 @@ Een overgenomen cijfer staat in de tooltip als "cijfer van …". Een Veldslag ma
 | 17 | Battle of Kasserine Pass | eigen cijfer |
 | 18 | Battle of Medenine | gestippeld (alleen divisies, Tunesië eromheen) |
 | 19 | Operation Achse | gestippeld (alleen divisies) |
-| 20 | Lądowanie w Normandii | gestippeld (alleen Overlord eromheen) |
+| 20 | Lądowanie w Normandii | eigen cijfer |
 
 Dit zijn de 20 Veldslagen die het Spoor nu tekent: met een positie uit Wikipedia of een Eigen positie, en zonder een kortere Veldslag van hetzelfde Spoor erin. Een Voorzet telt niet als positie.
 

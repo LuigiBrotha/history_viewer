@@ -495,7 +495,7 @@
     },
     "Lądowanie w Normandii": {
       "kolom": 1,
-      "soldaten": null,
+      "soldaten": 10000,
       "tanks": [],
       "vliegtuigen": [],
       "verliezen": {
@@ -503,7 +503,7 @@
         "tanks": [],
         "vliegtuigen": []
       },
-      "tekst": "Straty: 4000–9000 zabitych, rannych i zaginionych",
+      "tekst": "Siły: 10 000 żołnierzy\nStraty: 4000–9000 zabitych, rannych i zaginionych",
       "bron": "Lądowanie w Normandii (pl.wikipedia) infobox",
       "overgenomen_van": null
     },
@@ -863,7 +863,7 @@
     },
     "Lądowanie w Normandii": {
       "kolom": 2,
-      "soldaten": null,
+      "soldaten": 175000,
       "tanks": [],
       "vliegtuigen": [
         {
