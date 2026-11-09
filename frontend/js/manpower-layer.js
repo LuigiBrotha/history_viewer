@@ -3,7 +3,7 @@
 // pixels, so the same at every zoom; the band is worked out in layer points and drawn again
 // whenever the map zooms.
 import {
-  bandSteps, clampBandWidth, DEFAULT_MAX_WIDTH, highestManpower, MAX_BAND_WIDTH, MIN_BAND_WIDTH, stopText, widthOf,
+  bandSteps, bandWidthOf, clampBandWidth, DEFAULT_MAX_WIDTH, highestManpower, MAX_BAND_WIDTH, MIN_BAND_WIDTH, stopText, widthOf,
 } from "./manpower.js";
 
 const SCALE_MEN = 50000;
@@ -11,8 +11,8 @@ const PANE = "manpower";
 const LOSS_PANE = "manpower-losses";
 const LOSS_COLOR = "#2a2521";
 const WEDGE_BASE = 12;
-const DASH = "2 8";
-const DOT_WEIGHT = 8;
+const DASH = "1 7";
+const DOT_WEIGHT = 2;
 const DOT_HIT = 8;
 // A stop that stands alone, without a solid step on either side, is a rectangle this long.
 const BOX_LENGTH = 12;
@@ -160,7 +160,7 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
   // Draws one band and returns its shapes for the hit test: wedges, boxes, polygons, dotted steps.
   function drawBand({ stops, color }, top) {
     const points = stops.map((s) => map.latLngToLayerPoint([s.battle.lat, s.battle.lng]));
-    const widths = stops.map((s) => (s.manpower ? widthOf(s.manpower.total, top, maxWidth) : 0));
+    const widths = stops.map((s) => (s.manpower ? bandWidthOf(s.manpower.total, top, maxWidth) : 0));
     const ends = (i) => ({ point: points[i], stop: stops[i] });
     const found = { wedges: [], boxes: [], polygons: [], steps: [] };
     const fill = (corners) => add(L.polygon(toLatLngs(corners), { pane: PANE, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
@@ -188,7 +188,7 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
     steps.forEach((step, i) => {
       if (!step.solid) {
         add(L.polyline([[step.from.battle.lat, step.from.battle.lng], [step.to.battle.lat, step.to.battle.lng]],
-          { pane: PANE, color, weight: DOT_WEIGHT, dashArray: DASH, lineCap: "butt", ...still }));
+          { pane: LOSS_PANE, color, weight: DOT_WEIGHT, dashArray: DASH, lineCap: "round", ...still }));
         found.steps.push({ kind: "step", from: ends(i), to: ends(i + 1) });
         return;
       }
@@ -251,7 +251,10 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
     const note = document.createElement("div");
     note.className = "manpower-note";
     note.textContent = "Cijfer per kant, niet per Bevelhebber";
-    box.append(label, scale, note);
+    const key = document.createElement("div");
+    key.className = "manpower-note";
+    key.textContent = "Stippen: geen aantal soldaten. Nooit dunner dan 4 px.";
+    box.append(label, scale, note, key);
     box.bar = bar;
     return box;
   };
