@@ -75,6 +75,7 @@ export function createPeriodView({ search, urlSync, map }) {
       // Not used on every period page, but kept for the way back to the page that does.
       if (initial.routesOff) urlSync.update({ routesOff: true });
       if (initial.boatsOff) urlSync.update({ boatsOff: true });
+      if (initial.shipsOff) urlSync.update({ shipsOff: true });
       restoreLabels(initial, urlSync, battles);
       if (initial.battle !== undefined) {
         pinnedBattle = initial.battle;

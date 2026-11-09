@@ -149,6 +149,9 @@ test("routes that are switched off stay off in the URL and in links to other pag
   assert.deepEqual(readView("?schip=408", "period"), { ship: "408" });
   assert.deepEqual(readView("?schip=%3Cx%3E", "period"), {});
   assert.deepEqual(carriedView({ ship: "408", date: "1942-01-01" }), { ship: "408" });
+  assert.equal(writeView({ shipsOff: true }, "date"), "?schepen=uit");
+  assert.deepEqual(readView("?schepen=uit", "period"), { shipsOff: true });
+  assert.deepEqual(carriedView({ shipsOff: true, date: "1942-01-01" }), { shipsOff: true });
   assert.equal(writeView({ namesOff: true }, "date"), "?namen=uit");
   assert.deepEqual(readView("?namen=uit", "period"), { namesOff: true });
   assert.deepEqual(carriedView({ namesOff: true, date: "1942-01-01" }), { namesOff: true });
