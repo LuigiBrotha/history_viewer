@@ -73,7 +73,11 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
       return marker;
     },
     layerGroup: () => ({ addTo() { return this; }, addLayer: (l) => layers.add(l), removeLayer: (l) => layers.delete(l) }),
-    polyline: (latlngs, options) => ({ latlngs, options: { ...options, icon: { className: "track-line" } } }),
+    polyline: (latlngs, options) => {
+      const line = { latlngs, options: { ...options, icon: { className: options.className ?? "track-line" } },
+        on() { return line; }, bindTooltip() { return line; }, setStyle() { return line; }, bringToFront() { return line; } };
+      return line;
+    },
   };
   const map = {
     invalidations: 0,
@@ -194,6 +198,60 @@ test("a click on a row without a position changes nothing on the map", async () 
   await ready();
   rows().find((r) => titleOf(r) === "Atlantic").byClass("battle-row-title")[0].dispatch("click");
   assert.deepEqual(pans, []);
+});
+
+const WAR = [
+  battle({ title: "Gazala", start: "1942-05-26", end: "1942-06-21", lat: 32, lng: 23, commanders: ["Rommel", "Ritchie", "POW"] }),
+  battle({ title: "Alamein", start: "1942-10-23", end: "1942-11-04", lat: 30, lng: 28, commanders: ["Rommel", "Montgomery"] }),
+  battle({ title: "Arras", start: "1940-05-21", end: "1940-05-21", lat: 50, lng: 2, commanders: ["Rommel"] }),
+  battle({ title: "Other", start: "1941-01-01", end: "1941-01-02", lat: 10, lng: 10, commanders: ["Someone"] }),
+];
+const commandersButton = (ctx) => ctx.elements["article-pane"].byClass("article-commanders")[0];
+const keys = (ctx) => ctx.controller.labels().map((l) => l.value);
+
+test("the button adds every Bevelhebber of the Article, keeps other Labels, switches to OF and fits all their Sporen", async () => {
+  const ctx = setup({ load: async () => WAR });
+  await ctx.ready();
+  const modes = [];
+  ctx.controller.onLabelModeChange((m) => modes.push(m));
+  const reported = [];
+  ctx.controller.onLabelsChange((l) => reported.push(l.length));
+  ctx.controller.addLabel({ kind: "land", value: "Polen" });
+  ctx.controller.selectBattle("Gazala");
+  await ctx.ready();
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (2)");
+  ctx.map.fits.length = 0;
+  commandersButton(ctx).dispatch("click");
+  assert.deepEqual(keys(ctx), ["Polen", "Rommel", "Ritchie"]);
+  assert.deepEqual(modes, ["of"]);
+  assert.equal(reported.at(-1), 3);
+  assert.equal(ctx.map.fits.length, 1);
+  assert.deepEqual(ctx.map.fits[0].map(([lat, lng]) => `${lat},${lng}`).sort(), ["30,28", "32,23", "50,2"]);
+  assert.equal(commandersButton(ctx).textContent, "Bevelhebbers van de kaart halen");
+});
+
+test("a second click takes only the Bevelhebbers of this Article away again, and moves no map", async () => {
+  const ctx = setup({ load: async () => WAR });
+  await ctx.ready();
+  ctx.controller.addLabel({ kind: "land", value: "Polen" });
+  ctx.controller.selectBattle("Gazala");
+  await ctx.ready();
+  commandersButton(ctx).dispatch("click");
+  ctx.map.fits.length = 0;
+  commandersButton(ctx).dispatch("click");
+  assert.deepEqual(keys(ctx), ["Polen"]);
+  assert.equal(ctx.map.fits.length, 0);
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (2)");
+});
+
+test("removing one Bevelhebber chip turns the button back to adding them all", async () => {
+  const ctx = setup({ load: async () => WAR });
+  await ctx.ready();
+  ctx.controller.selectBattle("Gazala");
+  await ctx.ready();
+  commandersButton(ctx).dispatch("click");
+  ctx.controller.setLabels([{ kind: "bevelhebber", value: "Rommel" }]);
+  assert.equal(commandersButton(ctx).textContent, "Alle Bevelhebbers op de kaart (2)");
 });
 
 test("selectBattle selects like a row click, without picking the date", async () => {

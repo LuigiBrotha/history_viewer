@@ -1,4 +1,5 @@
 import { displayTitle, durationDays, isRefining } from "./battle-model.js";
+import { trackName } from "./track-layer.js";
 
 // Labels: filters on the Veldslagen chosen through the search field, such as "Land: Polen".
 // A battle must match every label. Pure: the pane and the pages decide what to show.
@@ -50,6 +51,16 @@ export function matchesLabels(battle, labels, mode = "en") {
   if (labels.length === 0) return true;
   const test = (label) => matches(battle, label);
   return mode === "of" ? labels.some(test) : labels.every(test);
+}
+
+// What the infoboxes list as a commander without being a person: leftovers of status templates
+// and staffs or forces.
+const NOT_A_PERSON = /^(killed in action|wounded in action|pow|prisoner of war|ob west)$|headquarters|task force|forces of the|expeditionary/i;
+
+// A Label per person in the infobox of a Veldslag, each once.
+export function commanderLabels(battle) {
+  const names = (battle.commanders ?? []).filter((name) => !NOT_A_PERSON.test(trackName(name)));
+  return [...new Set(names)].map((value) => ({ kind: "bevelhebber", value }));
 }
 
 export function labelText({ kind, value }) {

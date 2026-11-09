@@ -150,3 +150,16 @@ test("Nog te verfijnen is a sort order and a Positie label", () => {
   assert.equal(matchesLabels(placed, [{ kind: "positie", value: "verfijnen" }]), false);
   assert.equal(labelText({ kind: "positie", value: "verfijnen" }), "Positie: nog te verfijnen");
 });
+
+import { commanderLabels } from "../js/battle-labels.js";
+
+test("commanderLabels gives every person of a Veldslag, once, and leaves out what is no person", () => {
+  const battle = { commanders: ["Erwin Rommel", "Killed in action", "POW", "Prisoner of War", "Wounded in Action",
+    "Supreme Headquarters Allied Expeditionary Force", "OB West", "Task Force 44", "French Forces of the Interior",
+    "Allied Expeditionary Air Force", "John W. Mitchell (United States Air Force)", "Erwin Rommel"] };
+  assert.deepEqual(commanderLabels(battle), [
+    { kind: "bevelhebber", value: "Erwin Rommel" },
+    { kind: "bevelhebber", value: "John W. Mitchell (United States Air Force)" },
+  ]);
+  assert.deepEqual(commanderLabels({}), []);
+});

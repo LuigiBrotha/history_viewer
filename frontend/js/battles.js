@@ -1,6 +1,6 @@
 import { clearBattlePosition, fetchBattlePositions, saveBattlePosition } from "./api.js";
 import { activeOn, applyPositions, applyVoorzet, overlaps } from "./battle-model.js";
-import { isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
+import { commanderLabels, isTrackLabel, labelKey, matchesLabels, track } from "./battle-labels.js";
 import { backupText, readBackup, restorePlan, toCsv, toGeoJson } from "./battle-export.js";
 import { createHintLayer } from "./hint-layer.js";
 import { FULL_RANGE, inSpreadRange, squareSize } from "./spread.js";
@@ -175,6 +175,11 @@ export function initBattles({
     },
     onBattleLink: (title) => selectBattle(title, { pickDate: true }),
     onClose: () => closeArticle(),
+    commandersOf: (battle) => {
+      const own = commanderLabels(battle);
+      return { count: own.length, active: allOnMap(own) };
+    },
+    onAllCommanders: (battle) => toggleAllCommanders(battle),
   });
 
   try {
@@ -285,6 +290,7 @@ export function initBattles({
     const tracks = tracked.map((label) => ({
       battles: track(battles, label),
       color: trackColor(labels, label),
+      name: label.value,
     }));
     trackLayer.setTracks(tracks);
     pane.setTracks(tracks);
@@ -332,6 +338,31 @@ export function initBattles({
     pane.setLabels(labels);
     drawSquares();
     drawTracks();
+    articlePane.refreshCommanders();
+  }
+
+  const allOnMap = (own) => own.length > 0
+    && own.every((label) => labels.some((l) => labelKey(l) === labelKey(label)));
+
+  // Adds every Bevelhebber of a Veldslag to the Labels, on OF so the list holds all their battles,
+  // and shows all their Sporen; a second time takes just those off again.
+  function toggleAllCommanders(battle) {
+    const own = commanderLabels(battle);
+    const keys = new Set(own.map(labelKey));
+    if (allOnMap(own)) {
+      changeLabels(labels.filter((l) => !keys.has(labelKey(l))));
+      return;
+    }
+    if (labelMode !== "of") {
+      labelMode = "of";
+      pane.setLabelMode(labelMode);
+      labelModeListeners.forEach((listener) => listener(labelMode));
+    }
+    const present = new Set(labels.map(labelKey));
+    changeLabels([...labels, ...own.filter((label) => !present.has(labelKey(label)))]);
+    const places = new Map();
+    own.forEach((label) => track(battles, label).forEach((b) => places.set(b.title, [b.lat, b.lng])));
+    if (places.size > 0) map.fitBounds([...places.values()], { padding: [40, 40] });
   }
 
   // A change made in the app is reported, so the page can keep it in the URL.

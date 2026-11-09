@@ -46,7 +46,7 @@ function languageName(lang) {
 // scripts and loads nothing). Titles, messages and the source line are text content.
 // Two buttons choose between the original and its Dutch version (the Dutch Wikipedia's
 // article, else a machine translation); the choice holds for the next articles too.
-export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, onClose, onVersionChange }) {
+export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, onClose, onVersionChange, commandersOf, onAllCommanders }) {
   let latest = 0;
   let version = "origineel";
   let current = null;
@@ -74,6 +74,23 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   head.append(langLabel, title, versions, close);
   let sourceText = SOURCES.en;
 
+  // Puts every Bevelhebber of the shown Veldslag on the map, or takes them off again.
+  const commanders = element("button", "article-commanders");
+  commanders.setAttribute("type", "button");
+  commanders.hidden = true;
+  let commanderBattle = null;
+  commanders.addEventListener("click", () => commanderBattle && onAllCommanders?.(commanderBattle));
+  function refreshCommanders() {
+    const state = commanderBattle ? commandersOf?.(commanderBattle) : null;
+    commanders.hidden = !state || state.count === 0;
+    if (commanders.hidden) return;
+    commanders.textContent = state.active ? "Bevelhebbers van de kaart halen" : `Alle Bevelhebbers op de kaart (${state.count})`;
+  }
+  function showCommanders(battle) {
+    commanderBattle = battle;
+    refreshCommanders();
+  }
+
   const winner = element("p", "article-winner");
   winner.hidden = true;
   const origin = element("p", "article-origin");
@@ -84,7 +101,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   const source = element("p", "article-source");
   source.hidden = true;
   const scroll = element("div", "article-scroll");
-  scroll.append(winner, origin, status, body, source);
+  scroll.append(commanders, winner, origin, status, body, source);
 
   rootEl.replaceChildren(head, scroll);
   body.addEventListener("click", (event) => {
@@ -152,6 +169,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     sourceText = SOURCES[lang] ?? `Bron: Wikipedia (${lang}), CC BY-SA 4.0`;
     winner.textContent = winnerText(battle.winner);
     winner.hidden = false;
+    showCommanders(battle);
     origin.hidden = true;
     body.replaceChildren();
     source.hidden = true;
@@ -205,6 +223,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     langLabel.hidden = true;
     versions.hidden = false;
     winner.hidden = true;
+    showCommanders(null);
     origin.hidden = true;
     body.replaceChildren();
     source.hidden = true;
@@ -253,12 +272,14 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     },
     version: () => version,
     settled: () => pending,
+    refreshCommanders,
     clear() {
       latest += 1;
       current = null;
       origin.hidden = true;
       title.textContent = "";
       winner.hidden = true;
+      showCommanders(null);
       body.replaceChildren();
       source.hidden = true;
       setStatus("");

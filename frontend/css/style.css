@@ -2724,3 +2724,27 @@ select {
 #load-indicator.background .load-bar {
   display: none;
 }
+
+/* All Bevelhebbers of an Article, and the name at the end of a Spoor */
+.article-commanders {
+  margin: 0 0 10px;
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--accent, #7a2a1c);
+  font: inherit;
+  cursor: pointer;
+}
+.article-commanders:hover {
+  background: rgba(122, 42, 28, 0.08);
+}
+.track-name span {
+  position: absolute;
+  transform: translate(-50%, 12px);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  pointer-events: none;
+}

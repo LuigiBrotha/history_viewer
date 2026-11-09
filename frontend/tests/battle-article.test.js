@@ -259,3 +259,38 @@ test("a failing boat says so", async () => {
   }));
   assert.match(rootEl.allText(), /Artikel kon niet worden geladen\./);
 });
+
+const commanderButton = (rootEl) => rootEl.byClass("article-commanders")[0];
+const okArticle = async (title) => ({ title, html: "<p>x</p>", url: "u" });
+
+test("the Article of a Veldslag with Bevelhebbers has a button that says how many, and reports the battle", async () => {
+  const clicked = [];
+  const { rootEl, pane } = setup(okArticle, {
+    commandersOf: () => ({ count: 12, active: false }),
+    onAllCommanders: (b) => clicked.push(b.title),
+  });
+  await pane.show(battle);
+  const button = commanderButton(rootEl);
+  assert.equal(button.hidden, false);
+  assert.equal(button.textContent, "Alle Bevelhebbers op de kaart (12)");
+  button.dispatch("click");
+  assert.deepEqual(clicked, [battle.title]);
+});
+
+test("the button changes when they are on the map, and is hidden without Bevelhebbers or for a boat", async () => {
+  let state = { count: 3, active: true };
+  const { rootEl, pane } = setup(okArticle, { commandersOf: () => state });
+  await pane.show(battle);
+  assert.equal(commanderButton(rootEl).textContent, "Bevelhebbers van de kaart halen");
+  state = { count: 3, active: false };
+  pane.refreshCommanders();
+  assert.equal(commanderButton(rootEl).textContent, "Alle Bevelhebbers op de kaart (3)");
+  state = { count: 0, active: false };
+  pane.refreshCommanders();
+  assert.equal(commanderButton(rootEl).hidden, true);
+  state = { count: 3, active: false };
+  await pane.showSubject({ title: "U-99", load: async () => ({ nodes: [], translated: false }) });
+  assert.equal(commanderButton(rootEl).hidden, true);
+  pane.clear();
+  assert.equal(commanderButton(rootEl).hidden, true);
+});
