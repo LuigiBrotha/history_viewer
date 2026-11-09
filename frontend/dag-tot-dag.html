@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>U-boat Route Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&amp;display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+   <div id="article-split" class="pane-hidden">
+    <div id="battle-split" class="pane-hidden">
+      <div id="map-side">
+      <div id="map"></div>
+
+      <aside id="sidebar">
+        <h2>
+          <button id="toggle-boats" type="button" aria-expanded="true" aria-controls="sidebar-body">
+            <span id="boats-heading">Actieve boten</span>
+            <span id="toggle-boats-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div id="sidebar-body">
+          <div id="live-status"></div>
+          <nav id="all-routes-link"><a href="./" data-carry="period">Alle routes</a> · <a href="heatmap" data-carry="period">Heatmap</a> · <a href="grafiek">Grafiek</a></nav>
+          <div id="boat-date-label">Routes laden…</div>
+          <div id="ship-totals"></div>
+          <div id="follow-status"></div>
+          <ul id="ship-unknown"></ul>
+          <div id="excluded-points" hidden></div>
+          <button id="reset-follow" hidden>Terug naar volledige weergave</button>
+        </div>
+      </aside>
+
+
+      <div id="timeline">
+        <input type="range" id="date-slider" min="0" max="0" value="0" step="1" aria-label="Datum" />
+        <div id="timeline-controls">
+          <button id="play-pause" type="button" aria-label="Afspelen of pauzeren">▶</button>
+          <button id="step-back" type="button" aria-label="Een dag terug">‹</button>
+          <span id="date-display"></span>
+          <button id="step-forward" type="button" aria-label="Een dag vooruit">›</button>
+        </div>
+      </div>
+      <button id="battle-toggle" type="button" aria-controls="battle-pane" aria-expanded="false">Onderwerpen</button>
+      </div>
+      <div id="battle-divider" role="separator" aria-orientation="vertical" aria-label="Formaat van de lijst met veldslagen" aria-controls="battle-pane" tabindex="0"></div>
+      <aside id="battle-pane" aria-label="Onderwerpen"></aside>
+    </div>
+    <div id="article-divider" role="separator" aria-orientation="vertical" aria-label="Formaat van het artikel" aria-controls="article-pane" tabindex="0"></div>
+    <article id="article-pane" aria-label="Artikel"></article>
+   </div>
+  </div>
+
+  <div id="load-indicator"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -36,9 +36,9 @@ Keep `--no-proxy-headers`; requests carrying `X-Forwarded-For`, `Forwarded` or `
 
 ## Pages and live updates
 
-- `/` is the timeline map: a date slider shows which boats were on patrol and
+- `/dag-tot-dag` is the timeline map: a date slider shows which boats were on patrol and
   lets you follow one boat. It is designed mobile first; `‹` and `›` step one day.
-- `/status` shows every crawled patrol route at once as very thin dashed water
+- `/` shows every crawled patrol route at once as very thin dashed water
   routes, coloured by departure date on Google's Turbo ramp from the oldest to
   the newest patrol of the selected period. The patrol that was crawled last is black and on top. Drag
   the slider's handles, or the selection between them, to see only patrols
@@ -55,7 +55,7 @@ markers and `(datum benaderd)` in the tooltip. Speed checks never use these date
   through each half-degree cell, on the same draggable period slider. A patrol counts
   once per cell, and fully if it overlaps the period at all.
 
-Click a boat on the timeline or a route on `/status` for a panel with the boat's
+Click a boat on the timeline or a route on `/` for a panel with the boat's
 details, its patrols and the ships it hit; click a patrol to show its route: a bottom sheet on a phone, a side panel on
 larger screens. Click a ship on either map, or in a boat's list of ships hit, for a panel
 with that ship: tonnage, outcome, position, and what its page on uboat.net says (owner,
@@ -66,10 +66,10 @@ All three pages also show World War II battles, taken from the English Wikipedia
 all of them in a list, oldest first, each with its dates, duration and a bar on one
 1939-1945 axis. The pane sits to the right of the map (drag the divider to resize it,
 or use the arrow keys on it) and under the map on a phone; the `Veldslagen` button shows
-or hides it. On `/` the squares are the battles active on the selected date, on `/status`
+or hides it. On `/dag-tot-dag` the squares are the battles active on the selected date, on `/`
 and `/heatmap` those overlapping the selected period; the list always holds all of them,
 the ones outside the selection dimmed. Clicking a row pans the map to its square, and
-on `/` also sets the date to its start. The data is in `frontend/battles/battles.json`,
+on `/dag-tot-dag` also sets the date to its start. The data is in `frontend/battles/battles.json`,
 built by `tools/extract_battles.py` from the Wikipedia dump (see
 `frontend/battles/README.md`); dates and coordinates are parsed automatically.
 
@@ -117,8 +117,8 @@ restored: where it differs from the stored positions it wins, positions it lacks
 first, saying how many will change.
 
 Every map page keeps its view in its URL, so a bookmark or copied link (a *Pin*) opens the
-same view again: `datum` on `/`, `van` and `tot` on `/status` and `/heatmap`, and on all three
-`veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/`), `zonderpositie=1`, `filter` and `sorteer`. The links between
+same view again: `datum` on `/dag-tot-dag`, `van` and `tot` on `/` and `/heatmap`, and on all three
+`veldslag`, `kaart` (lat,lng,zoom), `boot` (on `/dag-tot-dag`), `zonderpositie=1`, `filter` and `sorteer`. The links between
 the map pages carry the Veldslag, the Kaartuitsnede, the boat and `zonderpositie` along, not
 the date or period.
 
@@ -129,7 +129,7 @@ street map; the choice is remembered in the browser.
 
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
-last map on or before the selected date, `/status` the last map on or before the end of
+last map on or before the selected date, `/` the last map on or before the end of
 the selection. The maps are coarse, about 25 km per pixel: they show the broad
 situation per month, not exact borders.
 
@@ -142,12 +142,12 @@ All pages poll the API every 5 seconds (paused while the tab is hidden), so
 routes from a running crawl appear without reloading. Only changed patrols are
 fetched. A status line shows when the last patrol was crawled; if the server
 cannot be reached it shows `Geen verbinding, opnieuw proberen…` and keeps the
-data already on screen. On `/` the selected date, zoom and followed boat are
+data already on screen. On `/dag-tot-dag` the selected date, zoom and followed boat are
 kept across updates.
 
 ## Excluding route points
 
-On `/`, follow a boat and click a route point: `Punt uitsluiten` leaves it out of
+On `/dag-tot-dag`, follow a boat and click a route point: `Punt uitsluiten` leaves it out of
 the patrol and the water routes are recomputed (the first time this can take a few
 seconds). Excluded points are listed under the boat's status as `Uitgesloten punten`,
 each with `Herstellen`. The exclusion is kept across recrawls. This works only in a
