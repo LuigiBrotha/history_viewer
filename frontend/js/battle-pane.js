@@ -41,7 +41,7 @@ function percent(value) {
 // While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
 export function createBattlePane({
-  rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
+  rootEl, mode, onSelect, onEdit, onClear, onNoposChange, onMinimize, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
   onLabelModeChange, onShowAllChange, onSpreadChange,
 }) {
   let rows = [];
@@ -69,7 +69,12 @@ export function createBattlePane({
   search.setAttribute("aria-label", "Zoek een veldslag");
   search.setAttribute("autocomplete", "off");
   const head = element("div", "battle-pane-head");
-  head.append(title, search);
+  const minimize = element("button", "battle-pane-minimize", "−");
+  minimize.setAttribute("type", "button");
+  minimize.setAttribute("aria-label", "Lijst minimaliseren");
+  minimize.setAttribute("title", "Lijst minimaliseren; de knop Veldslagen haalt hem terug");
+  minimize.addEventListener("click", () => onMinimize?.());
+  head.append(title, search, minimize);
   const noposBox = element("input", "battle-nopos-filter");
   noposBox.setAttribute("type", "checkbox");
   noposBox.checked = false;

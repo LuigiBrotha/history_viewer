@@ -795,7 +795,8 @@ html, body {
 
 #battle-toggle,
 #route-toggle,
-#boat-toggle {
+#boat-toggle,
+#names-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -813,13 +814,15 @@ html, body {
 /* Once placed in the row of map controls it flows with them. */
 #battle-toggle.leaflet-control,
 #route-toggle.leaflet-control,
-#boat-toggle.leaflet-control {
+#boat-toggle.leaflet-control,
+#names-toggle.leaflet-control {
   position: static;
 }
 
 #battle-toggle[aria-expanded="true"],
 #route-toggle[aria-pressed="true"],
-#boat-toggle[aria-pressed="true"] {
+#boat-toggle[aria-pressed="true"],
+#names-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -938,6 +941,13 @@ html, body {
   float: none;
 }
 
+/* On the timeline the list of boats lies over the right of the map; the row wraps before it. */
+@media (min-width: 700px) {
+  #map .leaflet-top.leaflet-left {
+    max-width: calc(100% - 304px);
+  }
+}
+
 /* Map search control: sits beside the zoom buttons (topleft) and its list floats over the map. */
 .map-search {
   --search-bg: #fff;
@@ -945,7 +955,7 @@ html, body {
   --search-muted: #52514e;
   --search-line: #999;
   --search-active: #e3eefb;
-  width: min(320px, calc(100vw - 80px));
+  width: min(250px, calc(100vw - 80px));
   color: var(--search-text);
 }
 
@@ -1483,7 +1493,8 @@ html, body {
   font-size: 20px;
 }
 
-.article-close {
+.article-close,
+.battle-pane-minimize {
   min-width: 44px;
   min-height: 44px;
   border: 0;
@@ -2161,7 +2172,8 @@ select {
 
 #battle-toggle,
 #route-toggle,
-#boat-toggle {
+#boat-toggle,
+#names-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
@@ -2170,7 +2182,8 @@ select {
 
 #battle-toggle[aria-expanded="true"],
 #route-toggle[aria-pressed="true"],
-#boat-toggle[aria-pressed="true"] {
+#boat-toggle[aria-pressed="true"],
+#names-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }
@@ -2359,7 +2372,8 @@ select {
   line-height: 1.15;
 }
 
-.article-close {
+.article-close,
+.battle-pane-minimize {
   color: var(--ink);
 }
 

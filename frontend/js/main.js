@@ -11,7 +11,7 @@ import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setBoatsVisible, setRoutesVisible } from "./map.js";
-import { createBoatToggle, createRouteToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createRouteToggle } from "./map-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -364,6 +364,7 @@ function main() {
         });
         battles.setEditable(editable);
         initSearch(mapState.map);
+        createNamesToggle({ map: mapState.map, battles, urlSync, shown: !initialView.namesOff });
         routeToggle = createRouteToggle({
           map: mapState.map,
           visible: !initialView.routesOff,

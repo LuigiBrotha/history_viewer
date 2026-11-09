@@ -301,3 +301,16 @@ test("moveTo sets the square and position(), wrapped, and pans to it", () => {
   assert.deepEqual(squares()[0].latlng, [10, 200]);
   assert.deepEqual(pans, [[10, 200]]);
 });
+
+test("the names can be switched off while the squares stay, and come back", () => {
+  const { layer, squares, labels } = setup({ zoom: 8 });
+  layer.setBattles([battle({ title: "a" })]);
+  assert.equal(labels().length, 1);
+  layer.setNamesVisible(false);
+  assert.equal(labels().length, 0);
+  assert.equal(squares().length, 1);
+  layer.setBattles([battle({ title: "b" })]);
+  assert.equal(labels().length, 0);
+  layer.setNamesVisible(true);
+  assert.equal(labels().length, 1);
+});

@@ -61,6 +61,7 @@ export function createBattleLayer(map, { onBattleClick }) {
   let outside = new Set();
   let selected = null;
   let editing = null;
+  let namesShown = true;
 
   function addSquare(battle) {
     const place = placeOf(battle);
@@ -108,7 +109,8 @@ export function createBattleLayer(map, { onBattleClick }) {
     for (const label of labels) {
       group.removeLayer(label);
     }
-    labels = labelsToShow(drawn.filter((battle) => !outside.has(battle.title)), map.getZoom()).map((battle) =>
+    const named = namesShown ? labelsToShow(drawn.filter((battle) => !outside.has(battle.title)), map.getZoom()) : [];
+    labels = named.map((battle) =>
       L.marker(Object.values(placeOf(battle)), { icon: labelIcon(battle), interactive: false, keyboard: false }),
     );
     for (const label of labels) {
@@ -135,6 +137,11 @@ export function createBattleLayer(map, { onBattleClick }) {
   }
 
   return {
+    // Whether the names beside the squares are drawn.
+    setNamesVisible(next) {
+      namesShown = next;
+      redraw();
+    },
     // How large each battle's square is drawn: a function of the battle.
     setSizes(next) {
       sizeOf = next;
