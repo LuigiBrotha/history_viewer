@@ -258,3 +258,24 @@ test("ship loader reports a failure and retries the same revision next time", as
   assert.deepEqual(errors, ["down"]);
   assert.deepEqual(received, [[{ id: 1 }]]);
 });
+
+test("a full load draws each page as it comes", async () => {
+  const data = [];
+  await new Promise((resolve) => {
+    startPolling({
+      intervalMs: 1,
+      fetchStatus: async () => ({ revision: "2026-11-04T10:00:10.000Z" }),
+      fetchRoutes: async (since, onPage) => {
+        onPage([{ external_id: "a" }]);
+        onPage([{ external_id: "b" }]);
+        return null;
+      },
+      isHidden: () => false,
+      onData: (page) => data.push(page.map((p) => p.external_id)),
+      onStatus() {},
+      onError() {},
+      setTimer: () => resolve(),
+    });
+  });
+  assert.deepEqual(data, [["a"], ["b"]]);
+});

@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import TypeAdapter
 from sqlalchemy import func, select
@@ -48,7 +48,8 @@ class RouteCache:
                 since = self._revision if self._loaded else None
                 routes = await PatrolRepository(session).list_routes(since=since)
             for route in routes:
-                key = (route.boat_slug, route.patrol_number, route.external_id)
+                # In order of departure: a client that reads page by page gets the war from its start.
+                key = (route.departure_date or date.max, route.boat_slug, route.patrol_number, route.external_id)
                 self._entries[route.external_id] = (key, _ROUTE_JSON.dump_json(route))
             self._ordered = [entry[1] for entry in sorted(self._entries.values(), key=lambda entry: entry[0])]
             self._revision = revision

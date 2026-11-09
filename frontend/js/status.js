@@ -17,7 +17,7 @@ import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
 import { createBoatToggle, createNamesToggle, createShipsToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
-import { createStatusMap, fitBoat, highlightPatrol, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
+import { createStatusMap, fitAllRoutes, fitBoat, highlightPatrol, setHistory, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -34,6 +34,7 @@ function main() {
     return;
   }
 
+  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
   const urlSync = createUrlSync({ kind: "period" });
   const periodView = createPeriodView({
     search: location.search,
@@ -97,6 +98,7 @@ function main() {
     mode: "period",
     onBattleChange: periodView.onBattleChange,
     onNoposChange: periodView.onNoposChange,
+    startAfter: loadIndicator.firstDrawn,
   });
   battles.setPeriod(null, null);
 
@@ -104,6 +106,7 @@ function main() {
     battles,
     urlSync,
     getShips: () => ships,
+    ready: loadIndicator.firstDrawn,
     hooks: {
       follow(slug, { fromList }) {
         selectBoat(state, slug);
@@ -175,8 +178,6 @@ function main() {
   if (restored.boat !== undefined) subjects.openBoat(restored.boat);
   if (restored.ship !== undefined) subjects.restoreShip(restored.ship);
 
-  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
-
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
@@ -188,11 +189,9 @@ function main() {
         subjects.setRoutes(routes);
         renderStatusLine();
         updateRoutes(state, changed);
-        if (state.history !== null) {
-          slider.setBounds(state.history);
-        }
         renderCount();
         renderAtlas();
+        if (loadIndicator.complete()) fitAllRoutes(state);
       } finally {
         loadIndicator.finish();
       }
@@ -200,9 +199,15 @@ function main() {
     onStatus: (status) => {
       loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
+      if (status.first_departure) {
+        const history = { min: status.first_departure, max: status.last_departure };
+        setHistory(state, history);
+        slider.setBounds(history);
+        renderAtlas();
+      }
       battles.setEditable(canEdit(status));
       renderStatusLine();
-      loadShips(status.revision);
+      loadIndicator.firstDrawn.then(() => loadShips(status.revision));
       setLastPatrol(state, status.last_patrol ? status.last_patrol.external_id : null);
     },
     onError: (error) => {

@@ -217,7 +217,7 @@ test("a patrol without a drawable leg draws nothing and does not break fitting o
   const fits = [];
   const state = newState("a");
   state.fitted = false;
-  state.map = { fitBounds: (...args) => fits.push(args) };
+  state.map = { fitBounds: (...args) => fits.push(args), getCenter: () => ({ lat: 1, lng: 2 }), getZoom: () => 3 };
   const legs = [{ from_sequence: 0, to_sequence: 1, status: "not_computed", path: null }];
 
   updateRoutes(state, [{ external_id: "a", boat_number: "U-1", points: twoPoints, legs }]);
@@ -233,7 +233,7 @@ test("fitting uses route point coordinates, even with no computed routes", async
   const fits = [];
   const state = newState();
   state.fitted = false;
-  state.map = { fitBounds: (...args) => fits.push(args) };
+  state.map = { fitBounds: (...args) => fits.push(args), getCenter: () => ({ lat: 1, lng: 2 }), getZoom: () => 3 };
   const legs = [{ from_sequence: 0, to_sequence: 1, status: "not_computed", path: null }];
 
   updateRoutes(state, [{ external_id: "a", boat_number: "U-1", points: twoPoints, legs }]);
@@ -430,7 +430,7 @@ test("highlightPatrol thickens the route and fits the map to it, and the next on
   const { updateRoutes, highlightPatrol } = await import("../js/status-map.js");
   const fits = [];
   const state = newState();
-  state.map = { fitBounds: (...args) => fits.push(args) };
+  state.map = { fitBounds: (...args) => fits.push(args), getCenter: () => ({ lat: 1, lng: 2 }), getZoom: () => 3 };
   updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01"), dated("b", "1941-01-01", "1941-02-01")]);
   const thin = state.polylines.get("a").style.weight;
 
@@ -538,4 +538,50 @@ test("the routes of the period page go off the map and come back with the chosen
   setBoatsVisible(state, true);
   assert.equal(onMap.has(state.layer), true);
   assert.deepEqual(log, ["red"]);
+});
+
+function fittable(view) {
+  const fits = [];
+  return { fits, map: { fitBounds: (...args) => fits.push(args), getCenter: () => ({ lat: view.lat, lng: view.lng }), getZoom: () => view.zoom } };
+}
+
+test("once all patrols are in, a map the user left alone is fitted to all of them, once", async () => {
+  fakeLeaflet();
+  const { updateRoutes, fitAllRoutes } = await import("../js/status-map.js");
+  const { fits, map } = fittable({ lat: 1, lng: 2, zoom: 3 });
+  const state = newState();
+  state.fitted = false;
+  state.map = map;
+  const legs = [{ from_sequence: 0, to_sequence: 1, status: "not_computed", path: null }];
+  updateRoutes(state, [{ external_id: "a", boat_number: "U-1", points: twoPoints, legs }]);
+  assert.equal(fits.length, 1);
+  fitAllRoutes(state);
+  assert.equal(fits.length, 2);
+  fitAllRoutes(state);
+  assert.equal(fits.length, 2);
+});
+
+test("a map the user moved stays where it is when all patrols are in", async () => {
+  fakeLeaflet();
+  const { updateRoutes, fitAllRoutes } = await import("../js/status-map.js");
+  const view = { lat: 1, lng: 2, zoom: 3 };
+  const { fits, map } = fittable(view);
+  const state = newState();
+  state.fitted = false;
+  state.map = map;
+  const legs = [{ from_sequence: 0, to_sequence: 1, status: "not_computed", path: null }];
+  updateRoutes(state, [{ external_id: "a", boat_number: "U-1", points: twoPoints, legs }]);
+  view.zoom = 6;
+  fitAllRoutes(state);
+  assert.equal(fits.length, 1);
+});
+
+test("the known span of all patrols sets the colours before their routes arrive", async () => {
+  fakeLeaflet();
+  const { setHistory, updateRoutes } = await import("../js/status-map.js");
+  const state = newState();
+  const span = { min: "1939-08-19", max: "1945-05-08" };
+  setHistory(state, span);
+  updateRoutes(state, [dated("a", "1940-01-01", "1940-02-01")]);
+  assert.deepEqual(state.history, span);
 });

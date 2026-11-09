@@ -225,17 +225,19 @@ test("fetchAllRoutes reads pages until one comes back short, and reports progres
   };
   const progress = [];
 
-  const routes = await fetchAllRoutes({ pageSize: 2, onProgress: (received) => progress.push(received) });
+  const pages = [];
+  const routes = await fetchAllRoutes({ firstPageSize: 2, pageSize: 3, onProgress: (received) => progress.push(received), onPage: (page, last) => pages.push([page.length, last]) });
 
   assert.deepEqual(routes.map((route) => route.external_id), ["p0", "p1", "p2"]);
-  assert.deepEqual(calls, ["api/uboats/routes?limit=2&offset=0", "api/uboats/routes?limit=2&offset=2"]);
+  assert.deepEqual(calls, ["api/uboats/routes?limit=2&offset=0", "api/uboats/routes?limit=3&offset=2"]);
+  assert.deepEqual(pages, [[2, false], [1, true]]);
   assert.deepEqual(progress, [2, 3]);
 });
 
 test("fetchAllRoutes rejects when a page fails", async () => {
   globalThis.fetch = async () => ({ ok: false, status: 500 });
 
-  await assert.rejects(() => fetchAllRoutes({ pageSize: 2 }), /Failed to fetch routes: 500/);
+  await assert.rejects(() => fetchAllRoutes({ firstPageSize: 2 }), /Failed to fetch routes: 500/);
 });
 
 test("fetchShip asks for the encoded ship id and returns parsed JSON", async () => {

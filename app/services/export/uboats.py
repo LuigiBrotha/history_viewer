@@ -93,6 +93,9 @@ class CrawlStatusOut:
     revision: datetime | None
     last_patrol: LastPatrolOut | None
     can_edit: bool = False
+    # The span of all patrols, known before the routes themselves have arrived.
+    first_departure: date | None = None
+    last_departure: date | None = None
 
 
 @dataclass(frozen=True)

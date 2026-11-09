@@ -18,7 +18,7 @@ import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
 import { createNamesToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
-import { historyRange } from "./status-map.js";
+import { sameView, viewOf } from "./status-map.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -75,6 +75,7 @@ function main() {
   let lastStatus = null;
   let history = null;
   let period = { from: null, to: null };
+  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
   const urlSync = createUrlSync({ kind: "period" });
   const periodView = createPeriodView({ search: location.search, urlSync, map });
   let fitted = periodView.mapPinned();
@@ -123,6 +124,23 @@ function main() {
     maxEl.textContent = `Drukste gebied: ${rawMax} ${rawMax === 1 ? "patrouille" : "patrouilles"}`;
   }
 
+  // Fitted to what arrives first, and once more when all is in unless the user has moved the map.
+  let fitView = null;
+  function fitToRoutes() {
+    const allIn = loadIndicator.complete();
+    if (fitted && !(allIn && fitView !== null)) return;
+    const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));
+    if (points.length === 0) return;
+    if (!fitted) {
+      fitted = true;
+      map.fitBounds(points, { padding: [40, 40], animate: false });
+      fitView = viewOf(map);
+      if (!allIn) return;
+    }
+    if (sameView(map, fitView)) map.fitBounds(points, { padding: [40, 40] });
+    fitView = null;
+  }
+
   const windowEl = document.getElementById("slider-window");
   const slider = initPeriodSlider({
     trackEl: document.getElementById("slider-track"),
@@ -147,11 +165,12 @@ function main() {
     mode: "period",
     onBattleChange: periodView.onBattleChange,
     onNoposChange: periodView.onNoposChange,
+    startAfter: loadIndicator.firstDrawn,
   });
   battles.setPeriod(null, null);
   // This map draws no boats or ships: a choice only goes into the vak Artikel.
   let ships = [];
-  const subjects = createSubjects({ battles, urlSync, getShips: () => ships });
+  const subjects = createSubjects({ battles, urlSync, getShips: () => ships, ready: loadIndicator.firstDrawn });
   const loadShips = createShipLoader({
     fetchShips,
     onShips: (changed) => {
@@ -191,8 +210,6 @@ function main() {
     renderAtlas();
   });
 
-  const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
-
   startPolling({
     intervalMs: POLL_INTERVAL_MS,
     fetchStatus,
@@ -205,19 +222,11 @@ function main() {
         for (const patrol of changed) {
           entries.set(patrol.external_id, { patrol, cells: patrolCells(patrol) });
         }
-        history = historyRange(routes);
-        if (history !== null) {
-          slider.setBounds(history);
-        }
         renderStatusLine();
         updateScale();
         renderHeat();
         renderAtlas();
-        const points = routes.flatMap((patrol) => patrol.points.map((point) => [point.lat, point.lng]));
-        if (!fitted && points.length > 0) {
-          fitted = true;
-          map.fitBounds(points, { padding: [40, 40] });
-        }
+        fitToRoutes();
       } finally {
         loadIndicator.finish();
       }
@@ -225,9 +234,14 @@ function main() {
     onStatus: (status) => {
       loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
+      if (status.first_departure) {
+        history = { min: status.first_departure, max: status.last_departure };
+        slider.setBounds(history);
+        renderAtlas();
+      }
       battles.setEditable(canEdit(status));
       renderStatusLine();
-      loadShips(status.revision);
+      loadIndicator.firstDrawn.then(() => loadShips(status.revision));
     },
     onError: (error) => {
       console.error(error);

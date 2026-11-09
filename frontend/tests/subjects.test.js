@@ -123,3 +123,24 @@ test("the search reaches both lists and the counts go in the heads", async () =>
   assert.equal(column.sections.ships.titleEl.textContent, "Schepen (1)");
   assert.equal(row("ships", "9").hidden, true);
 });
+
+test("the boats are only asked for once the map has its first routes", async () => {
+  const storage = { getItem: () => null, setItem() {} };
+  const column = createSubjectColumn({ rootEl: new Element("aside"), storage });
+  let asked = 0;
+  let go;
+  const ready = new Promise((resolve) => (go = resolve));
+  createSubjects({
+    battles: { column, onArticleClosed() {}, onBattleSelected() {} },
+    urlSync: { update() {} },
+    getShips: () => [],
+    ready,
+    loadBoats: async () => { asked += 1; return []; },
+    panel: () => ({}),
+  });
+  await flush();
+  assert.equal(asked, 0);
+  go();
+  await flush();
+  assert.equal(asked, 1);
+});

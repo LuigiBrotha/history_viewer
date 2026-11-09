@@ -12,7 +12,7 @@ const INERT = { openBoat() {}, openShip() {}, restoreShip() {}, setDate() {}, se
 //   follow(slug, { fromList }), stopFollow(), followed() the followed slug or null,
 //   showShip(hit, { fromList }), showPatrol(patrol, boat).
 // fromList is a choice in the column or the search field, not on the map.
-export function createSubjects({ battles, urlSync, getShips, hooks = {}, loadBoats = fetchBoats, panel = createBoatPanel }) {
+export function createSubjects({ battles, urlSync, getShips, hooks = {}, ready = Promise.resolve(), loadBoats = fetchBoats, panel = createBoatPanel }) {
   const column = battles.column;
   if (!column) return INERT;
   const { follow = () => {}, stopFollow = () => {}, followed = () => null, showShip = () => {}, showPatrol = null } = hooks;
@@ -107,7 +107,7 @@ export function createSubjects({ battles, urlSync, getShips, hooks = {}, loadBoa
     }
   }
 
-  loadBoats().then(
+  ready.then(() => loadBoats()).then(
     (boats) => {
       boatNumbers = new Map(boats.map((boat) => [boat.slug, boat.number]));
       boatList.setItems(boatSubjects(boats));

@@ -19,13 +19,17 @@ export async function fetchRoutes(since = null) {
   return response.json();
 }
 
-const ROUTES_PAGE_SIZE = 250;
+// The patrols come in order of departure, so this many reach to about the end of the first year.
+const FIRST_PAGE_SIZE = 350;
+const ROUTES_PAGE_SIZE = 500;
 
-// Reads every patrol page by page, so that a loading indicator can show real progress.
-export async function fetchAllRoutes({ pageSize = ROUTES_PAGE_SIZE, onProgress = () => {} } = {}) {
+// Reads every patrol page by page. onPage(page, last) can draw each page as it arrives, so the
+// map starts with the first year while the rest still comes in.
+export async function fetchAllRoutes({ firstPageSize = FIRST_PAGE_SIZE, pageSize = ROUTES_PAGE_SIZE, onProgress = () => {}, onPage = () => {} } = {}) {
   const routes = [];
+  let size = firstPageSize;
   for (;;) {
-    const response = await fetch(`api/uboats/routes?limit=${pageSize}&offset=${routes.length}`, {
+    const response = await fetch(`api/uboats/routes?limit=${size}&offset=${routes.length}`, {
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) {
@@ -34,9 +38,12 @@ export async function fetchAllRoutes({ pageSize = ROUTES_PAGE_SIZE, onProgress =
     const page = await response.json();
     routes.push(...page);
     onProgress(routes.length);
-    if (page.length < pageSize) {
+    const last = page.length < size;
+    onPage(page, last);
+    if (last) {
       return routes;
     }
+    size = pageSize;
   }
 }
 
