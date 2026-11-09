@@ -2724,3 +2724,42 @@ select {
 #load-indicator.background .load-bar {
   display: none;
 }
+
+/* All Bevelhebbers or Eenheden of an Article, and the name at the end of a Spoor */
+.article-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.article-group {
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--accent, #7a2a1c);
+  font: inherit;
+  cursor: pointer;
+}
+.article-group:hover {
+  background: rgba(122, 42, 28, 0.08);
+}
+.track-name span {
+  position: absolute;
+  transform: translate(-50%, 12px);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+  pointer-events: none;
+}
+
+.battle-filter-clear {
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: var(--accent, #7a2a1c);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}

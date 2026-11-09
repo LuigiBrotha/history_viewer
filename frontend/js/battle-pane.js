@@ -41,7 +41,7 @@ function percent(value) {
 // While "Alleen zonder positie" is ticked, the selected battle stays listed even when it has
 // a position, so that saving an Eigen positie or clicking a placed square keeps the filter.
 export function createBattlePane({
-  rootEl, mode, searchEl = null, titleEl = null, onSearchCleared, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onSortChange, onExport, onBackup, onRestore,
+  rootEl, mode, searchEl = null, titleEl = null, onSearchCleared, onSelect, onEdit, onClear, onNoposChange, onLabelRemove, onLabelsClear, onSortChange, onExport, onBackup, onRestore,
   onLabelModeChange, onShowAllChange, onSpreadChange,
 }) {
   let rows = [];
@@ -83,6 +83,9 @@ export function createBattlePane({
   noposRow.append(noposBox, noposText);
   const labelsEl = element("div", "battle-labels");
   labelsEl.hidden = true;
+  const clearButton = element("button", "battle-filter-clear", "Wis alles");
+  clearButton.setAttribute("type", "button");
+  clearButton.addEventListener("click", () => onLabelsClear?.());
   const modeButton = element("button", "battle-filter-mode", "EN");
   modeButton.setAttribute("type", "button");
   modeButton.setAttribute("title", "EN: aan alle filters voldoen, OF: aan één filter voldoen");
@@ -187,7 +190,7 @@ export function createBattlePane({
       }
       chip.append(element("span", "battle-filter-text", labelText(label)), remove);
       return chip;
-    }), modeButton, allRow);
+    }), modeButton, clearButton, allRow);
     labelsEl.hidden = labels.length === 0;
   }
 

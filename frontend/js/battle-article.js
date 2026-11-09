@@ -37,6 +37,8 @@ function newTabLink(href, text) {
 // The article of the selected battle. The server sanitised the HTML with a whitelist, so it
 // is the one text that goes into the page as markup (through a template, which runs no
 // scripts and loads nothing). Titles, messages and the source line are text content.
+const TRACK_GROUPS = [{ kind: "bevelhebber", name: "Bevelhebbers" }, { kind: "eenheid", name: "Eenheden" }];
+
 function languageName(lang) {
   return LANGUAGE_NAMES[lang] ?? lang.toUpperCase();
 }
@@ -46,7 +48,7 @@ function languageName(lang) {
 // scripts and loads nothing). Titles, messages and the source line are text content.
 // Two buttons choose between the original and its Dutch version (the Dutch Wikipedia's
 // article, else a machine translation); the choice holds for the next articles too.
-export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, onClose, onVersionChange }) {
+export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, onClose, onVersionChange, trackGroupOf, onToggleGroup }) {
   let latest = 0;
   let version = "origineel";
   let current = null;
@@ -74,6 +76,29 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   head.append(langLabel, title, versions, close);
   let sourceText = SOURCES.en;
 
+  // Per group of Sporen a button that puts all of the shown Veldslag on the map, or takes them off.
+  const groups = TRACK_GROUPS.map(({ kind, name }) => {
+    const button = element("button", `article-group article-group-${kind}`);
+    button.setAttribute("type", "button");
+    button.hidden = true;
+    button.addEventListener("click", () => groupBattle && onToggleGroup?.(groupBattle, kind));
+    return { kind, name, button };
+  });
+  let groupBattle = null;
+  function refreshGroups() {
+    for (const { kind, name, button } of groups) {
+      const state = groupBattle ? trackGroupOf?.(groupBattle, kind) : null;
+      button.hidden = !state || state.count === 0;
+      if (!button.hidden) button.textContent = state.active ? `${name} van de kaart halen` : `Alle ${name} op de kaart (${state.count})`;
+    }
+  }
+  function showGroups(battle) {
+    groupBattle = battle;
+    refreshGroups();
+  }
+  const groupRow = element("div", "article-groups");
+  groupRow.append(...groups.map((g) => g.button));
+
   const winner = element("p", "article-winner");
   winner.hidden = true;
   const origin = element("p", "article-origin");
@@ -84,7 +109,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
   const source = element("p", "article-source");
   source.hidden = true;
   const scroll = element("div", "article-scroll");
-  scroll.append(winner, origin, status, body, source);
+  scroll.append(groupRow, winner, origin, status, body, source);
 
   rootEl.replaceChildren(head, scroll);
   body.addEventListener("click", (event) => {
@@ -152,6 +177,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     sourceText = SOURCES[lang] ?? `Bron: Wikipedia (${lang}), CC BY-SA 4.0`;
     winner.textContent = winnerText(battle.winner);
     winner.hidden = false;
+    showGroups(battle);
     origin.hidden = true;
     body.replaceChildren();
     source.hidden = true;
@@ -205,6 +231,7 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     langLabel.hidden = true;
     versions.hidden = false;
     winner.hidden = true;
+    showGroups(null);
     origin.hidden = true;
     body.replaceChildren();
     source.hidden = true;
@@ -253,12 +280,14 @@ export function createArticlePane({ rootEl, load = fetchArticle, onBattleLink, o
     },
     version: () => version,
     settled: () => pending,
+    refreshGroups,
     clear() {
       latest += 1;
       current = null;
       origin.hidden = true;
       title.textContent = "";
       winner.hidden = true;
+      showGroups(null);
       body.replaceChildren();
       source.hidden = true;
       setStatus("");
