@@ -95,6 +95,8 @@ export function newStatusState(map, layer) {
     markers: new Set(),
     extents: new Map(),
     history: null,
+    knownHistory: null,
+    fitView: null,
     from: null,
     to: null,
     fitted: false,
@@ -176,7 +178,7 @@ export function updateRoutes(state, changed) {
     state.patrols.set(patrol.external_id, patrol);
   }
   const previous = state.history;
-  state.history = historyRange([...state.patrols.values()]);
+  state.history = state.knownHistory ?? historyRange([...state.patrols.values()]);
 
   for (const patrol of changed) {
     drawPatrol(state, patrol);
@@ -194,6 +196,35 @@ export function updateRoutes(state, changed) {
 
   if (!state.fitted && state.extents.size > 0) {
     state.fitted = true;
+    state.map.fitBounds([...state.extents.values()].flat(), { padding: [40, 40], animate: false });
+    state.fitView = viewOf(state.map);
+  }
+}
+
+export function viewOf(map) {
+  const { lat, lng } = map.getCenter();
+  return { lat, lng, zoom: map.getZoom() };
+}
+
+export function sameView(map, view) {
+  const now = viewOf(map);
+  return now.zoom === view.zoom && Math.abs(now.lat - view.lat) < 1e-6 && Math.abs(now.lng - view.lng) < 1e-6;
+}
+
+// The span of all patrols, from before their routes have arrived: colours stay as they are while
+// the rest comes in.
+export function setHistory(state, history) {
+  if (state.knownHistory?.min === history.min && state.knownHistory?.max === history.max) return;
+  state.knownHistory = history;
+  state.history = history;
+  recolorAll(state);
+}
+
+// The map was fitted to what had arrived first; now all of it is in, unless the user has moved it.
+export function fitAllRoutes(state) {
+  const view = state.fitView;
+  state.fitView = null;
+  if (view !== null && sameView(state.map, view)) {
     state.map.fitBounds([...state.extents.values()].flat(), { padding: [40, 40] });
   }
 }

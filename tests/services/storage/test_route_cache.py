@@ -150,3 +150,20 @@ async def test_two_requests_at_once_load_only_once(factory, monkeypatch):
     await asyncio.gather(cache.page(), cache.page())
 
     assert len(calls) == 1
+
+
+async def test_page_comes_in_order_of_departure(factory):
+    from datetime import date
+
+    from sqlalchemy import update
+
+    from app.services.storage.models import Patrol
+
+    for number, external_id in enumerate("abc", start=1):
+        await _store(factory, external_id, number)
+    async with factory() as session:
+        for external_id, day in (("a", date(1942, 1, 1)), ("b", date(1939, 9, 1)), ("c", date(1940, 1, 1))):
+            await session.execute(update(Patrol).where(Patrol.external_id == external_id).values(departure_date=day))
+        await session.commit()
+
+    assert await _ids(RouteCache(factory)) == ["b", "c", "a"]

@@ -50,6 +50,8 @@ export function initBattles({
   onPickDate = null,
   onBattleChange = () => {},
   onNoposChange = () => {},
+  // What else there is to do first; the map's own routes on a page that starts with them.
+  startAfter = Promise.resolve(),
   doc = document,
   win = window,
   load = loadBattles,
@@ -523,7 +525,7 @@ export function initBattles({
 
   // The Eigen posities are optional: without them the battles stay where the file puts them.
   // Fetched alongside the file rather than after it.
-  const positions = loadPositions().then(
+  const positions = startAfter.then(() => loadPositions()).then(
     (result) => {
       positionsLoaded = true;
       return result;
@@ -535,7 +537,7 @@ export function initBattles({
   );
 
   // How far each battle lies from the places its articles name; optional, shown when it comes.
-  loadHintSummary().then(
+  startAfter.then(() => loadHintSummary()).then(
     (summary) => {
       hintSummary = summary ?? {};
       if (loaded) {
@@ -550,7 +552,7 @@ export function initBattles({
   );
 
   let loaded = false;
-  load().then(
+  startAfter.then(() => load()).then(
     async (result) => {
       battles = applyVoorzet(applyPositions(result, await positions), hintSummary);
       loaded = true;

@@ -14,7 +14,8 @@ export function loadDetail(received, total) {
 
 // A fetchRoutes for startPolling: the first full load goes page by page and fills the
 // indicator, later updates are small and pass by without it. Call setTotal from onStatus,
-// which startPolling calls before fetching, and finish after the data has been drawn.
+// which startPolling calls before fetching, and finish after each drawn page: once the map has
+// its first page the indicator shrinks out of the way, and it goes when all have arrived.
 export function createLoadIndicator(rootEl) {
   const percentEl = document.createElement("div");
   percentEl.className = "load-percent";
@@ -31,6 +32,13 @@ export function createLoadIndicator(rootEl) {
 
   let total = null;
   let received = 0;
+  let complete = false;
+  let markDrawn;
+  // Resolved after the map has its first routes and has had a moment to show them, so that what
+  // else a page loads does not stand in their way. Also when they could not be loaded.
+  const firstDrawn = new Promise((resolve) => {
+    markDrawn = () => setTimeout(resolve, 0);
+  });
 
   function render() {
     const percent = loadPercent(received, total);
@@ -46,24 +54,35 @@ export function createLoadIndicator(rootEl) {
       total = value;
       render();
     },
+    firstDrawn,
     finish() {
-      rootEl.hidden = true;
+      markDrawn();
+      if (complete) rootEl.hidden = true;
+      else rootEl.classList.add("background");
     },
-    fetchRoutes: async (since) => {
+    // Whether every patrol has arrived.
+    complete: () => complete,
+    fetchRoutes: async (since, onPage = () => {}) => {
       if (since) {
         return fetchRoutes(since);
       }
       try {
-        return await fetchAllRoutes({
+        await fetchAllRoutes({
           onProgress: (count) => {
             received = count;
             render();
           },
+          onPage: (page, last) => {
+            complete = last;
+            onPage(page);
+          },
         });
+        return null;
       } catch (error) {
         received = 0;
         render();
         detailEl.textContent = FAILED;
+        markDrawn();
         throw error;
       }
     },

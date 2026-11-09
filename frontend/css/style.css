@@ -2707,3 +2707,20 @@ select {
 .subject-article .boat-panel-ship {
   font-family: var(--sans);
 }
+
+/* Once the map has its first year, the rest loads in the corner, out of the way. */
+#load-indicator.background {
+  top: auto;
+  bottom: 56px;
+  left: 16px;
+  width: auto;
+  padding: 6px 10px;
+  transform: none;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+#load-indicator.background .load-percent,
+#load-indicator.background .load-bar {
+  display: none;
+}

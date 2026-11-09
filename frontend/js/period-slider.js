@@ -206,6 +206,7 @@ export function initPeriodSlider({ trackEl, windowEl, fromHandleEl, toHandleEl, 
     },
     setBounds(history) {
       const next = { min: dayNumber(history.min), max: dayNumber(history.max) };
+      if (bounds !== null && pending === null && next.min === bounds.min && next.max === bounds.max) return;
       selection = selection === null ? { from: next.min, to: next.max } : growSelection(selection, bounds, next);
       bounds = next;
       if (pending !== null) {

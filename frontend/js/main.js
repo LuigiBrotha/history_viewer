@@ -76,6 +76,9 @@ function main() {
   let battles = { setDate() {}, setEditable() {}, allBattles: () => [] };
   let mapSearch = null;
   let subjects = null;
+  // A boat chosen before its patrols have arrived: { slug, fromList, restored }.
+  let pendingFollow = null;
+  let lastDeparture = null;
   let routeToggle = null;
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => mapSearch, help: createShortcutHelp() }) });
   let ships = [];
@@ -192,8 +195,10 @@ function main() {
       const boatRoutes = routesBySlug.get(slug);
       if (boatRoutes === undefined) {
         stopFollowing();
+        if (!loadIndicator.complete()) pendingFollow = { slug, fromList, restored: restoring };
         return;
       }
+      pendingFollow = null;
       if (fromList && !activeBoatsOnDate(routes, currentDate).some((boat) => boat.boatSlug === slug)) {
         const first = firstPatrolDate(boatRoutes);
         if (first !== null) timeline?.setDate(parseDate(first));
@@ -201,7 +206,7 @@ function main() {
       followBoat(slug);
     },
     stopFollow: stopFollowing,
-    followed: () => followedSlug,
+    followed: () => followedSlug ?? pendingFollow?.slug ?? null,
     showShip(hit, { fromList }) {
       if (!fromList) return;
       if (hit.date) timeline?.setDate(parseDate(hit.date));
@@ -215,6 +220,7 @@ function main() {
   };
 
   function stopFollowing() {
+    pendingFollow = null;
     if (followedSlug === null) return;
     followedSlug = null;
     urlSync.update({ boat: null });
@@ -381,7 +387,7 @@ function main() {
           onBattleChange,
           onNoposChange: (on) => urlSync.update({ nopos: on || null }),
         });
-        subjects = createSubjects({ battles, urlSync, getShips: () => ships, hooks: subjectHooks });
+        subjects = createSubjects({ battles, urlSync, getShips: () => ships, hooks: subjectHooks, ready: loadIndicator.firstDrawn });
         subjects.setShips(ships);
         mapState.map.on("moveend", () => {
           const center = mapState.map.getCenter();
@@ -420,17 +426,42 @@ function main() {
     stepForwardEl: document.getElementById("step-forward"),
         dateDisplayEl,
         minDate: range.min,
-        maxDate: range.max,
+        maxDate: timelineEnd(range),
         onDateChange: (date) => render(date, true),
       });
       restoreView();
     } else {
-      timeline.setRange(range.min, range.max);
+      timeline.setRange(range.min, timelineEnd(range));
       render(currentDate, false);
     }
 
+    followWaitingBoat();
+
     // New boats bring new type labels.
     refreshBoats();
+  }
+
+  function followWaitingBoat() {
+    if (pendingFollow === null) return;
+    const { slug, fromList, restored } = pendingFollow;
+    if (routesBySlug.has(slug)) {
+      restoring = restored;
+      try {
+        subjectHooks.follow(slug, { fromList });
+      } finally {
+        restoring = false;
+      }
+    } else if (loadIndicator.complete()) {
+      pendingFollow = null;
+    }
+  }
+
+  // Later dates are on their way: the slider already reaches them, and so does a link to one.
+  function timelineEnd(range) {
+    const ends = [range.max];
+    if (lastDeparture !== null) ends.push(lastDeparture);
+    if (initialView.date !== undefined && !loadIndicator.complete()) ends.push(parseDate(initialView.date));
+    return new Date(Math.max(...ends.map((date) => date.getTime())));
   }
 
   const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
@@ -450,6 +481,7 @@ function main() {
     onStatus: (status) => {
       loadIndicator.setTotal(status.patrol_count);
       lastStatus = status;
+      if (status.last_departure) lastDeparture = parseDate(status.last_departure);
       const wasEditable = editable;
       editable = canEdit(status);
       battles.setEditable(editable);
@@ -457,7 +489,7 @@ function main() {
         render(currentDate, false);
       }
       renderStatusLine();
-      loadShips(status.revision);
+      loadIndicator.firstDrawn.then(() => loadShips(status.revision));
     },
     onError: (error) => {
       console.error(error);

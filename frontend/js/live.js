@@ -100,11 +100,12 @@ export function startPolling({
         const status = await fetchStatus();
         guarded(onStatus, status);
         if (!loaded || status.revision !== revision) {
-          const changed = await fetchRoutes(sinceCursor(revision));
+          // A full load hands over its pages as they come and returns nothing.
+          const changed = await fetchRoutes(sinceCursor(revision), (page) => guarded(onData, page));
           // The fetch succeeded, so the cursor advances even if rendering it fails.
           loaded = true;
           revision = status.revision;
-          guarded(onData, changed);
+          if (changed) guarded(onData, changed);
         }
       } catch (error) {
         onError(error);

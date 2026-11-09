@@ -11,6 +11,7 @@ async def test_handle_request_returns_crawl_status(tmp_path):
 
     empty = await RequestHandler(session_factory).handle_request()
     assert empty == CrawlStatusOut(None, 0, 0, 0, None, None)
+    assert empty.first_departure is None and empty.last_departure is None
 
     async with session_factory() as session:
         await CrawlStatusRepository(session).set_listing_total(5)

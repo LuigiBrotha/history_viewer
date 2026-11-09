@@ -36,6 +36,10 @@ class CrawlStatusRepository:
         )).first()
         last_patrol = LastPatrolOut(*last_row) if last_row else None
 
+        first_departure, last_departure = (await self._session.execute(
+            select(func.min(Patrol.departure_date), func.max(Patrol.departure_date))
+        )).one()
+
         return CrawlStatusOut(
             listing_total=listing_total,
             boats_crawled=boats_crawled,
@@ -43,6 +47,8 @@ class CrawlStatusRepository:
             patrol_count=patrol_count,
             revision=revision,
             last_patrol=last_patrol,
+            first_departure=first_departure,
+            last_departure=last_departure,
         )
 
     async def _count_boats(self, status: str) -> int:
