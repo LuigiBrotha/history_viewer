@@ -81,6 +81,8 @@ export function createPeriodView({ search, urlSync, map }) {
       }
       if (initial.map !== undefined) {
         const { lat, lng, zoom } = initial.map;
+        // moveend is not listened to yet, and the next write must not lose the Kaartuitsnede.
+        urlSync.update({ map: initial.map });
         map.setView([lat, lng], zoom, { animate: false });
       }
       map.on("moveend", () => {

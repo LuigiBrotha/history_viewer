@@ -5,11 +5,17 @@ import { legMidpoint, legStyle, positionLabel, shouldFitRoute, tailLeg } from ".
 
 const UNCERTAIN = new Set(["on_land", "no_route"]);
 const ROUTE_UNCERTAIN = " — route onzeker";
+const ROUTES_PANE = "routes";
+// Below Leaflet's overlay pane (400), so that the boats lie on their routes.
+const ROUTES_Z_INDEX = 390;
 
 export function createMap(containerId) {
   const map = L.map(containerId).setView([54.5, 8.0], 5);
 
   addBaseMaps(map);
+
+  map.createPane(ROUTES_PANE);
+  map.getPane(ROUTES_PANE).style.zIndex = ROUTES_Z_INDEX;
 
   const activeBoatsLayer = L.layerGroup().addTo(map);
   const followedRouteLayer = L.layerGroup().addTo(map);
@@ -41,7 +47,7 @@ export function renderActiveBoats(mapState, activeBoats, onBoatClick) {
     const leg = tailLeg(boat.patrol, boat);
     const style = leg === null ? null : legStyle(leg.status);
     if (style !== null && leg.path) {
-      L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 2, opacity: 0.6, interactive: false }).addTo(
+      L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 2, opacity: 0.6, interactive: false, pane: ROUTES_PANE }).addTo(
         mapState.activeBoatsLayer,
       );
     }
@@ -120,7 +126,7 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
   for (const leg of patrol.legs ?? []) {
     const style = legStyle(leg.status);
     if (style !== null && leg.path) {
-      const line = L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 3 }).addTo(layer);
+      const line = L.polyline(leg.path, { ...boatLegStyle(style, leg.status, color), weight: 3, pane: ROUTES_PANE }).addTo(layer);
       if (leg.status === "suspect") {
         line.bindTooltip(leg.reason);
       }
@@ -130,7 +136,7 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       const midpoint = legMidpoint(leg, patrol);
       if (midpoint !== null) {
         const icon = L.divIcon({ className: "leg-uncertain", html: "?", iconSize: [18, 18] });
-        L.marker(midpoint, { icon }).bindTooltip(leg.reason).addTo(layer);
+        L.marker(midpoint, { icon, pane: ROUTES_PANE }).bindTooltip(leg.reason).addTo(layer);
       }
     }
   }
@@ -141,6 +147,7 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       color,
       fillColor: color,
       fillOpacity: 1,
+      pane: ROUTES_PANE,
     }).addTo(layer);
     // The marker of the current position covers its dot, so that marker carries the popup.
     if (point.sequence !== currentPosition?.sequence) {
@@ -174,6 +181,12 @@ export function renderFollowedRoute(mapState, patrol, currentPosition, { fit, on
       mapState.map.fitBounds(fitPoints, { padding: [40, 40] });
     }
   }
+}
+
+// Hides what the boats sailed; the boats themselves stay. A popup may hang on a hidden dot.
+export function setRoutesVisible(mapState, visible) {
+  mapState.map.getPane(ROUTES_PANE).style.display = visible ? "" : "none";
+  if (!visible) mapState.map.closePopup();
 }
 
 export function clearFollowedRoute(mapState) {

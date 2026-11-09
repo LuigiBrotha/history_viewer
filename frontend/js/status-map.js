@@ -223,15 +223,33 @@ export function selectBoat(state, slug) {
   state.selectedSlug = slug;
   state.highlightedExternalId = null;
   recolorAll(state);
-  if (slug === null) {
+  raiseChosen(state);
+}
+
+// The selected boat's routes on top; without a selection, the last crawled patrol.
+function raiseChosen(state) {
+  if (state.selectedSlug === null) {
     bringLastToFront(state);
     return;
   }
   for (const [id, polyline] of state.polylines) {
-    if (state.patrols.get(id).boat_slug === slug && state.layer.hasLayer(polyline)) {
+    if (state.patrols.get(id).boat_slug === state.selectedSlug && state.layer.hasLayer(polyline)) {
       polyline.bringToFront();
     }
   }
+}
+
+// Coming back, the lines are drawn in the order they were added, so the chosen ones are raised again.
+export function setRoutesVisible(state, visible) {
+  if (visible === state.map.hasLayer(state.layer)) {
+    return;
+  }
+  if (!visible) {
+    state.map.removeLayer(state.layer);
+    return;
+  }
+  state.map.addLayer(state.layer);
+  raiseChosen(state);
 }
 
 // Shows one patrol's route clearly among all the others.

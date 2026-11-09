@@ -152,3 +152,9 @@ test("the Spreiding range is restored, and its changes reach the URL", () => {
   listener({ min: 0, max: 100 });
   assert.deepEqual(writes, [{ spread: null }, { spread: "0-100" }]);
 });
+
+test("a restored Kaartuitsnede stays in the URL when the next change is written", () => {
+  const { view, writes, slider, battles } = fakes("?kaart=40,-40,4");
+  view.restore({ slider, battles });
+  assert.ok(writes.some((partial) => partial.map?.lat === 40 && partial.map.zoom === 4));
+});

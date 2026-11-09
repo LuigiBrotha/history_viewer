@@ -4,8 +4,9 @@ import assert from "node:assert/strict";
 import { createShipLayer } from "../js/ship-layer.js";
 
 class FakeMarker {
-  constructor(latlng) {
+  constructor(latlng, options) {
     this.latlng = latlng;
+    this.options = options;
     this.handlers = {};
   }
 
@@ -19,18 +20,21 @@ class FakeMarker {
   }
 }
 
-class FakeCanvas {
-  addTo() {
-    return this;
-  }
+function fakeMap() {
+  const panes = {};
+  return {
+    panes,
+    addLayer() {},
+    createPane(name) { panes[name] = { style: {} }; },
+    getPane: (name) => panes[name],
+  };
 }
 
 function install() {
   globalThis.L = {
-    Canvas: FakeCanvas,
-    canvas: () => new FakeCanvas(),
+    svg: (options) => ({ kind: "svg", options }),
     layerGroup: () => ({ addTo() { return this; }, addLayer() {}, removeLayer() {} }),
-    circleMarker: (latlng) => new FakeMarker(latlng),
+    circleMarker: (latlng, options) => new FakeMarker(latlng, options),
   };
   const markers = [];
   const make = globalThis.L.circleMarker;
@@ -50,7 +54,7 @@ const ship = (over = {}) => ({
 test("clicking a ship's marker reports that ship", () => {
   const markers = install();
   const clicked = [];
-  const layer = createShipLayer({ options: {}, addLayer() {} }, { onShipClick: (s) => clicked.push(s) });
+  const layer = createShipLayer(fakeMap(), { onShipClick: (s) => clicked.push(s) });
 
   layer.setShips([ship()]);
   markers[0].handlers.click();
@@ -61,7 +65,7 @@ test("clicking a ship's marker reports that ship", () => {
 test("a marker that stays reports the newest data of its ship", () => {
   const markers = install();
   const clicked = [];
-  const layer = createShipLayer({ options: {}, addLayer() {} }, { onShipClick: (s) => clicked.push(s) });
+  const layer = createShipLayer(fakeMap(), { onShipClick: (s) => clicked.push(s) });
 
   layer.setShips([ship()]);
   layer.setShips([ship({ convoy: "HX-52" })]);
@@ -73,9 +77,33 @@ test("a marker that stays reports the newest data of its ship", () => {
 
 test("a layer without a click handler still works", () => {
   const markers = install();
-  const layer = createShipLayer({ options: {}, addLayer() {} });
+  const layer = createShipLayer(fakeMap());
 
   layer.setShips([ship()]);
 
   assert.doesNotThrow(() => markers[0].handlers.click());
+});
+
+test("ships lie above the boats and routes and below the Veldslag squares", () => {
+  const markers = install();
+  const map = fakeMap();
+  createShipLayer(map).setShips([ship()]);
+
+  const zIndex = map.panes.ships.style.zIndex;
+  assert.ok(zIndex > 400, "above Leaflet's overlay pane, where the boats are");
+  assert.ok(zIndex < 600, "below Leaflet's marker pane, where the squares are");
+  // SVG lets the mouse through between its shapes; a canvas on top would stop every route and boat.
+  assert.equal(markers[0].options.renderer.kind, "svg");
+  assert.equal(markers[0].options.renderer.options.pane, "ships");
+});
+
+test("a ship is big enough for a finger on a touch screen", () => {
+  const markers = install();
+  globalThis.matchMedia = () => ({ matches: true });
+  try {
+    createShipLayer(fakeMap()).setShips([ship()]);
+    assert.equal(markers[0].options.radius, 7);
+  } finally {
+    delete globalThis.matchMedia;
+  }
 });

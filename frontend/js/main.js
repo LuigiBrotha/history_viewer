@@ -10,7 +10,8 @@ import { installShortcuts, pageActions } from "./shortcuts.js";
 import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
-import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute } from "./map.js";
+import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setRoutesVisible } from "./map.js";
+import { createRouteToggle } from "./route-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -74,6 +75,7 @@ function main() {
   let atlas = { setDate() {} };
   let battles = { setDate() {}, setEditable() {}, allBattles: () => [] };
   let mapSearch = null;
+  let routeToggle = null;
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => mapSearch, help: createShortcutHelp() }) });
   let ships = [];
   let shipLayer = null;
@@ -186,6 +188,7 @@ function main() {
     rootEl: document.getElementById("boat-panel"),
     getShips: () => ships,
     onShowPatrol: (patrol, boat) => {
+      routeToggle?.show();
       followBoat(boat.slug);
       timeline?.setDate(parseDate(patrol.departure_date));
     },
@@ -361,6 +364,14 @@ function main() {
         });
         battles.setEditable(editable);
         initSearch(mapState.map);
+        routeToggle = createRouteToggle({
+          map: mapState.map,
+          visible: !initialView.routesOff,
+          onChange: (visible) => {
+            setRoutesVisible(mapState, visible);
+            urlSync.update({ routesOff: visible ? null : true });
+          },
+        });
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));

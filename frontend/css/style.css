@@ -793,7 +793,8 @@ html, body {
   user-select: none;
 }
 
-#battle-toggle {
+#battle-toggle,
+#route-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -809,11 +810,13 @@ html, body {
 }
 
 /* Once placed in the row of map controls it flows with them. */
-#battle-toggle.leaflet-control {
+#battle-toggle.leaflet-control,
+#route-toggle.leaflet-control {
   position: static;
 }
 
-#battle-toggle[aria-expanded="true"] {
+#battle-toggle[aria-expanded="true"],
+#route-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -2145,14 +2148,16 @@ select {
   font-family: var(--sans);
 }
 
-#battle-toggle {
+#battle-toggle,
+#route-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
   color: var(--ink);
 }
 
-#battle-toggle[aria-expanded="true"] {
+#battle-toggle[aria-expanded="true"],
+#route-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }

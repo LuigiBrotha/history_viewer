@@ -139,3 +139,11 @@ test("the Dutch version of the Artikel is kept as artikel=nl, the original is le
   assert.deepEqual(readView("?artikel=xx", "date"), {});
   assert.deepEqual(carriedView({ version: "nl", date: "1940-01-01" }), { version: "nl" });
 });
+
+test("routes that are switched off stay off in the URL and in links to other pages", () => {
+  assert.equal(writeView({ routesOff: true }, "date"), "?routes=uit");
+  assert.deepEqual(readView("?routes=uit", "period"), { routesOff: true });
+  assert.deepEqual(carriedView({ routesOff: true, date: "1942-01-01" }), { routesOff: true });
+  assert.equal(writeView({ routesOff: false }, "date"), "");
+  for (const bad of ["aan", "1", ""]) assert.deepEqual(readView(`?routes=${bad}`, "date"), {});
+});
