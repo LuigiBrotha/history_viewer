@@ -42,7 +42,7 @@ export function restoreLabels(initial, urlSync, battles) {
   battles.onArticleVersionChange?.((version) => urlSync.update({ version: version === "nl" ? "nl" : null }));
   battles.onLabelsChange?.((labels) => urlSync.update({ filter: writeLabels(labels) || null }));
   battles.onSpreadChange?.((range) => urlSync.update({ spread: writeRange(range) }));
-  battles.onBandWidthChange?.((px) => urlSync.update({ bandWidth: px === 48 ? undefined : px }));
+  battles.onBandWidthChange?.((px) => urlSync.update({ bandWidth: px }));
   battles.onLabelModeChange?.((mode) => urlSync.update({ labelMode: mode === "of" ? "of" : null }));
   battles.onShowAllChange?.((on) => urlSync.update({ showAll: on || null }));
   battles.onSortChange?.((sort) => urlSync.update({ sort: sort === "datum" ? null : sort }));

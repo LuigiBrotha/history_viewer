@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bandPolygon, clampBandWidth, createManpowerLayer, lossWedge, scaleBar } from "../js/manpower-layer.js";
+import { stopText } from "../js/manpower.js";
+import { bandPolygon, createManpowerLayer, hitAt, lossWedge, scaleBar } from "../js/manpower-layer.js";
 
 test("bandPolygon runs from the width of one end to the width of the other", () => {
   const [p1, p2, p3, p4] = bandPolygon({ x: 0, y: 0 }, { x: 10, y: 0 }, 4, 8);
@@ -25,16 +26,27 @@ function fakeLeaflet() {
   const added = [];
   const panes = {};
   const handlers = {};
+  const counts = {};
   const group = {
     addTo() { return this; },
     addLayer(layer) { added.push(layer); },
     removeLayer(layer) { added.splice(added.indexOf(layer), 1); },
   };
   const shape = (kind) => (latlngs, options) => {
-    const layer = { kind, latlngs, options, tooltip: null, bindTooltip(content, o) { layer.tooltip = { content, options: o }; return layer; } };
+    const layer = { kind, latlngs, options };
     return layer;
   };
+  const tooltips = [];
   globalThis.L = {
+    tooltip(options) {
+      const tooltip = { options, content: null, latlng: null, open: false, opened: 0,
+        setContent(c) { tooltip.content = c; return tooltip; },
+        setLatLng(ll) { tooltip.latlng = ll; return tooltip; },
+        addTo() { tooltip.open = true; tooltip.opened += 1; return tooltip; },
+        remove() { tooltip.open = false; return tooltip; } };
+      tooltips.push(tooltip);
+      return tooltip;
+    },
     layerGroup: () => group,
     polygon: shape("polygon"),
     polyline: shape("polyline"),
@@ -54,17 +66,17 @@ function fakeLeaflet() {
     return control;
   };
   globalThis.L.DomUtil = { create: (tag, className) => Object.assign(element(tag), { className }) };
-  globalThis.L.DomEvent = { disableClickPropagation(el) { el.clickDisabled = true; } };
+  globalThis.L.DomEvent = { disableClickPropagation(el) { el.clickDisabled = true; }, disableScrollPropagation(el) { el.scrollDisabled = true; } };
   globalThis.document = { createElement: (tag) => element(tag) };
   const map = {
     scale: 1,
     createPane(name) { panes[name] = { style: {} }; return panes[name]; },
     getPane: (name) => panes[name],
-    on(type, fn) { handlers[type] = fn; },
+    on(type, fn) { (counts[type] = (counts[type] || 0) + 1); handlers[type] = fn; },
     latLngToLayerPoint: ([lat, lng]) => ({ x: lng * map.scale, y: -lat * map.scale }),
     layerPointToLatLng: (p) => [-p.y / map.scale, p.x / map.scale],
   };
-  return { added, panes, handlers, map, controls };
+  return { added, panes, handlers, counts, tooltips, map, controls };
 }
 
 const battle = (title, lat, lng) => ({ title, lat, lng });
@@ -76,12 +88,12 @@ const stop = (title, lng, total, loss = null) => ({
 });
 const of = (added, kind) => added.filter((l) => l.kind === kind);
 
-test("panes lie under the Spoor, the band half transparent so overlaps do not darken", () => {
+test("panes lie under the routes, the band half transparent so overlaps do not darken", () => {
   const { panes, map } = fakeLeaflet();
   createManpowerLayer(map);
-  assert.equal(panes.manpower.style.zIndex, 395);
+  assert.equal(panes.manpower.style.zIndex, 385);
   assert.equal(panes.manpower.style.opacity, 0.55);
-  assert.equal(panes["manpower-losses"].style.zIndex, 396);
+  assert.equal(panes["manpower-losses"].style.zIndex, 386);
 });
 
 test("a step with figures at both ends is a polygon in the Spoor colour, a circle closes each end", () => {
@@ -94,8 +106,7 @@ test("a step with figures at both ends is a polygon in the Spoor colour, a circl
   assert.equal(polygons.length, 1);
   assert.equal(polygons[0].options.fillColor, "#6b2fbf");
   assert.equal(polygons[0].options.stroke, false);
-  assert.equal(polygons[0].tooltip.options.sticky, true);
-  assert.equal(polygons[0].tooltip.content.textContent.split("\n\n").length, 2);
+  assert.equal(polygons[0].options.interactive, false);
   assert.deepEqual(of(added, "circle").map((c) => c.options.radius), [12, 24]);
 });
 
@@ -105,22 +116,24 @@ test("a step without figures is dashed and a battle without a band has no wedge"
   layer.setBands([{ stops: [stop("A", 0, 50, 10), stop("B", 10, null, 5), stop("C", 20, 100)], color: "red" }]);
   const lines = of(added, "polyline");
   assert.equal(lines.length, 2);
-  assert.equal(lines[0].options.dashArray, "4 6");
-  assert.equal(lines[0].options.weight, 2);
+  assert.equal(lines[0].options.dashArray, "2 8");
+  assert.equal(lines[0].options.weight, 8);
+  assert.equal(lines[0].options.lineCap, "butt");
+  assert.equal(lines[0].options.interactive, false);
   assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower").length, 0);
   // Only A has a figure and a loss; B has a loss but no band.
   assert.equal(of(added, "polygon").filter((p) => p.options.pane === "manpower-losses").length, 1);
   assert.equal(of(added, "circle").length, 2);
 });
 
-test("a loss is drawn as a dark wedge of the same scale, tooltip showing its stop", () => {
+test("a loss is drawn as a dark wedge of the same scale", () => {
   const { added, map } = fakeLeaflet();
   const layer = createManpowerLayer(map);
   layer.setBands([{ stops: [stop("A", 0, 100, 25), stop("B", 10, 100)], color: "red" }]);
   const [wedge] = of(added, "polygon").filter((p) => p.options.pane === "manpower-losses");
   assert.equal(wedge.options.fillColor, "#2a2521");
   assert.equal(wedge.latlngs.length, 3);
-  assert.equal(wedge.tooltip.content.textContent.split("\n")[0], "A");
+  assert.equal(wedge.options.interactive, false);
 });
 
 test("a lone stop draws its circle and, having no direction, no wedge", () => {
@@ -176,15 +189,6 @@ const texts = (el) => [el.textContent, ...el.children.flatMap((c) => (typeof c =
 const find = (el, tag) => (el.tag === tag ? el : el.children.map((c) => (typeof c === "string" ? null : find(c, tag))).find(Boolean));
 const twoStops = [{ stops: [stop("A", 0, 100), stop("B", 10, 100)], color: "red" }];
 
-test("clampBandWidth accepts whole numbers from 8 to 96 and nothing else", () => {
-  assert.equal(clampBandWidth(48), 48);
-  assert.equal(clampBandWidth("64"), 64);
-  assert.equal(clampBandWidth(8), 8);
-  assert.equal(clampBandWidth(96), 96);
-  for (const bad of [0, 7, 97, 9999, "0", "9999", "abc", "", null, undefined, 12.5, "12.5", NaN])
-    assert.equal(clampBandWidth(bad), undefined, String(bad));
-});
-
 test("the scale bar shows 50.000 Manschappen on the scale of the band", () => {
   const bar = scaleBar(162646, 48);
   assert.equal(bar.men, 50000);
@@ -204,6 +208,7 @@ test("the slider and the legend only show while there is a band, and are added o
   assert.ok(all.includes("50.000 Manschappen"));
   assert.ok(all.includes("Cijfer per kant, niet per Bevelhebber"));
   assert.equal(controls[0].element.clickDisabled, true);
+  assert.equal(controls[0].element.scrollDisabled, true);
   layer.setBands([]);
   assert.equal(controls.length, 0);
   layer.setBands(twoStops);
@@ -239,4 +244,141 @@ test("the scale bar follows the slider and the highest figure, and is left out w
   layer.setBands([{ stops: [stop("A", 0, null), stop("B", 10, null)], color: "red" }]);
   assert.equal(controls.length, 1);
   assert.equal(bar.style.display, "none");
+});
+
+test("no band part is interactive and none carries a tooltip of its own", () => {
+  const { added, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 50, 10), stop("B", 10, 100), stop("C", 20, null), stop("D", 30, 80)], color: "red" }]);
+  assert.ok(added.length >= 5);
+  for (const part of added) {
+    assert.equal(part.options.interactive, false, part.kind);
+    assert.equal(part.bindTooltip, undefined);
+  }
+});
+
+const A = { id: "A" };
+const B = { id: "B" };
+const square = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+
+test("hitAt finds a wedge, a circle and a polygon by being inside, and nothing outside", () => {
+  const wedge = { kind: "wedge", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 8 }], stop: A };
+  assert.equal(hitAt({ x: 5, y: 2 }, [wedge]), A);
+  assert.equal(hitAt({ x: 1, y: 7 }, [wedge]), null);
+  const circle = { kind: "circle", center: { x: 50, y: 50 }, radius: 5, stop: B };
+  assert.equal(hitAt({ x: 53, y: 53 }, [circle]), B);
+  assert.equal(hitAt({ x: 54, y: 54 }, [circle]), null);
+  const polygon = { kind: "polygon", points: square, from: { point: { x: 0, y: 5 }, stop: A }, to: { point: { x: 10, y: 5 }, stop: B } };
+  assert.ok(hitAt({ x: 5, y: 5 }, [polygon]));
+  assert.equal(hitAt({ x: 11, y: 5 }, [polygon]), null);
+});
+
+test("hitAt gives a wedge priority over what lies beneath it, in list order", () => {
+  const wedge = { kind: "wedge", points: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 5, y: 8 }], stop: A };
+  const polygon = { kind: "polygon", points: square, from: { point: { x: 0, y: 5 }, stop: B }, to: { point: { x: 10, y: 5 }, stop: B } };
+  assert.equal(hitAt({ x: 5, y: 2 }, [wedge, polygon]), A);
+  assert.equal(hitAt({ x: 5, y: 2 }, [polygon, wedge]), B);
+});
+
+test("hitAt reports the nearer of the two stops of a polygon", () => {
+  const polygon = { kind: "polygon", points: square, from: { point: { x: 0, y: 5 }, stop: A }, to: { point: { x: 10, y: 5 }, stop: B } };
+  assert.equal(hitAt({ x: 2, y: 5 }, [polygon]), A);
+  assert.equal(hitAt({ x: 8, y: 1 }, [polygon]), B);
+});
+
+test("hitAt hits a dotted step within 8 px of its segment and reports the nearer stop", () => {
+  const step = { kind: "step", from: { point: { x: 0, y: 0 }, stop: A }, to: { point: { x: 100, y: 0 }, stop: B } };
+  assert.equal(hitAt({ x: 30, y: 8 }, [step]), A);
+  assert.equal(hitAt({ x: 70, y: -8 }, [step]), B);
+  assert.equal(hitAt({ x: 30, y: 8.5 }, [step]), null);
+  assert.equal(hitAt({ x: 108, y: 0 }, [step]), B);
+  assert.equal(hitAt({ x: 109, y: 0 }, [step]), null);
+});
+
+test("hitAt without shapes or without a hit is null", () => {
+  assert.equal(hitAt({ x: 0, y: 0 }, []), null);
+});
+
+const first = (tooltip) => tooltip.content.textContent.split("\n")[0];
+const move = (handlers, x, y) => handlers.mousemove({ layerPoint: { x, y }, latlng: [-y, x] });
+
+test("the listeners are registered once for the life of the layer, however often bands change", () => {
+  const { counts, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands(twoStops);
+  layer.setBands(twoStops);
+  layer.setMaxWidth(20);
+  assert.equal(counts.mousemove, 1);
+  assert.equal(counts.mouseout, 1);
+  assert.equal(counts.zoomend, 1);
+});
+
+test("a mouse move over the band shows one tooltip with the text of the stop, off it removes it", () => {
+  const { handlers, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  const far = [{ stops: [stop("A", 0, 100), stop("B", 100, 100)], color: "red" }];
+  layer.setBands(far);
+  assert.equal(tooltips.length, 1);
+  const [tooltip] = tooltips;
+  assert.equal(tooltip.options.sticky, false);
+  assert.equal(tooltip.options.direction, "top");
+  move(handlers, 3, 0);
+  assert.equal(tooltip.open, true);
+  assert.equal(tooltip.content.className, "manpower-tooltip");
+  assert.equal(tooltip.content.textContent, stopText(far[0].stops[0]));
+  assert.deepEqual(tooltip.latlng.map((n) => n + 0), [0, 3]);
+  move(handlers, 60, 0);
+  assert.equal(tooltip.content.textContent, stopText(far[0].stops[1]));
+  assert.deepEqual(tooltip.latlng.map((n) => n + 0), [0, 60]);
+  assert.equal(tooltips.length, 1);
+  move(handlers, 5, 200);
+  assert.equal(tooltip.open, false);
+});
+
+test("a wedge wins over the polygon and circle beneath it", () => {
+  const { handlers, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 100, 50), stop("B", 100, 100)], color: "red" }]);
+  move(handlers, 0, -23);
+  assert.equal(first(tooltips[0]), "A");
+  move(handlers, 70, 0);
+  assert.equal(first(tooltips[0]), "B");
+});
+
+test("a dotted step shows the tooltip within 8 px and not beyond", () => {
+  const { handlers, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 100), stop("B", 100, null)], color: "red" }]);
+  move(handlers, 80, 7);
+  assert.equal(tooltips[0].open, true);
+  assert.equal(tooltips[0].content.textContent, "B\nGeen aantal soldaten");
+  move(handlers, 80, 9);
+  assert.equal(tooltips[0].open, false);
+});
+
+test("the tooltip goes when the mouse leaves the map and when the bands go", () => {
+  const { handlers, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands(twoStops);
+  move(handlers, 3, 0);
+  handlers.mouseout();
+  assert.equal(tooltips[0].open, false);
+  move(handlers, 3, 0);
+  assert.equal(tooltips[0].open, true);
+  layer.setBands([]);
+  assert.equal(tooltips[0].open, false);
+  move(handlers, 3, 0);
+  assert.equal(tooltips[0].open, false);
+});
+
+test("the shapes follow a zoom: after it the hit test uses the new layer points", () => {
+  const { handlers, tooltips, map } = fakeLeaflet();
+  const layer = createManpowerLayer(map);
+  layer.setBands([{ stops: [stop("A", 0, 100), stop("B", 100, 100)], color: "red" }]);
+  map.scale = 2;
+  handlers.zoomend();
+  move(handlers, 150, 0);
+  assert.equal(first(tooltips[0]), "B");
+  move(handlers, 40, 0);
+  assert.equal(first(tooltips[0]), "A");
 });

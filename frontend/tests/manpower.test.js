@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  manpowerOf, lossesOf, bandStops, bandSteps, highestManpower, widthOf, stopText,
+  manpowerOf, lossesOf, bandStops, bandSteps, highestManpower, widthOf, stopText, clampBandWidth,
 } from "../js/manpower.js";
 
 const table = {
@@ -91,4 +91,13 @@ test("the tooltip uses title_en first and lists aircraft", () => {
 test("a stop without a figure says so and keeps the original text", () => {
   assert.equal(stopText(stopFor("M")), "M\nGeen aantal soldaten\n100 tanks");
   assert.equal(stopText(stopFor("nope")), "nope\nGeen aantal soldaten");
+});
+
+test("clampBandWidth accepts whole numbers from 8 to 96 and nothing else", () => {
+  assert.equal(clampBandWidth(48), 48);
+  assert.equal(clampBandWidth("64"), 64);
+  assert.equal(clampBandWidth(8), 8);
+  assert.equal(clampBandWidth(96), 96);
+  for (const bad of [0, 7, 97, 9999, "0", "9999", "abc", "", null, undefined, 12.5, "12.5", NaN])
+    assert.equal(clampBandWidth(bad), undefined, String(bad));
 });

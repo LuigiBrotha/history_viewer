@@ -1,7 +1,7 @@
 // The view of a page (date or period, Veldslag, Gevolgde boot, Kaartuitsnede, Alleen zonder
 // positie) as a URL search string. Pure: no DOM, no history; the pages decide when to read and write.
 
-import { clampBandWidth, DEFAULT_MAX_WIDTH } from "./manpower-layer.js";
+import { clampBandWidth, DEFAULT_MAX_WIDTH } from "./manpower.js";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const BOAT_PATTERN = /^[a-z0-9-]+$/;

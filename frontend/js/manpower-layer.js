@@ -2,17 +2,18 @@
 // flowing from one to the next, with a dark wedge on its edge for the losses. Widths are in
 // pixels, so the same at every zoom; the band is worked out in layer points and drawn again
 // whenever the map zooms.
-import { bandSteps, highestManpower, stopText, widthOf } from "./manpower.js";
+import {
+  bandSteps, clampBandWidth, DEFAULT_MAX_WIDTH, highestManpower, MAX_BAND_WIDTH, MIN_BAND_WIDTH, stopText, widthOf,
+} from "./manpower.js";
 
-export const DEFAULT_MAX_WIDTH = 48;
-export const MIN_BAND_WIDTH = 8;
-export const MAX_BAND_WIDTH = 96;
 const SCALE_MEN = 50000;
 const PANE = "manpower";
 const LOSS_PANE = "manpower-losses";
 const LOSS_COLOR = "#2a2521";
 const WEDGE_BASE = 12;
-const DASH = "4 6";
+const DASH = "2 8";
+const DOT_WEIGHT = 8;
+const DOT_HIT = 8;
 
 // The four corners of the part of the band between a and b (points {x, y}), going from the
 // left side of a to that of b and back along the right side. Null when a and b coincide.
@@ -42,23 +43,46 @@ export function lossWedge(point, tangent, width, lossPx) {
   ];
 }
 
-// The width in px from a number or numeric string: a whole number from 8 to 96, else undefined.
-export function clampBandWidth(value) {
-  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return undefined;
-  const number = Number(value);
-  return Number.isInteger(number) && number >= MIN_BAND_WIDTH && number <= MAX_BAND_WIDTH ? number : undefined;
-}
-
 // The length in px of the scale bar for 50.000 Manschappen, when the highest figure is maxPx wide.
 export function scaleBar(highest, maxPx) {
   return { men: SCALE_MEN, px: highest > 0 ? widthOf(SCALE_MEN, highest, maxPx) : 0 };
 }
 
-function tooltipElement(text) {
-  const element = document.createElement("div");
-  element.className = "manpower-tooltip";
-  element.textContent = text;
-  return element;
+const distance = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+
+function insidePolygon(point, corners) {
+  let inside = false;
+  for (let i = 0, j = corners.length - 1; i < corners.length; j = i++) {
+    const a = corners[i];
+    const b = corners[j];
+    if ((a.y > point.y) !== (b.y > point.y) && point.x < ((b.x - a.x) * (point.y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
+  }
+  return inside;
+}
+
+function distanceToSegment(point, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return distance(point, a);
+  const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared));
+  return distance(point, { x: a.x + t * dx, y: a.y + t * dy });
+}
+
+const nearer = (point, { from, to }) => (distance(point, from.point) <= distance(point, to.point) ? from.stop : to.stop);
+
+// The stop under point ({x, y} in layer points), or null. shapes are in priority order:
+// { kind: "wedge", points, stop }, { kind: "circle", center, radius, stop },
+// { kind: "polygon", points, from: { point, stop }, to: { point, stop } } and
+// { kind: "step", from, to } for a dotted step, hit within 8 px.
+export function hitAt(point, shapes) {
+  for (const shape of shapes) {
+    if (shape.kind === "wedge" && insidePolygon(point, shape.points)) return shape.stop;
+    if (shape.kind === "circle" && distance(point, shape.center) <= shape.radius) return shape.stop;
+    if (shape.kind === "polygon" && insidePolygon(point, shape.points)) return nearer(point, shape);
+    if (shape.kind === "step" && distanceToSegment(point, shape.from.point, shape.to.point) <= DOT_HIT) return nearer(point, shape);
+  }
+  return null;
 }
 
 // The unit vector along the band at stop i: the step leaving it, else the one arriving, skipping
@@ -80,7 +104,7 @@ function tangentAt(points, i) {
 }
 
 export function createManpowerLayer(map, { onWidthChange } = {}) {
-  for (const [name, z] of [[PANE, 395], [LOSS_PANE, 396]]) {
+  for (const [name, z] of [[PANE, 385], [LOSS_PANE, 386]]) {
     map.createPane(name);
     map.getPane(name).style.zIndex = z;
   }
@@ -88,41 +112,52 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
   const group = L.layerGroup().addTo(map);
   let drawn = [];
   let bands = [];
+  let shapes = [];
+  const tooltip = L.tooltip({ sticky: false, direction: "top", className: "manpower-tooltip-box" });
+  let tooltipOpen = false;
   let maxWidth = DEFAULT_MAX_WIDTH;
 
   const highest = () => bands.reduce((max, band) => Math.max(max, highestManpower(band.stops)), 0);
-  const add = (layer, text) => {
-    layer.bindTooltip(tooltipElement(text), { sticky: true });
+  const add = (layer) => {
     group.addLayer(layer);
     drawn.push(layer);
   };
   const toLatLngs = (points) => points.map((p) => map.layerPointToLatLng(p));
+  const still = { interactive: false };
 
+  // Draws one band and returns its shapes for the hit test: wedges, circles, polygons, dotted steps.
   function drawBand({ stops, color }, top) {
     const points = stops.map((s) => map.latLngToLayerPoint([s.battle.lat, s.battle.lng]));
     const widths = stops.map((s) => (s.manpower ? widthOf(s.manpower.total, top, maxWidth) : 0));
+    const ends = (i) => ({ point: points[i], stop: stops[i] });
+    const found = { wedges: [], circles: [], polygons: [], steps: [] };
     bandSteps(stops).forEach((step, i) => {
-      const text = `${stopText(step.from)}\n\n${stopText(step.to)}`;
       if (!step.solid) {
         add(L.polyline([[step.from.battle.lat, step.from.battle.lng], [step.to.battle.lat, step.to.battle.lng]],
-          { pane: PANE, color, weight: 2, dashArray: DASH }), text);
+          { pane: PANE, color, weight: DOT_WEIGHT, dashArray: DASH, lineCap: "butt", ...still }));
+        found.steps.push({ kind: "step", from: ends(i), to: ends(i + 1) });
         return;
       }
       const corners = bandPolygon(points[i], points[i + 1], widths[i], widths[i + 1]);
-      if (corners) add(L.polygon(toLatLngs(corners), { pane: PANE, stroke: false, fillColor: color, fillOpacity: 1 }), text);
+      if (!corners) return;
+      add(L.polygon(toLatLngs(corners), { pane: PANE, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
+      found.polygons.push({ kind: "polygon", points: corners, from: ends(i), to: ends(i + 1) });
     });
     stops.forEach((s, i) => {
       if (!s.manpower) return;
       add(L.circleMarker([s.battle.lat, s.battle.lng],
-        { pane: PANE, radius: widths[i] / 2, stroke: false, fillColor: color, fillOpacity: 1 }), stopText(s));
+        { pane: PANE, radius: widths[i] / 2, stroke: false, fillColor: color, fillOpacity: 1, ...still }));
+      found.circles.push({ kind: "circle", center: points[i], radius: widths[i] / 2, stop: s });
     });
     stops.forEach((s, i) => {
       if (!s.manpower || s.loss == null) return;
       const tangent = tangentAt(points, i);
       if (!tangent) return;
       const wedge = lossWedge(points[i], tangent, widths[i], widthOf(s.loss, top, maxWidth));
-      add(L.polygon(toLatLngs(wedge), { pane: LOSS_PANE, stroke: false, fillColor: LOSS_COLOR, fillOpacity: 1 }), stopText(s));
+      add(L.polygon(toLatLngs(wedge), { pane: LOSS_PANE, stroke: false, fillColor: LOSS_COLOR, fillOpacity: 1, ...still }));
+      found.wedges.push({ kind: "wedge", points: wedge, stop: s });
     });
+    return found;
   }
 
   // The slider and the legend, in the corner for as long as there is a band.
@@ -133,6 +168,7 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
   const buildControl = () => {
     const box = L.DomUtil.create("div", "manpower-control");
     L.DomEvent.disableClickPropagation(box);
+    L.DomEvent.disableScrollPropagation(box);
     const label = document.createElement("label");
     label.className = "manpower-control-label";
     label.textContent = "Dikte band";
@@ -186,10 +222,33 @@ export function createManpowerLayer(map, { onWidthChange } = {}) {
     drawn.forEach((layer) => group.removeLayer(layer));
     drawn = [];
     const top = highest();
-    bands.forEach((band) => drawBand(band, top));
+    const found = bands.map((band) => drawBand(band, top));
+    shapes = ["wedges", "circles", "polygons", "steps"].flatMap((kind) => found.flatMap((f) => f[kind]));
+    if (!shapes.length) hideTooltip();
     syncControl();
   }
   map.on("zoomend", redraw);
+
+  // One hit test for the whole map: the band lets every mouse event through.
+  function hideTooltip() {
+    if (tooltipOpen) tooltip.remove();
+    tooltipOpen = false;
+  }
+  map.on("mousemove", (e) => {
+    if (!shapes.length) return;
+    const hit = hitAt(e.layerPoint, shapes);
+    if (!hit) {
+      hideTooltip();
+      return;
+    }
+    const content = document.createElement("div");
+    content.className = "manpower-tooltip";
+    content.textContent = stopText(hit);
+    tooltip.setContent(content).setLatLng(e.latlng);
+    if (!tooltipOpen) tooltip.addTo(map);
+    tooltipOpen = true;
+  });
+  map.on("mouseout", hideTooltip);
 
   return {
     // bands: [{ stops (see bandStops), color }]

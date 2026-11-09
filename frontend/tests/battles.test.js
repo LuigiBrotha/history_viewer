@@ -46,7 +46,8 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
       };
       return control;
     },
-    DomEvent: { disableClickPropagation() {} },
+    DomEvent: { disableClickPropagation() {}, disableScrollPropagation() {} },
+    tooltip: () => ({ setContent() { return this; }, setLatLng() { return this; }, addTo() { return this; }, remove() { return this; } }),
     DomUtil: { create: (tag, className) => Object.assign(document.createElement(tag), { className }) },
     divIcon: (options) => ({ ...options }),
     marker: (latlng, options) => {
@@ -75,8 +76,8 @@ function setup({ mode = "date", load = async () => BATTLES, loadPositions = asyn
     },
     layerGroup: () => ({ addTo() { return this; }, addLayer: (l) => layers.add(l), removeLayer: (l) => layers.delete(l) }),
     polyline: (latlngs, options) => ({ latlngs, options: { ...options, icon: { className: "track-line" } } }),
-    polygon: (latlngs, options) => ({ kind: "polygon", latlngs, options: { ...options, icon: { className: "band-polygon" } }, bindTooltip() { return this; } }),
-    circleMarker: (latlng, options) => ({ kind: "circle", latlng, options: { ...options, icon: { className: "band-circle" } }, bindTooltip() { return this; } }),
+    polygon: (latlngs, options) => ({ kind: "polygon", latlngs, options: { ...options, icon: { className: "band-polygon" } } }),
+    circleMarker: (latlng, options) => ({ kind: "circle", latlng, options: { ...options, icon: { className: "band-circle" } } }),
   };
   const map = {
     invalidations: 0,

@@ -1,5 +1,16 @@
 // Manschappen along a Spoor: soldiers plus the crews of tanks and aircraft.
 
+export const DEFAULT_MAX_WIDTH = 48;
+export const MIN_BAND_WIDTH = 8;
+export const MAX_BAND_WIDTH = 96;
+
+// The width in px from a number or numeric string: a whole number from 8 to 96, else undefined.
+export function clampBandWidth(value) {
+  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return undefined;
+  const number = Number(value);
+  return Number.isInteger(number) && number >= MIN_BAND_WIDTH && number <= MAX_BAND_WIDTH ? number : undefined;
+}
+
 const crewOf = (items) => (items || []).reduce((sum, i) => sum + i.aantal * i.bemanning, 0);
 const fmt = (n) => n.toLocaleString("nl-NL");
 

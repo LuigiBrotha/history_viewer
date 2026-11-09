@@ -163,7 +163,7 @@ test("the width of the band is restored, and its changes reach the URL", () => {
   writes.length = 0;
   listener(48);
   listener(72);
-  assert.deepEqual(writes, [{ bandWidth: undefined }, { bandWidth: 72 }]);
+  assert.deepEqual(writes, [{ bandWidth: 48 }, { bandWidth: 72 }]);
 });
 
 test("a restored Kaartuitsnede stays in the URL when the next change is written", () => {

@@ -2728,6 +2728,8 @@ select {
 /* The tooltip of the Manschappenband: the lines of the text under one another. */
 .manpower-tooltip {
   white-space: pre-line;
+  width: max-content;
+  max-width: 320px;
 }
 
 /* The slider and the scale of the Manschappenband. */
