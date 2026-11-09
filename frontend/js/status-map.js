@@ -240,7 +240,7 @@ function raiseChosen(state) {
 }
 
 // Coming back, the lines are drawn in the order they were added, so the chosen ones are raised again.
-export function setRoutesVisible(state, visible) {
+export function setBoatsVisible(state, visible) {
   if (visible === state.map.hasLayer(state.layer)) {
     return;
   }

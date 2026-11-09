@@ -794,7 +794,8 @@ html, body {
 }
 
 #battle-toggle,
-#route-toggle {
+#route-toggle,
+#boat-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -811,12 +812,14 @@ html, body {
 
 /* Once placed in the row of map controls it flows with them. */
 #battle-toggle.leaflet-control,
-#route-toggle.leaflet-control {
+#route-toggle.leaflet-control,
+#boat-toggle.leaflet-control {
   position: static;
 }
 
 #battle-toggle[aria-expanded="true"],
-#route-toggle[aria-pressed="true"] {
+#route-toggle[aria-pressed="true"],
+#boat-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -2157,7 +2160,8 @@ select {
 }
 
 #battle-toggle,
-#route-toggle {
+#route-toggle,
+#boat-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
@@ -2165,7 +2169,8 @@ select {
 }
 
 #battle-toggle[aria-expanded="true"],
-#route-toggle[aria-pressed="true"] {
+#route-toggle[aria-pressed="true"],
+#boat-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }
