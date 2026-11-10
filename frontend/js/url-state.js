@@ -62,7 +62,8 @@ export function readView(search, kind) {
     ["routesOff", params.get("routes") === "uit" ? true : undefined],
     ["boatsOff", params.get("boten") === "uit" ? true : undefined],
     ["namesOff", params.get("namen") === "uit" ? true : undefined],
-    ["othersOff", params.get("overige") === "uit" ? true : undefined],
+    // overige=uit was its name on the first day; a Pin from then still works.
+    ["othersOff", params.get("veldslagen") === "uit" || params.get("overige") === "uit" ? true : undefined],
     ["shipsOff", params.get("schepen") === "uit" ? true : undefined],
     ["spread", /^\d+-\d*$/.test(params.get("spreiding") ?? "") ? params.get("spreiding") : undefined],
   );
@@ -96,7 +97,7 @@ export function writeView(view, kind) {
   add("routes", view.routesOff === true && "uit");
   add("boten", view.boatsOff === true && "uit");
   add("namen", view.namesOff === true && "uit");
-  add("overige", view.othersOff === true && "uit");
+  add("veldslagen", view.othersOff === true && "uit");
   add("schepen", view.shipsOff === true && "uit");
   add("spreiding", view.spread && encode(view.spread));
   add("artikel", view.version === "nl" && "nl");

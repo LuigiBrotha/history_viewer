@@ -141,7 +141,7 @@ export function initBattles({
   let editable = false;
   let positionsLoaded = false;
   let selected = null;
-  // "Overige" off: only the selected battle's square on the map.
+  // The map button "Veldslagen" off: only the selected battle's square on the map.
   let othersVisible = true;
   let lastSelected = null;
   let labels = [];
