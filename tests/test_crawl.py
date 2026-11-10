@@ -4,14 +4,8 @@ from app.services.scraping.uboat_net.types import BoatData, BoatRef, PatrolDetai
 from app.services.storage.boat_crawl_state_repository import BoatCrawlStateRepository
 from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.crawl_status_repository import CrawlStatusRepository
-from app.services.storage.database import create_engine, create_session_factory, init_models
+from app.services.storage.database import create_engine, create_session_factory
 from app.services.storage.patrol_repository import PatrolRepository
-
-
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
 
 
 def _boat_data(slug):
@@ -33,8 +27,7 @@ def _patrol_detail():
     return PatrolDetail(description="test patrol", route_points=[RoutePointData(0, 1.0, 2.0, None)])
 
 
-async def test_crawl_boats_upserts_boat_and_patrol_and_records_success(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_boats_upserts_boat_and_patrol_and_records_success(session_factory):
     refs = [BoatRef(slug="u99", number="U-99")]
 
     await crawl_boats(
@@ -57,8 +50,7 @@ async def test_crawl_boats_upserts_boat_and_patrol_and_records_success(tmp_path)
     assert state.status == "success"
 
 
-async def test_crawl_boats_records_failure_and_continues_to_next_boat(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_boats_records_failure_and_continues_to_next_boat(session_factory):
     refs = [BoatRef(slug="u1", number="U-1"), BoatRef(slug="u2", number="U-2")]
 
     def fetch_boat(slug):
@@ -86,8 +78,7 @@ async def test_crawl_boats_records_failure_and_continues_to_next_boat(tmp_path):
     assert {s.slug for s in summaries} == {"u2"}
 
 
-async def test_crawl_boats_skips_already_successful_boats_unless_forced(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_boats_skips_already_successful_boats_unless_forced(session_factory):
     refs = [BoatRef(slug="u99", number="U-99")]
     calls = []
 
@@ -107,8 +98,7 @@ async def test_crawl_boats_skips_already_successful_boats_unless_forced(tmp_path
     assert calls == ["u99", "u99"]
 
 
-async def test_crawl_boats_patrol_list_failure_records_boat_failure(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_boats_patrol_list_failure_records_boat_failure(session_factory):
     refs = [BoatRef(slug="u99", number="U-99")]
 
     await crawl_boats(
@@ -126,8 +116,7 @@ async def test_crawl_boats_patrol_list_failure_records_boat_failure(tmp_path):
     assert "patrol list boom" in state.last_error
 
 
-async def test_select_boats_to_crawl_applies_limit_after_skipping_already_successful(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_select_boats_to_crawl_applies_limit_after_skipping_already_successful(session_factory):
     refs = [BoatRef(slug=f"u{i}", number=f"U-{i}") for i in range(1, 5)]
 
     # First run "crawls" u1 and u2 successfully.
@@ -145,8 +134,7 @@ async def test_select_boats_to_crawl_applies_limit_after_skipping_already_succes
     assert [ref.slug for ref in selected] == ["u3", "u4"]
 
 
-async def test_select_boats_to_crawl_with_force_ignores_status_and_limits_the_raw_listing(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_select_boats_to_crawl_with_force_ignores_status_and_limits_the_raw_listing(session_factory):
     refs = [BoatRef(slug=f"u{i}", number=f"U-{i}") for i in range(1, 5)]
 
     await crawl_boats(
@@ -161,8 +149,7 @@ async def test_select_boats_to_crawl_with_force_ignores_status_and_limits_the_ra
     assert [ref.slug for ref in selected] == ["u1", "u2"]
 
 
-async def test_select_boats_to_crawl_no_limit_returns_all_boats_needing_crawl(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_select_boats_to_crawl_no_limit_returns_all_boats_needing_crawl(session_factory):
     refs = [BoatRef(slug="u1", number="U-1"), BoatRef(slug="u2", number="U-2")]
 
     await crawl_boats(

@@ -2,15 +2,6 @@ from datetime import date
 
 from app.services.scraping.uboat_net.types import BoatData
 from app.services.storage.boat_repository import BoatRepository
-from app.services.storage.database import create_engine, create_session_factory, init_models
-
-
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
-
-
 def _boat_data(slug="u99", **overrides):
     defaults = dict(
         slug=slug,
@@ -26,8 +17,7 @@ def _boat_data(slug="u99", **overrides):
     return BoatData(**defaults)
 
 
-async def test_upsert_boat_inserts_new_boat(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_upsert_boat_inserts_new_boat(session_factory):
 
     async with session_factory() as session:
         await BoatRepository(session).upsert_boat(_boat_data())
@@ -39,8 +29,7 @@ async def test_upsert_boat_inserts_new_boat(tmp_path):
     assert summaries[0].patrol_count == 0
 
 
-async def test_upsert_boat_updates_existing_row_on_conflict(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_upsert_boat_updates_existing_row_on_conflict(session_factory):
 
     async with session_factory() as session:
         repo = BoatRepository(session)
@@ -52,8 +41,7 @@ async def test_upsert_boat_updates_existing_row_on_conflict(tmp_path):
     assert summaries[0].fate == "Sunk by depth charges"
 
 
-async def test_get_id_by_slug_returns_none_for_unknown_slug(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_get_id_by_slug_returns_none_for_unknown_slug(session_factory):
 
     async with session_factory() as session:
         boat_id = await BoatRepository(session).get_id_by_slug("unknown")
@@ -61,8 +49,7 @@ async def test_get_id_by_slug_returns_none_for_unknown_slug(tmp_path):
     assert boat_id is None
 
 
-async def test_get_id_by_slug_returns_id_after_upsert(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_get_id_by_slug_returns_id_after_upsert(session_factory):
 
     async with session_factory() as session:
         repo = BoatRepository(session)
@@ -72,8 +59,7 @@ async def test_get_id_by_slug_returns_id_after_upsert(tmp_path):
     assert isinstance(boat_id, int)
 
 
-async def test_get_detail_returns_none_for_unknown_slug(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_get_detail_returns_none_for_unknown_slug(session_factory):
 
     async with session_factory() as session:
         detail = await BoatRepository(session).get_detail("unknown")
@@ -81,8 +67,7 @@ async def test_get_detail_returns_none_for_unknown_slug(tmp_path):
     assert detail is None
 
 
-async def test_get_detail_returns_boat_fields_and_empty_patrols(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_get_detail_returns_boat_fields_and_empty_patrols(session_factory):
 
     async with session_factory() as session:
         await BoatRepository(session).upsert_boat(_boat_data())
@@ -94,8 +79,7 @@ async def test_get_detail_returns_boat_fields_and_empty_patrols(tmp_path):
     assert detail.patrols == []
 
 
-async def test_list_summaries_orders_by_slug(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_summaries_orders_by_slug(session_factory):
 
     async with session_factory() as session:
         repo = BoatRepository(session)

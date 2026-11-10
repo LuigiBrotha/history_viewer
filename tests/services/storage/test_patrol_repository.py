@@ -8,15 +8,8 @@ from sqlalchemy import select, update
 from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.storage.boat_repository import BoatRepository
 from app.services.storage.crawl_status_repository import CrawlStatusRepository
-from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.models import ExcludedRoutePoint, Patrol, RoutePoint
 from app.services.storage.patrol_repository import PatrolRepository
-
-
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
 
 
 async def _seed_boat(session, slug="u99", number="U-99"):
@@ -49,8 +42,7 @@ def _detail(points=None, description="Left Germany for a patrol."):
     return PatrolDetail(description=description, route_points=points or [])
 
 
-async def test_upsert_patrol_inserts_patrol_and_route_points(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_upsert_patrol_inserts_patrol_and_route_points(session_factory):
 
     async with session_factory() as session:
         boat_id = await _seed_boat(session)
@@ -69,8 +61,7 @@ async def test_upsert_patrol_inserts_patrol_and_route_points(tmp_path):
     assert routes[0].points[0].date == date(1940, 6, 18)
 
 
-async def test_upsert_patrol_replaces_route_points_on_conflict(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_upsert_patrol_replaces_route_points_on_conflict(session_factory):
 
     async with session_factory() as session:
         boat_id = await _seed_boat(session)
@@ -88,8 +79,7 @@ async def test_upsert_patrol_replaces_route_points_on_conflict(tmp_path):
     assert routes[0].points[0].lat == 9.0
 
 
-async def test_upsert_patrol_updates_summary_fields_on_conflict(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_upsert_patrol_updates_summary_fields_on_conflict(session_factory):
 
     async with session_factory() as session:
         boat_id = await _seed_boat(session)
@@ -101,8 +91,7 @@ async def test_upsert_patrol_updates_summary_fields_on_conflict(tmp_path):
     assert detail.patrols[0].tonnage == 22719
 
 
-async def test_list_routes_orders_by_boat_slug_then_patrol_number(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_orders_by_boat_slug_then_patrol_number(session_factory):
 
     async with session_factory() as session:
         boat_a = await _seed_boat(session, slug="u100", number="U-100")
@@ -114,12 +103,11 @@ async def test_list_routes_orders_by_boat_slug_then_patrol_number(tmp_path):
     assert [r.external_id for r in routes] == ["patrol_1", "patrol_2"]
 
 
-async def test_upsert_patrol_sets_crawled_at_and_updated_at(tmp_path):
+async def test_upsert_patrol_sets_crawled_at_and_updated_at(session_factory):
     from sqlalchemy import select
 
     from app.services.storage.models import Patrol
 
-    session_factory = await _session_factory(tmp_path)
     detail = PatrolDetail(description=None, route_points=[])
 
     async with session_factory() as session:
@@ -153,8 +141,7 @@ async def _seed_patrols_with_updated_at(session_factory, stamps):
         await session.commit()
 
 
-async def test_list_routes_since_returns_only_changed_patrols(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_since_returns_only_changed_patrols(session_factory):
     await _seed_patrols_with_updated_at(session_factory, [
         ("older", datetime(2026, 11, 4, 9, 0, tzinfo=timezone.utc)),
         ("newer", datetime(2026, 11, 4, 11, 0, tzinfo=timezone.utc)),
@@ -166,8 +153,7 @@ async def test_list_routes_since_returns_only_changed_patrols(tmp_path):
     assert [r.external_id for r in routes] == ["newer"]
 
 
-async def test_list_routes_since_includes_a_patrol_exactly_at_the_cursor(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_since_includes_a_patrol_exactly_at_the_cursor(session_factory):
     await _seed_patrols_with_updated_at(session_factory, [("exact", CURSOR)])
 
     async with session_factory() as session:
@@ -176,8 +162,7 @@ async def test_list_routes_since_includes_a_patrol_exactly_at_the_cursor(tmp_pat
     assert [r.external_id for r in routes] == ["exact"]
 
 
-async def test_list_routes_since_excludes_patrols_without_a_timestamp(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_since_excludes_patrols_without_a_timestamp(session_factory):
     await _seed_patrols_with_updated_at(session_factory, [("legacy", None), ("fresh", CURSOR)])
 
     async with session_factory() as session:
@@ -188,8 +173,7 @@ async def test_list_routes_since_excludes_patrols_without_a_timestamp(tmp_path):
     assert {r.external_id for r in all_routes} == {"legacy", "fresh"}
 
 
-async def test_status_reads_while_another_connection_is_writing(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_status_reads_while_another_connection_is_writing(tmp_path, session_factory):
     db_path = f"{tmp_path}/test.db"
 
     writer = sqlite3.connect(db_path, isolation_level=None)
@@ -208,16 +192,15 @@ async def test_status_reads_while_another_connection_is_writing(tmp_path):
     assert status.patrol_count == 0
 
 
-async def test_water_routes_survive_a_recrawl_of_the_patrol(tmp_path):
+async def test_water_routes_survive_a_recrawl_of_the_patrol(session_factory):
     from app.services.routing.types import RoutedLeg
     from app.services.storage.water_route_repository import WaterRouteRepository
 
-    factory = await _session_factory(tmp_path)
     points = [
         RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=date(1940, 6, 18)),
         RoutePointData(sequence=2, lat=51.0, lng=-4.0, date=date(1940, 6, 19)),
     ]
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(points))
@@ -229,17 +212,16 @@ async def test_water_routes_survive_a_recrawl_of_the_patrol(tmp_path):
     assert routes[0].legs[0].path == [[50.0, -5.0], [51.0, -4.0]]
 
 
-async def test_list_routes_since_returns_legs_for_the_changed_patrols(tmp_path):
+async def test_list_routes_since_returns_legs_for_the_changed_patrols(session_factory):
     from app.services.routing.types import RoutedLeg
     from app.services.storage.water_route_repository import WaterRouteRepository
 
-    factory = await _session_factory(tmp_path)
     a, b = (50.0, -5.0), (51.0, -4.0)
     points = [
         RoutePointData(sequence=1, lat=a[0], lng=a[1], date=date(1940, 6, 18)),
         RoutePointData(sequence=2, lat=b[0], lng=b[1], date=date(1940, 6, 19)),
     ]
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary("old"), _detail(points))
@@ -255,9 +237,8 @@ async def test_list_routes_since_returns_legs_for_the_changed_patrols(tmp_path):
     assert [(leg.status, leg.path) for leg in routes[0].legs] == [("ok", [[50.0, -5.0], [51.0, -4.0]])]
 
 
-async def test_a_single_point_patrol_has_no_legs(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_a_single_point_patrol_has_no_legs(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         points = [RoutePointData(sequence=1, lat=50.0, lng=-5.0, date=date(1940, 6, 18))]
@@ -266,11 +247,10 @@ async def test_a_single_point_patrol_has_no_legs(tmp_path):
     assert routes[0].legs == []
 
 
-async def test_list_routes_approximates_dates_without_storing_them(tmp_path):
+async def test_list_routes_approximates_dates_without_storing_them(tmp_path, session_factory):
     from app.services.routing.types import RoutedLeg
     from app.services.storage.water_route_repository import WaterRouteRepository
 
-    session_factory = await _session_factory(tmp_path)
     points = [RoutePointData(0, 50.0, -20.0, None), RoutePointData(1, 60.0, 20.0, None)]
     async with session_factory() as session:
         boat_id = await _seed_boat(session)
@@ -297,8 +277,7 @@ async def test_list_routes_approximates_dates_without_storing_them(tmp_path):
     connection.close()
 
 
-async def test_list_routes_keeps_known_dates_exact(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_keeps_known_dates_exact(session_factory):
     points = [RoutePointData(0, 50.0, -20.0, date(1940, 1, 2))]
     async with session_factory() as session:
         boat_id = await _seed_boat(session)
@@ -323,9 +302,8 @@ def _three_points(middle_date=date(1940, 6, 19)):
     ]
 
 
-async def test_excluded_point_leaves_points_and_joins_excluded_points(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_excluded_point_leaves_points_and_joins_excluded_points(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -340,9 +318,8 @@ async def test_excluded_point_leaves_points_and_joins_excluded_points(tmp_path):
     assert restored[0].excluded_points == []
 
 
-async def test_legs_connect_the_neighbours_of_an_excluded_point(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_legs_connect_the_neighbours_of_an_excluded_point(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -351,9 +328,8 @@ async def test_legs_connect_the_neighbours_of_an_excluded_point(tmp_path):
     assert [(leg.from_sequence, leg.to_sequence) for leg in routes[0].legs] == [(1, 3)]
 
 
-async def test_exclusion_survives_a_recrawl_with_new_sequences(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_exclusion_survives_a_recrawl_with_new_sequences(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -370,9 +346,8 @@ async def test_exclusion_survives_a_recrawl_with_new_sequences(tmp_path):
     assert [p.sequence for p in routes[0].excluded_points] == [12]
 
 
-async def test_undated_point_can_be_excluded_and_restored(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_undated_point_can_be_excluded_and_restored(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points(middle_date=None)))
@@ -385,11 +360,10 @@ async def test_undated_point_can_be_excluded_and_restored(tmp_path):
     assert [p.sequence for p in restored[0].points] == [1, 2, 3]
 
 
-async def test_excluding_the_only_remaining_point_is_refused(tmp_path):
+async def test_excluding_the_only_remaining_point_is_refused(session_factory):
     from app.services.storage.patrol_repository import LastPointError
 
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary("one"), _detail(
@@ -403,11 +377,10 @@ async def test_excluding_the_only_remaining_point_is_refused(tmp_path):
             await repo.exclude_point("two", 3)
 
 
-async def test_unknown_patrol_or_sequence_is_not_found(tmp_path):
+async def test_unknown_patrol_or_sequence_is_not_found(session_factory):
     from app.services.storage.patrol_repository import PatrolNotFound, PointNotFound
 
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -422,10 +395,9 @@ async def test_unknown_patrol_or_sequence_is_not_found(tmp_path):
         await repo.restore_point("patrol_4754", 2)  # not excluded: no-op
 
 
-async def test_exclude_and_restore_bump_updated_at(tmp_path):
-    factory = await _session_factory(tmp_path)
+async def test_exclude_and_restore_bump_updated_at(session_factory):
     old = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -443,9 +415,8 @@ async def test_exclude_and_restore_bump_updated_at(tmp_path):
     assert after_restore > old
 
 
-async def test_source_route_point_row_is_untouched(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_source_route_point_row_is_untouched(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -454,9 +425,8 @@ async def test_source_route_point_row_is_untouched(tmp_path):
     assert [r.sequence for r in rows] == [1, 2, 3]
 
 
-async def test_exclusion_survives_a_recrawl_that_loses_the_date(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_exclusion_survives_a_recrawl_that_loses_the_date(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -480,9 +450,8 @@ def _duplicate_points():
     ]
 
 
-async def test_excluding_one_of_two_twins_keeps_the_other(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_excluding_one_of_two_twins_keeps_the_other(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
@@ -492,14 +461,13 @@ async def test_excluding_one_of_two_twins_keeps_the_other(tmp_path):
     assert [p.sequence for p in excluded[0].excluded_points] == [2]
 
 
-async def test_excluding_the_first_home_port_point_keeps_the_last(tmp_path):
+async def test_excluding_the_first_home_port_point_keeps_the_last(session_factory):
     home = [
         RoutePointData(sequence=1, lat=54.0, lng=10.0, date=date(1940, 6, 18)),
         RoutePointData(sequence=2, lat=56.0, lng=5.0, date=date(1940, 6, 19)),
         RoutePointData(sequence=3, lat=54.0, lng=10.0, date=date(1940, 6, 25)),
     ]
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(home))
@@ -509,9 +477,8 @@ async def test_excluding_the_first_home_port_point_keeps_the_last(tmp_path):
     assert [p.sequence for p in routes[0].excluded_points] == [1]
 
 
-async def test_restoring_one_twin_leaves_the_other_excluded(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_restoring_one_twin_leaves_the_other_excluded(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
@@ -525,9 +492,8 @@ async def test_restoring_one_twin_leaves_the_other_excluded(tmp_path):
     assert [p.sequence for p in restored[0].excluded_points] == [2]
 
 
-async def test_a_twin_exclusion_survives_a_recrawl_with_shifted_sequences(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_a_twin_exclusion_survives_a_recrawl_with_shifted_sequences(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
@@ -543,11 +509,10 @@ async def test_a_twin_exclusion_survives_a_recrawl_with_shifted_sequences(tmp_pa
     assert [p.sequence for p in routes[0].excluded_points] == [12]
 
 
-async def test_last_point_error_counts_visible_rows(tmp_path):
+async def test_last_point_error_counts_visible_rows(session_factory):
     from app.services.storage.patrol_repository import LastPointError
 
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_duplicate_points()))
@@ -559,9 +524,8 @@ async def test_last_point_error_counts_visible_rows(tmp_path):
     assert [p.sequence for p in routes[0].points] == [3]
 
 
-async def test_excluding_twice_is_idempotent(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_excluding_twice_is_idempotent(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -573,9 +537,8 @@ async def test_excluding_twice_is_idempotent(tmp_path):
     assert len(stored) == 1
 
 
-async def test_since_listing_includes_excluded_points(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_since_listing_includes_excluded_points(session_factory):
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(), _detail(_three_points()))
@@ -585,10 +548,9 @@ async def test_since_listing_includes_excluded_points(tmp_path):
     assert [p.sequence for p in routes[0].excluded_points] == [2]
 
 
-async def test_excluding_a_point_respreads_approximate_dates_over_the_rest(tmp_path):
-    factory = await _session_factory(tmp_path)
+async def test_excluding_a_point_respreads_approximate_dates_over_the_rest(session_factory):
     undated = [RoutePointData(sequence=i, lat=50.0 + i, lng=-5.0, date=None) for i in range(1, 6)]
-    async with factory() as session:
+    async with session_factory() as session:
         boat_id = await _seed_boat(session)
         repo = PatrolRepository(session)
         await repo.upsert_patrol(boat_id, _summary(arrival_date=date(1940, 6, 22)), _detail(undated))
@@ -611,8 +573,7 @@ async def _seed_three_patrols(session_factory):
             )
 
 
-async def test_list_routes_returns_a_page(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_list_routes_returns_a_page(session_factory):
     await _seed_three_patrols(session_factory)
 
     async with session_factory() as session:
