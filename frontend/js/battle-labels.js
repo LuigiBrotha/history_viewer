@@ -1,4 +1,4 @@
-import { displayTitle, durationDays, isRefining } from "./battle-model.js";
+import { afwijking, displayTitle, durationDays, isRefining } from "./battle-model.js";
 import { trackName } from "./track-layer.js";
 
 // Labels: filters on the Veldslagen chosen through the search field, such as "Land: Polen".
@@ -142,16 +142,33 @@ export function searchLabels(battles, query) {
   return results;
 }
 
+// By Afwijking, largest (direction -1) or smallest (1) first; battles without one last, by date.
+function byAfwijking(direction, summaries) {
+  return (a, b) => {
+    const x = afwijking(a, summaries[a.title]);
+    const y = afwijking(b, summaries[b.title]);
+    if (x === null || y === null) return Number(x === null) - Number(y === null) || SORTS.datum(a, b);
+    return direction * (x - y) || SORTS.datum(a, b);
+  };
+}
+
 const SORTS = {
   datum: (a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : displayTitle(a).localeCompare(displayTitle(b), "nl")),
   naam: (a, b) => displayTitle(a).localeCompare(displayTitle(b), "nl", { sensitivity: "base" }),
   duur: (a, b) => durationDays(b) - durationDays(a) || SORTS.datum(a, b),
   verfijnen: (a, b) => Number(isRefining(b)) - Number(isRefining(a)) || SORTS.datum(a, b),
 };
-export const SORT_NAMES = { datum: "Datum", naam: "Naam", duur: "Duur", verfijnen: "Nog te verfijnen" };
+export const SORT_NAMES = {
+  datum: "Datum", naam: "Naam", duur: "Duur", verfijnen: "Nog te verfijnen",
+  afwijking: "Grootste afwijking", "afwijking-klein": "Kleinste afwijking",
+};
 
-export function sortBattles(battles, sort = "datum") {
-  return [...battles].sort(SORTS[sort] ?? SORTS.datum);
+// The summaries of the Plaatshints per title are only needed for the Afwijking.
+export function sortBattles(battles, sort = "datum", summaries = {}) {
+  const order = sort === "afwijking" ? byAfwijking(-1, summaries)
+    : sort === "afwijking-klein" ? byAfwijking(1, summaries)
+      : SORTS[sort] ?? SORTS.datum;
+  return [...battles].sort(order);
 }
 
 export function isTrackLabel(label) {

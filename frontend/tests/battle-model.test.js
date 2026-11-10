@@ -299,3 +299,11 @@ test("squaresToDraw draws a Voorzet too", () => {
   const list = [{ title: "a", start: "1940-01-01", end: "1940-01-02", voorzet: { lat: 10, lng: 20 } }];
   assert.deepEqual(model.squaresToDraw(list, view).map((b) => b.title), ["a"]);
 });
+
+test("the Afwijking is the distance from where a battle stands to the middle of its Plaatshints", () => {
+  const summary = { count: 3, lat: 0, lng: 0, spread_km: 50 };
+  assert.equal(Math.round(model.afwijking({ lat: 1, lng: 0 }, summary)), 111);
+  assert.equal(Math.round(model.afwijking({ lat: null, lng: null, voorzet: { lat: 0, lng: 1 } }, summary)), 111);
+  assert.equal(model.afwijking({ lat: 1, lng: 0 }, undefined), null);
+  assert.equal(model.afwijking({ lat: null, lng: null }, summary), null);
+});

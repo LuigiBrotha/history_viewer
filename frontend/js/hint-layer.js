@@ -1,3 +1,5 @@
+import { afwijking } from "./battle-model.js";
+
 // Plaatshints: the places the articles of the selected Veldslag name, drawn as triangles with
 // their name, unlike the squares, circles and lines of the other data. The infobox's places are
 // drawn in the accent colour, the text's in ink. A click on one while placing moves the square there.
@@ -12,16 +14,6 @@ export function hintBounds(hints) {
   return [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]];
 }
 
-const EARTH_KM = 6371;
-const toRad = (degrees) => (degrees * Math.PI) / 180;
-
-function distanceKm(a, b) {
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * EARTH_KM * Math.asin(Math.sqrt(Math.min(1, h)));
-}
-
 // How a battle's position lies among the places its articles name, from the summary of its
 // Plaatshints ({ count, lat, lng, spread_km }: their middle and spread): "42 km van 9 plaatsen ·
 // spreiding 120 km", or without a position only the count and spread; "" without hints.
@@ -29,8 +21,9 @@ export function placeText(battle, summary) {
   if (!summary) return "";
   const places = `${summary.count} ${summary.count === 1 ? "plaats" : "plaatsen"}`;
   const spread = `spreiding ${Math.round(summary.spread_km)} km`;
-  if (battle.lat == null || battle.lng == null) return `${places} · ${spread}`;
-  return `${Math.round(distanceKm(battle, summary))} km van ${places} · ${spread}`;
+  const distance = afwijking(battle, summary);
+  if (distance === null) return `${places} · ${spread}`;
+  return `${Math.round(distance)} km van ${places} · ${spread}`;
 }
 
 function hintIcon(hint) {

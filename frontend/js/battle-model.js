@@ -164,6 +164,24 @@ export function placeOf(battle) {
   return battle.voorzet ?? null;
 }
 
+const EARTH_KM = 6371;
+const toRad = (degrees) => (degrees * Math.PI) / 180;
+
+// The great-circle distance in km between two { lat, lng }.
+export function distanceKm(a, b) {
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_KM * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+// The Afwijking of a battle: km from where it stands on the map to the middle of its Plaatshints
+// (the summary's lat and lng); null without hints or without a place.
+export function afwijking(battle, summary) {
+  const place = placeOf(battle);
+  return summary && place ? distanceKm(place, summary) : null;
+}
+
 // The equivalent longitude in [-180, 180], for a marker dragged past the date line.
 export function wrapLng(lng) {
   if (lng >= -180 && lng <= 180) {

@@ -5,6 +5,7 @@ import {
   labelKey,
   labelText,
   matchesLabels,
+  SORT_NAMES,
   readLabels,
   searchLabels,
   sortBattles,
@@ -170,4 +171,19 @@ test("unitLabels gives every Eenheid of a Veldslag, once", () => {
     { kind: "eenheid", value: "82nd Airborne Division" },
   ]);
   assert.deepEqual(unitLabels({}), []);
+});
+
+test("the Afwijking sorts largest or smallest first, battles without one last by date", () => {
+  const far = { title: "far", start: "1942-01-01", end: "1942-01-02", lat: 2, lng: 0 };
+  const near = { title: "near", start: "1941-01-01", end: "1941-01-02", lat: 1, lng: 0 };
+  const voorzet = { title: "voorzet", start: "1943-01-01", end: "1943-01-02", voorzet: { lat: 0, lng: 1.5 } };
+  const noHints = { title: "noHints", start: "1939-01-01", end: "1939-01-02", lat: 9, lng: 9 };
+  const nowhere = { title: "nowhere", start: "1938-01-01", end: "1938-01-02" };
+  const middle = { count: 4, lat: 0, lng: 0, spread_km: 10 };
+  const summaries = { far: middle, near: middle, voorzet: middle, nowhere: middle };
+  const titles = (sort) => sortBattles([near, noHints, far, nowhere, voorzet], sort, summaries).map((b) => b.title);
+  assert.deepEqual(titles("afwijking"), ["far", "voorzet", "near", "nowhere", "noHints"]);
+  assert.deepEqual(titles("afwijking-klein"), ["near", "voorzet", "far", "nowhere", "noHints"]);
+  assert.equal(SORT_NAMES.afwijking, "Grootste afwijking");
+  assert.equal(SORT_NAMES["afwijking-klein"], "Kleinste afwijking");
 });
