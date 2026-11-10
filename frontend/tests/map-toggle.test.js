@@ -89,7 +89,7 @@ test("the ships button tells the layer and keeps the choice in the URL", () => {
   assert.deepEqual(writes, [{ shipsOff: null }, { shipsOff: true }]);
 });
 
-test("the Overige button tells the battles and keeps the choice in the URL", () => {
+test("the Veldslagen button tells the battles and keeps the choice in the URL", () => {
   const seen = [];
   const writes = [];
   const { button } = setup(false, ({ map, doc, visible }) => createOthersToggle({
@@ -97,7 +97,7 @@ test("the Overige button tells the battles and keeps the choice in the URL", () 
     battles: { setOthersVisible: (shown) => seen.push(shown) },
     urlSync: { update: (partial) => writes.push(partial) },
   }));
-  assert.equal(button.textContent, "Overige");
+  assert.equal(button.textContent, "Veldslagen");
   assert.deepEqual(writes, [{ othersOff: true }]);
   button.click();
   assert.deepEqual(seen, [false, true]);

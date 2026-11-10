@@ -56,14 +56,14 @@ export function createNamesToggle({ map, doc, battles, urlSync, shown }) {
   });
 }
 
-// "Overige": the squares of the battles other than the selected one; off, only the selected
+// "Veldslagen": the squares of the battles other than the selected one; off, only the selected
 // battle stands on the map (all of them while none is selected).
 export function createOthersToggle({ map, doc, battles, urlSync, shown }) {
   return createMapToggle({
     map,
     doc,
     id: "others-toggle",
-    label: "Overige",
+    label: "Veldslagen",
     title: "De andere veldslagen dan de geselecteerde aan of uit",
     visible: shown,
     onChange: (visible) => {
