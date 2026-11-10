@@ -1,14 +1,7 @@
 from datetime import datetime, timezone
 
 from app.services.storage.battle_article_repository import BattleArticleRepository
-from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.models import BattleArticle, BattleRedirect
-
-
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
 
 
 async def _seed(session):
@@ -21,40 +14,35 @@ async def _seed(session):
     await session.commit()
 
 
-async def test_get_finds_article_by_normalised_title(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_finds_article_by_normalised_title(session_factory):
+    async with session_factory() as session:
         await _seed(session)
         result = await BattleArticleRepository(session).get("Second_Happy_Time")
     assert result == ("Second Happy Time", "'''Second Happy Time'''")
 
 
-async def test_get_follows_one_redirect(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_follows_one_redirect(session_factory):
+    async with session_factory() as session:
         await _seed(session)
         result = await BattleArticleRepository(session).get("Operation Drumbeat")
     assert result == ("Second Happy Time", "'''Second Happy Time'''")
 
 
-async def test_get_unknown_returns_none(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_unknown_returns_none(session_factory):
+    async with session_factory() as session:
         await _seed(session)
         assert await BattleArticleRepository(session).get("Unknown") is None
 
 
-async def test_get_redirect_to_missing_article_returns_none(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_redirect_to_missing_article_returns_none(session_factory):
+    async with session_factory() as session:
         session.add(BattleRedirect(alias="Dangling", title="Not Stored"))
         await session.commit()
         assert await BattleArticleRepository(session).get("Dangling") is None
 
 
-async def test_battle_index_maps_titles_and_aliases_to_real_title(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_battle_index_maps_titles_and_aliases_to_real_title(session_factory):
+    async with session_factory() as session:
         await _seed(session)
         index = await BattleArticleRepository(session).battle_index()
     assert index == {
@@ -63,9 +51,8 @@ async def test_battle_index_maps_titles_and_aliases_to_real_title(tmp_path):
     }
 
 
-async def test_get_follows_only_one_redirect_hop(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_follows_only_one_redirect_hop(session_factory):
+    async with session_factory() as session:
         await _seed(session)
         # "A" -> "B" is a redirect, not an article; "B" -> real article. Two hops must not resolve.
         session.add(BattleRedirect(alias="A", title="B"))
@@ -74,9 +61,8 @@ async def test_get_follows_only_one_redirect_hop(tmp_path):
         assert await BattleArticleRepository(session).get("A") is None
 
 
-async def test_get_terminates_on_redirect_cycle(tmp_path):
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+async def test_get_terminates_on_redirect_cycle(session_factory):
+    async with session_factory() as session:
         session.add(BattleRedirect(alias="X", title="Y"))
         session.add(BattleRedirect(alias="Y", title="X"))
         await session.commit()

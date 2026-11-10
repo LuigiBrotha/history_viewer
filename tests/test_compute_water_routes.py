@@ -8,16 +8,9 @@ from app.crawl import crawl_boats
 from app.services.routing.types import RoutedLeg
 from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary, RoutePointData
 from app.services.scraping.uboat_net.types import BoatRef
-from app.services.storage.database import create_engine, create_session_factory, init_models
 from app.services.storage.models import Patrol
 from app.services.storage.patrol_repository import PatrolRepository
 from app.services.storage.water_route_repository import WaterRouteRepository
-
-
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
 
 
 def _boat(slug):
@@ -66,8 +59,7 @@ async def _patrol_times(session_factory):
         return row.crawled_at, row.updated_at
 
 
-async def test_crawl_stores_routes_before_the_patrol_appears(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_stores_routes_before_the_patrol_appears(session_factory):
     seen = []
 
     def route_leg(start, end):
@@ -87,8 +79,7 @@ async def test_crawl_stores_routes_before_the_patrol_appears(tmp_path):
     assert [leg.status for leg in routes[0].legs] == ["ok", "ok"]
 
 
-async def test_routing_failure_does_not_fail_the_crawl(tmp_path, capsys):
-    session_factory = await _session_factory(tmp_path)
+async def test_routing_failure_does_not_fail_the_crawl(capsys, session_factory):
 
     def route_leg(start, end):
         raise RuntimeError("boom")
@@ -106,8 +97,7 @@ async def test_routing_failure_does_not_fail_the_crawl(tmp_path, capsys):
     assert "boom" in capsys.readouterr().out
 
 
-async def test_backfill_skips_stored_pairs_unless_forced(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_skips_stored_pairs_unless_forced(session_factory):
     await _seed(session_factory, (1.0, 2.0), (3.0, 4.0), (1.0, 2.0), (3.0, 4.0))
     calls = []
 
@@ -122,8 +112,7 @@ async def test_backfill_skips_stored_pairs_unless_forced(tmp_path):
     assert len(calls) == 2
 
 
-async def test_backfill_bumps_updated_at_but_not_crawled_at(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_bumps_updated_at_but_not_crawled_at(session_factory):
     await _seed(session_factory, (1.0, 2.0), (3.0, 4.0))
     old = datetime(2020, 1, 1, tzinfo=timezone.utc)
     async with session_factory() as session:
@@ -142,8 +131,7 @@ async def test_backfill_bumps_updated_at_but_not_crawled_at(tmp_path):
     assert (await _patrol_times(session_factory))[1] == old
 
 
-async def test_backfill_continues_after_a_failing_leg(tmp_path, capsys):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_continues_after_a_failing_leg(capsys, session_factory):
     points = [(1.0, 2.0), (3.0, 4.0), (5.0, 6.0)]
 
     def route_leg(start, end):
@@ -162,8 +150,7 @@ async def test_backfill_continues_after_a_failing_leg(tmp_path, capsys):
     assert "bad leg" in capsys.readouterr().out
 
 
-async def test_repository_failure_does_not_propagate(tmp_path, monkeypatch, capsys):
-    session_factory = await _session_factory(tmp_path)
+async def test_repository_failure_does_not_propagate(monkeypatch, capsys, session_factory):
 
     async def broken(self, pairs, force=False):
         raise RuntimeError("db down")
@@ -198,8 +185,7 @@ async def _age_patrols(session_factory, old):
         await session.commit()
 
 
-async def test_backfill_touches_a_patrol_whose_legs_were_computed_for_an_earlier_patrol(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_touches_a_patrol_whose_legs_were_computed_for_an_earlier_patrol(session_factory):
     shared = [(1.0, 2.0), (3.0, 4.0)]
     await _seed_two_boats(session_factory, {
         "https://uboat.net/u1.html": shared, "https://uboat.net/u2.html": shared,
@@ -215,8 +201,7 @@ async def test_backfill_touches_a_patrol_whose_legs_were_computed_for_an_earlier
     assert set((await _updated_at(session_factory)).values()) == {old}
 
 
-async def test_backfill_survives_a_failing_point_read_or_touch_and_reports_counts(tmp_path, monkeypatch, capsys):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_survives_a_failing_point_read_or_touch_and_reports_counts(monkeypatch, capsys, session_factory):
     await _seed_two_boats(session_factory, {
         "https://uboat.net/u1.html": [(1.0, 2.0), (3.0, 4.0)],
         "https://uboat.net/u2.html": [(5.0, 6.0), (7.0, 8.0), (9.0, 10.0)],
@@ -255,8 +240,7 @@ async def _exclude(session_factory, external_id, sequence):
         await PatrolRepository(session).exclude_point(external_id, sequence)
 
 
-async def test_backfill_computes_the_leg_across_an_excluded_point(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_computes_the_leg_across_an_excluded_point(session_factory):
     a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
     await _seed(session_factory, a, b, c)
     await _exclude(session_factory, "patrol_u1", 1)
@@ -266,8 +250,7 @@ async def test_backfill_computes_the_leg_across_an_excluded_point(tmp_path):
     assert set(await _stored(session_factory, [(a, b), (b, c), (a, c)])) == {(a, b), (b, c), (a, c)}
 
 
-async def test_backfill_counts_an_uncomputed_leg_across_an_excluded_point(tmp_path, capsys):
-    session_factory = await _session_factory(tmp_path)
+async def test_backfill_counts_an_uncomputed_leg_across_an_excluded_point(capsys, session_factory):
     a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
     await _seed(session_factory, a, b, c)
     await _exclude(session_factory, "patrol_u1", 1)
@@ -289,8 +272,7 @@ async def test_backfill_counts_an_uncomputed_leg_across_an_excluded_point(tmp_pa
     assert "0 legen nog niet berekend" in capsys.readouterr().out
 
 
-async def test_crawl_computes_the_leg_across_an_excluded_point_after_the_upsert(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_computes_the_leg_across_an_excluded_point_after_the_upsert(session_factory):
     a, b, c = (1.0, 2.0), (3.0, 4.0), (5.0, 6.0)
     await _seed(session_factory, a, b, c)
     await _exclude(session_factory, "patrol_u1", 1)

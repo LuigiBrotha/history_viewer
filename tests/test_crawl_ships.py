@@ -10,12 +10,6 @@ from app.services.storage.ship_detail_repository import ShipDetailRepository
 from app.services.storage.ship_hit_repository import ShipHitRepository
 
 
-async def _session_factory(tmp_path):
-    engine = create_engine(f"sqlite+aiosqlite:///{tmp_path}/test.db")
-    await init_models(engine)
-    return create_session_factory(engine)
-
-
 def _refs(slug):
     return [
         ShipHitRef(str(n), slug, f"Ship {n}", date(1940, 7, n), 1000, "br", None, "sunk",
@@ -44,8 +38,7 @@ async def _hits(session_factory):
         return await ShipHitRepository(session).list_hits()
 
 
-async def test_crawl_stores_hits_and_their_positions(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_stores_hits_and_their_positions(session_factory):
     positions = _Positions({"2": None})
 
     await crawl_ships(["u99"], session_factory, _refs, positions)
@@ -54,8 +47,7 @@ async def test_crawl_stores_hits_and_their_positions(tmp_path):
     assert [(h.ship_external_id, h.lat) for h in hits] == [("1", 50.0), ("2", None), ("3", 50.0)]
 
 
-async def test_stopped_crawl_resumes_at_the_next_ship(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_stopped_crawl_resumes_at_the_next_ship(session_factory):
 
     with pytest.raises(KeyboardInterrupt):
         await crawl_ships(["u99"], session_factory, _refs, _Positions({"2": KeyboardInterrupt()}))
@@ -67,8 +59,7 @@ async def test_stopped_crawl_resumes_at_the_next_ship(tmp_path):
     assert resumed.calls == ["2", "3"]
 
 
-async def test_ship_without_a_position_is_not_retried_unless_forced(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_ship_without_a_position_is_not_retried_unless_forced(session_factory):
     await crawl_ships(["u99"], session_factory, _refs, _Positions({"2": None}))
 
     again = _Positions()
@@ -80,8 +71,7 @@ async def test_ship_without_a_position_is_not_retried_unless_forced(tmp_path):
     assert forced.calls == ["1", "2", "3"]
 
 
-async def test_failed_ship_is_retried_and_does_not_stop_the_crawl(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_failed_ship_is_retried_and_does_not_stop_the_crawl(session_factory):
     first = _Positions({"2": RuntimeError("timeout")})
     await crawl_ships(["u99"], session_factory, _refs, first)
 
@@ -91,8 +81,7 @@ async def test_failed_ship_is_retried_and_does_not_stop_the_crawl(tmp_path):
     assert retry.calls == ["2"]
 
 
-async def test_failed_boat_does_not_stop_the_next_boat(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_failed_boat_does_not_stop_the_next_boat(session_factory):
 
     def successes(slug):
         if slug == "u1":
@@ -104,8 +93,7 @@ async def test_failed_boat_does_not_stop_the_next_boat(tmp_path):
     assert {h.boat_slug for h in await _hits(session_factory)} == {"u2"}
 
 
-async def test_limit_caps_the_positions_fetched_in_this_run(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_limit_caps_the_positions_fetched_in_this_run(session_factory):
     positions = _Positions()
 
     await crawl_ships(["u99"], session_factory, _refs, positions, limit=2)
@@ -114,8 +102,7 @@ async def test_limit_caps_the_positions_fetched_in_this_run(tmp_path):
     assert len(await _hits(session_factory)) == 3
 
 
-async def test_status_revision_moves_when_a_ship_is_stored(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_status_revision_moves_when_a_ship_is_stored(session_factory):
     async with session_factory() as session:
         before = (await CrawlStatusRepository(session).get_status()).revision
 
@@ -127,8 +114,7 @@ async def test_status_revision_moves_when_a_ship_is_stored(tmp_path):
     assert after is not None
 
 
-async def test_crawl_stores_the_details_of_each_ship(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_crawl_stores_the_details_of_each_ship(session_factory):
 
     await crawl_ships(["u99"], session_factory, _refs, _Positions({"2": None}))
 
@@ -137,8 +123,7 @@ async def test_crawl_stores_the_details_of_each_ship(tmp_path):
     assert [d.owner for d in details] == ["Owner 1", "Owner 2", "Owner 3"]
 
 
-async def test_hits_with_a_position_but_no_details_are_fetched_once(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_hits_with_a_position_but_no_details_are_fetched_once(session_factory):
     async with session_factory() as session:
         repo = ShipHitRepository(session)
         await repo.upsert_refs(_refs("u99"))
@@ -154,8 +139,7 @@ async def test_hits_with_a_position_but_no_details_are_fetched_once(tmp_path):
     assert second.calls == []
 
 
-async def test_two_hits_of_one_ship_cost_one_fetch(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_two_hits_of_one_ship_cost_one_fetch(session_factory):
     pages = _Positions()
 
     await crawl_ships(["u99", "u100"], session_factory, _refs, pages)
@@ -166,8 +150,7 @@ async def test_two_hits_of_one_ship_cost_one_fetch(tmp_path):
     assert {h.lat for h in hits} == {50.0}
 
 
-async def test_saving_a_page_moves_the_hits_updated_at(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_saving_a_page_moves_the_hits_updated_at(session_factory):
     async with session_factory() as session:
         await ShipHitRepository(session).upsert_refs(_refs("u99"))
     before = {h.ship_external_id: h.updated_at for h in await _hits(session_factory)}
@@ -248,8 +231,7 @@ class _Lists:
         return [] if slug in self.empty else _refs(slug)
 
 
-async def test_a_boat_list_is_read_once_also_when_it_has_no_hits(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_a_boat_list_is_read_once_also_when_it_has_no_hits(session_factory):
     await crawl_ships(["u1", "u2"], session_factory, _Lists(empty={"u2"}), _Positions())
 
     again = _Lists()
@@ -258,8 +240,7 @@ async def test_a_boat_list_is_read_once_also_when_it_has_no_hits(tmp_path):
     assert again.calls == ["u3"]
 
 
-async def test_force_reads_every_list_again(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_force_reads_every_list_again(session_factory):
     await crawl_ships(["u1"], session_factory, _Lists(), _Positions())
 
     again = _Lists()
@@ -268,8 +249,7 @@ async def test_force_reads_every_list_again(tmp_path):
     assert again.calls == ["u1"]
 
 
-async def test_a_failed_list_is_read_again_next_run(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_a_failed_list_is_read_again_next_run(session_factory):
     await crawl_ships(["u1"], session_factory, _Lists(failing={"u1"}), _Positions())
 
     again = _Lists()
@@ -278,8 +258,7 @@ async def test_a_failed_list_is_read_again_next_run(tmp_path):
     assert again.calls == ["u1"]
 
 
-async def test_a_boat_with_hits_from_before_counts_as_listed(tmp_path):
-    session_factory = await _session_factory(tmp_path)
+async def test_a_boat_with_hits_from_before_counts_as_listed(session_factory):
     async with session_factory() as session:
         await ShipHitRepository(session).upsert_refs(_refs("u99"))
 
@@ -289,14 +268,13 @@ async def test_a_boat_with_hits_from_before_counts_as_listed(tmp_path):
     assert again.calls == []
 
 
-async def test_boats_with_patrols_leaves_out_boats_that_never_sailed(tmp_path):
+async def test_boats_with_patrols_leaves_out_boats_that_never_sailed(session_factory):
     from app.crawl_ships import boats_with_patrols
     from app.services.scraping.uboat_net.types import BoatData, PatrolDetail, PatrolSummary
     from app.services.storage.boat_repository import BoatRepository
     from app.services.storage.patrol_repository import PatrolRepository
 
-    factory = await _session_factory(tmp_path)
-    async with factory() as session:
+    async with session_factory() as session:
         boats = BoatRepository(session)
         for slug in ("u2", "u1", "u3"):
             await boats.upsert_boat(BoatData(
@@ -314,4 +292,4 @@ async def test_boats_with_patrols_leaves_out_boats_that_never_sailed(tmp_path):
                 PatrolDetail(description=None, route_points=[]),
             )
 
-    assert await boats_with_patrols(factory) == ["u1", "u2"]
+    assert await boats_with_patrols(session_factory) == ["u1", "u2"]
