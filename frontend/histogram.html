@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Duur van veldslagen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&amp;display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="tonnage-page histogram-page">
+  <header id="status-header">
+    <div id="status-summary">
+      <nav id="page-links">
+        <a href="dag-tot-dag">Tijdlijn</a>
+        <a href="./">Alle routes</a>
+        <a href="heatmap">Heatmap</a>
+        <a href="grafiek">Grafiek</a>
+      </nav>
+    </div>
+  </header>
+  <main id="histogram-main">
+    <h1>Hoe lang duren Veldslagen, per Benaming</h1>
+    <p id="histogram-note">Elke staaf telt de Veldslagen van die lengte, verdeeld naar het woord dat hun Engelse naam gebruikt. Klik op een gekleurd blok voor de Veldslagen erin. <span id="histogram-count"></span></p>
+    <div id="histogram-legend"></div>
+    <div id="histogram-plot">
+      <canvas id="histogram-chart" role="img" aria-label="Gestapeld histogram van de duur van de Veldslagen, per Benaming; de tabel hieronder bevat alle aantallen"></canvas>
+      <div id="histogram-tooltip" hidden></div>
+    </div>
+    <section id="histogram-list" aria-live="polite" hidden></section>
+    <table id="histogram-table">
+      <thead id="histogram-head"></thead>
+      <tbody id="histogram-rows"></tbody>
+    </table>
+    <p id="histogram-source">Bron: Wikipedia en Wikidata. Een machinevertaalde titel telt niet als Engelse naam.</p>
+  </main>
+  <script type="module" src="js/histogram.js"></script>
+</body>
+</html>
