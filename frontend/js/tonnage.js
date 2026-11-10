@@ -2,19 +2,24 @@ import { fetchPatrolPeriods, fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, startPolling, statusLine } from "./live.js";
 import { mergeShips } from "./ship-model.js";
 import {
+  barPosition,
   barsFor,
   boatSeries,
   colorSlots,
+  dotAt,
   formatNumber,
   formatTons,
   happyTimeOf,
   happyTimeSpans,
   matchSeries,
   niceMax,
+  outcomeLabel,
   periodLabel,
   segmentAt,
+  shipDots,
   tableRows,
 } from "./tonnage-model.js";
+import { createShipArticle } from "./tonnage-article.js";
 
 const POLL_INTERVAL_MS = 5000;
 const NO_CONNECTION = "Geen verbinding, opnieuw proberen…";
@@ -43,11 +48,19 @@ const VIEWS = {
   },
 };
 const Y_TICKS = 5;
+const DOT_RADIUS = 2.5;
+const FOCUS_DOT_RADIUS = 3.5;
+const DOT_REACH = 8;
+const DOT_ALPHA = 0.6;
+const DIMMED_DOT_ALPHA = 0.15;
 const MIN_YEAR_LABEL_GAP = 40;
 
 function main() {
   const canvas = document.getElementById("tonnage-chart");
   const context = canvas.getContext("2d");
+  const dotsCanvas = document.getElementById("tonnage-dots");
+  const dotsContext = dotsCanvas.getContext("2d");
+  const dotsTooltipEl = document.getElementById("tonnage-dots-tooltip");
   const tooltipEl = document.getElementById("tonnage-tooltip");
   const legendEl = document.getElementById("tonnage-legend");
   const bodyEl = document.getElementById("tonnage-rows");
@@ -71,6 +84,14 @@ function main() {
   let periodsRevision = null;
   const slots = new Map();
   let scale = null;
+  let dots = [];
+  let hoveredDot = null;
+  // The charts take the width the panel leaves them, so they are drawn again when it comes or goes.
+  const shipArticle = createShipArticle({
+    rootEl: document.getElementById("article-pane"),
+    getShips: () => ships,
+    onToggle: () => draw(),
+  });
 
   function color(name) {
     return rootStyle.getPropertyValue(name).trim();
@@ -108,24 +129,24 @@ function main() {
     context.fillRect(scale.x(index), y, scale.barWidth, height >= 3 ? height - 1 : Math.max(height, 0.5));
   }
 
-  function drawHappyTimes() {
-    context.font = "600 12px system-ui, sans-serif";
-    context.textAlign = "center";
-    context.textBaseline = "top";
+  function drawHappyTimes(ctx, plotHeight) {
+    ctx.font = "600 12px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
     for (const { name, short, first, last } of happyTimeSpans(bars, unit)) {
       const x = scale.x(first);
       const width = (last - first + 1) * scale.step;
       const top = MARGIN.top - BAND_LABEL_OFFSET;
-      context.fillStyle = color("--happy-band");
-      context.fillRect(x, top, width, MARGIN.top + scale.plotHeight - top);
-      context.fillStyle = color("--happy-text");
-      const text = context.measureText(name).width <= width ? name : short;
-      context.fillText(text, x + width / 2, top + 4);
+      ctx.fillStyle = color("--happy-band");
+      ctx.fillRect(x, top, width, MARGIN.top + plotHeight - top);
+      ctx.fillStyle = color("--happy-text");
+      const text = ctx.measureText(name).width <= width ? name : short;
+      ctx.fillText(text, x + width / 2, top + 4);
     }
-    context.font = "12px system-ui, sans-serif";
+    ctx.font = "12px system-ui, sans-serif";
   }
 
-  function drawYearLabels() {
+  function drawYearLabels(ctx, plotHeight) {
     const years = [];
     bars.forEach((bar, index) => {
       const year = bar.period.slice(0, 4);
@@ -133,16 +154,150 @@ function main() {
         years.push({ year, x: scale.x(index) });
       }
     });
-    context.textAlign = "left";
-    context.textBaseline = "top";
-    context.fillStyle = color("--text-secondary");
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = color("--text-secondary");
     years.forEach(({ year, x }, index) => {
       const next = years[index + 1];
       if (next === undefined || next.x - x >= MIN_YEAR_LABEL_GAP) {
-        context.fillText(year, x, MARGIN.top + scale.plotHeight + 8);
+        ctx.fillText(year, x, MARGIN.top + plotHeight + 8);
       }
     });
   }
+
+  function drawGrid(ctx, top, y) {
+    ctx.font = "12px system-ui, sans-serif";
+    ctx.lineWidth = 1;
+    ctx.textBaseline = "middle";
+    for (let i = 0; i <= Y_TICKS; i++) {
+      const tons = (top / Y_TICKS) * i;
+      const lineY = Math.round(y(tons)) + 0.5;
+      ctx.strokeStyle = color("--grid");
+      ctx.beginPath();
+      ctx.moveTo(MARGIN.left, lineY);
+      ctx.lineTo(MARGIN.left + scale.plotWidth, lineY);
+      ctx.stroke();
+      ctx.fillStyle = color("--text-secondary");
+      ctx.textAlign = "right";
+      ctx.fillText(formatNumber(Math.round(tons)), MARGIN.left - 8, lineY);
+    }
+  }
+
+  // Sunk and captured ships are filled, damaged ones hollow, as on the map.
+  function paintDot(dot, radius, paint) {
+    dotsContext.beginPath();
+    dotsContext.arc(dot.x, dot.y, radius, 0, 2 * Math.PI);
+    dotsContext.fillStyle = paint;
+    dotsContext.strokeStyle = paint;
+    if (dot.ship.outcome === "damaged") {
+      dotsContext.stroke();
+    } else {
+      dotsContext.fill();
+    }
+  }
+
+  // Every ship as a dot under the bars: the same date axis, its own axis of tons.
+  function drawDots() {
+    const box = dotsCanvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    dotsCanvas.width = Math.round(box.width * ratio);
+    dotsCanvas.height = Math.round(box.height * ratio);
+    dotsContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+    dotsContext.clearRect(0, 0, box.width, box.height);
+    dots = [];
+    const shown = shipDots(ships, view);
+    if (scale === null || shown.length === 0) {
+      return;
+    }
+    const top = niceMax(Math.max(...shown.map((ship) => ship.tons)));
+    const plotHeight = Math.max(10, box.height - MARGIN.top - MARGIN.bottom);
+    const y = (tons) => MARGIN.top + plotHeight - (tons / top) * plotHeight;
+    drawGrid(dotsContext, top, y);
+    drawHappyTimes(dotsContext, plotHeight);
+    drawYearLabels(dotsContext, plotHeight);
+    dots = shown.map((ship) => ({ ship, x: MARGIN.left + barPosition(ship.date, bars, unit) * scale.step, y: y(ship.tons) }));
+
+    const focus = selected?.slug ?? hovered ?? null;
+    const plain = color("--text-secondary");
+    const lit = slotColor(focus) ?? color("--text-primary");
+    dotsContext.lineWidth = 1.2;
+    dotsContext.globalAlpha = focus === null ? DOT_ALPHA : DIMMED_DOT_ALPHA;
+    for (const dot of dots) {
+      if (dot.ship.boat_slug !== focus) {
+        paintDot(dot, DOT_RADIUS, plain);
+      }
+    }
+    dotsContext.globalAlpha = 1;
+    for (const dot of dots) {
+      if (dot.ship.boat_slug === focus) {
+        paintDot(dot, FOCUS_DOT_RADIUS, lit);
+      }
+    }
+    for (const ship of [shipArticle.current(), hoveredDot]) {
+      const active = dots.find((dot) => dot.ship === ship);
+      if (active !== undefined) {
+        paintDot(active, FOCUS_DOT_RADIUS + 1.5, color("--text-primary"));
+      }
+    }
+  }
+
+  function showDotTooltip(dot) {
+    dotsTooltipEl.replaceChildren();
+    const title = document.createElement("strong");
+    title.textContent = dot.ship.name;
+    dotsTooltipEl.append(title);
+    const lines = [
+      dot.ship.boat_number,
+      periodLabel(dot.ship.date, "day"),
+      formatTons(dot.ship.tons),
+      outcomeLabel(dot.ship.outcome),
+      "Klik voor het Artikel",
+    ];
+    for (const content of lines) {
+      const row = document.createElement("div");
+      row.textContent = content;
+      dotsTooltipEl.append(row);
+    }
+    dotsTooltipEl.hidden = false;
+    const box = dotsCanvas.getBoundingClientRect();
+    const left = Math.min(dot.x + 12, box.width - dotsTooltipEl.offsetWidth - 4);
+    dotsTooltipEl.style.left = `${Math.max(4, left)}px`;
+    dotsTooltipEl.style.top = `${Math.max(4, dot.y - dotsTooltipEl.offsetHeight - 8)}px`;
+  }
+
+  function showDotAt(event) {
+    const box = dotsCanvas.getBoundingClientRect();
+    const dot = dotAt(dots, event.clientX - box.left, event.clientY - box.top, DOT_REACH);
+    const next = dot?.ship ?? null;
+    dotsCanvas.style.cursor = next === null ? "" : "pointer";
+    if (next !== hoveredDot) {
+      hoveredDot = next;
+      drawDots();
+    }
+    if (dot === null) {
+      dotsTooltipEl.hidden = true;
+    } else {
+      showDotTooltip(dot);
+    }
+  }
+
+  dotsCanvas.addEventListener("click", (event) => {
+    const box = dotsCanvas.getBoundingClientRect();
+    const dot = dotAt(dots, event.clientX - box.left, event.clientY - box.top, DOT_REACH);
+    if (dot !== null) {
+      shipArticle.open(dot.ship);
+      drawDots();
+    }
+  });
+  dotsCanvas.addEventListener("pointermove", showDotAt);
+  dotsCanvas.addEventListener("pointerdown", showDotAt);
+  dotsCanvas.addEventListener("pointerleave", (event) => {
+    if (event.pointerType !== "touch") {
+      hoveredDot = null;
+      dotsTooltipEl.hidden = true;
+      drawDots();
+    }
+  });
 
   function draw() {
     const box = canvas.getBoundingClientRect();
@@ -156,26 +311,13 @@ function main() {
       context.fillStyle = color("--text-secondary");
       context.font = "14px system-ui, sans-serif";
       context.fillText("Nog geen gezonken schepen binnengehaald.", MARGIN.left, 40);
+      drawDots();
       return;
     }
 
-    context.font = "12px system-ui, sans-serif";
-    context.lineWidth = 1;
-    context.textBaseline = "middle";
-    for (let i = 0; i <= Y_TICKS; i++) {
-      const tons = (scale.top / Y_TICKS) * i;
-      const y = Math.round(scale.y(tons)) + 0.5;
-      context.strokeStyle = color("--grid");
-      context.beginPath();
-      context.moveTo(MARGIN.left, y);
-      context.lineTo(MARGIN.left + scale.plotWidth, y);
-      context.stroke();
-      context.fillStyle = color("--text-secondary");
-      context.textAlign = "right";
-      context.fillText(formatNumber(Math.round(tons)), MARGIN.left - 8, y);
-    }
-    drawHappyTimes();
-    drawYearLabels();
+    drawGrid(context, scale.top, scale.y);
+    drawHappyTimes(context, scale.plotHeight);
+    drawYearLabels(context, scale.plotHeight);
 
     const contextFill = color("--context");
     const slotFills = new Map([...slots].map(([slug, slot]) => [slug, color(`--series-${slot + 1}`)]));
@@ -194,6 +336,7 @@ function main() {
         drawSegment(index, focused, focusFill);
       }
     });
+    drawDots();
   }
 
   function showTooltip(bar, segment, x, y) {
@@ -288,6 +431,7 @@ function main() {
   function redraw() {
     bars = barsFor(view, { ships, series, periods: patrolPeriods, unit });
     tooltipEl.hidden = true;
+    dotsTooltipEl.hidden = true;
     draw();
   }
 

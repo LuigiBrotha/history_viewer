@@ -203,6 +203,55 @@ export function happyTimeOf(period, unit) {
   return HAPPY_TIMES.find((time) => overlaps(period, unit, time)) ?? null;
 }
 
+// Every hit is a dot, the damaged ships too; the view of American waters only shows those there.
+export function shipDots(ships, view) {
+  return view === "amerika" ? ships.filter(inAmericanWaters) : ships;
+}
+
+// Where a date lies on the axis of the bars, in bars: the index of its bar plus how far through
+// that bar it is. A date outside the bars stays at the edge; null without bars.
+export function barPosition(date, bars, unit) {
+  if (bars.length === 0) {
+    return null;
+  }
+  if (date < bars[0].period) {
+    return 0;
+  }
+  let low = 0;
+  let high = bars.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (bars[middle].period <= date) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+  const start = Date.parse(bars[low].period);
+  const end = Date.parse(nextPeriod(bars[low].period, unit));
+  return low + Math.min(1, (Date.parse(date) - start) / (end - start));
+}
+
+// The dot nearest to (x, y) within reach, or null.
+export function dotAt(dots, x, y, reach) {
+  let best = null;
+  let bestDistance = reach * reach;
+  for (const dot of dots) {
+    const distance = (dot.x - x) ** 2 + (dot.y - y) ** 2;
+    if (distance <= bestDistance) {
+      best = dot;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+const OUTCOME_LABELS = { sunk: "Gezonken", captured: "Buitgemaakt", damaged: "Beschadigd" };
+
+export function outcomeLabel(outcome) {
+  return OUTCOME_LABELS[outcome] ?? outcome;
+}
+
 export function segmentAt(bar, tons) {
   return bar.segments.find((segment) => tons >= segment.from && tons < segment.to) ?? null;
 }

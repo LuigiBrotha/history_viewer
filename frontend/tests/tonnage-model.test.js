@@ -17,6 +17,10 @@ import {
   periodLabel,
   segmentAt,
   stackedBars,
+  barPosition,
+  dotAt,
+  outcomeLabel,
+  shipDots,
 } from "../js/tonnage-model.js";
 
 const hit = (boat, date, tons, outcome = "sunk", name = "Ship") => ({
@@ -224,4 +228,45 @@ test("a week that runs into a Happy Time belongs to it", () => {
 test("the Happy Time of a bar is named in its tooltip", () => {
   assert.equal(happyTimeOf("1942-03-01", "month")?.name, "Second Happy Time");
   assert.equal(happyTimeOf("1943-03-01", "month"), null);
+});
+
+test("shipDots keeps every hit, damaged ones too; in American waters only those there", () => {
+  const near = { ...hit("u1", "1942-01-20", 5000), lat: 35, lng: -75 };
+  const far = { ...hit("u1", "1942-01-21", 6000, "damaged"), lat: 50, lng: -10 };
+  assert.deepEqual(shipDots([near, far], "periode"), [near, far]);
+  assert.deepEqual(shipDots([near, far], "cumulatief"), [near, far]);
+  assert.deepEqual(shipDots([near, far], "amerika"), [near]);
+});
+
+const months = [{ period: "1940-01-01" }, { period: "1940-02-01" }, { period: "1940-03-01" }];
+
+test("barPosition puts a date on the axis of the bars: its bar and how far through it", () => {
+  assert.equal(barPosition("1940-01-01", months, "month"), 0);
+  assert.equal(barPosition("1940-02-01", months, "month"), 1);
+  assert.ok(Math.abs(barPosition("1940-01-16", months, "month") - 15 / 31) < 1e-9);
+  assert.ok(Math.abs(barPosition("1940-03-31", months, "month") - (2 + 30 / 31)) < 1e-9);
+});
+
+test("barPosition keeps a date outside the bars at the edge of the axis, and has none without bars", () => {
+  assert.equal(barPosition("1939-12-31", months, "month"), 0);
+  assert.equal(barPosition("1940-04-02", months, "month"), 3);
+  assert.equal(barPosition("1940-01-01", [], "month"), null);
+});
+
+test("barPosition follows the bars of a week", () => {
+  const weeks = [{ period: "1940-01-01" }, { period: "1940-01-08" }];
+  assert.ok(Math.abs(barPosition("1940-01-10", weeks, "week") - (1 + 2 / 7)) < 1e-9);
+});
+
+test("dotAt finds the nearest dot within reach, and nothing beyond it", () => {
+  const dots = [{ x: 10, y: 10, ship: "a" }, { x: 14, y: 10, ship: "b" }];
+  assert.equal(dotAt(dots, 13, 10, 8).ship, "b");
+  assert.equal(dotAt(dots, 10, 19, 8), null);
+  assert.equal(dotAt([], 1, 1, 8), null);
+});
+
+test("outcomeLabel gives each outcome in Dutch", () => {
+  assert.equal(outcomeLabel("sunk"), "Gezonken");
+  assert.equal(outcomeLabel("captured"), "Buitgemaakt");
+  assert.equal(outcomeLabel("damaged"), "Beschadigd");
 });
