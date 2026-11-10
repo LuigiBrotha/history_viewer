@@ -110,6 +110,23 @@ test("a track follows the battles by start date and skips one that holds a short
   assert.deepEqual(track(battles, label).map((b) => b.title), ["Tobruk", "Late", "Gazala"]);
 });
 
+test("a battle that holds a shorter one only in its first or last 2 days stays: one battle passes into the other", () => {
+  const label = { kind: "bevelhebber", value: "K" };
+  const of = (title, start, end) => battle({ title, start, end, commanders: ["K"] });
+  const battles = [
+    of("Rotterdam", "1940-05-10", "1940-05-14"),
+    of("The Hague", "1940-05-10", "1940-05-10"),
+    of("Bombing", "1940-05-13", "1940-05-14"),
+    of("Tractable", "1944-08-14", "1944-08-21"),
+    of("Chambois", "1944-08-18", "1944-08-20"),
+    of("Air war", "1941-06-22", "1941-12-31"),
+    of("First day", "1941-06-22", "1941-06-22"),
+    of("Starts at the edge", "1941-06-23", "1941-06-25"),
+  ];
+  assert.deepEqual(track(battles, label).map((b) => b.title),
+    ["Rotterdam", "The Hague", "Bombing", "First day", "Starts at the edge", "Chambois"]);
+});
+
 test("a battle that holds only battles without a position stays in the track", () => {
   const label = { kind: "eenheid", value: "U" };
   const of = (title, start, end, over = {}) => battle({ title, start, end, units: ["U"], ...over });

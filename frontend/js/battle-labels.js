@@ -175,13 +175,22 @@ export function isTrackLabel(label) {
   return TRACKS.has(label.kind);
 }
 
+// Battles hand over on the same day or the next: a shorter one that lies wholly in the first or
+// the last EDGE_DAYS days of a longer one passes into it, rather than being held by it.
+const EDGE_DAYS = 2;
+
+function atTheEdge(outer, inner) {
+  return durationDays({ start: outer.start, end: inner.end }) <= EDGE_DAYS
+    || durationDays({ start: inner.start, end: outer.end }) <= EDGE_DAYS;
+}
+
 // The Spoor of an Eenheid or Bevelhebber: its battles with a position, by start date. A battle
 // that holds a shorter one of the same Spoor (a campaign around its battles) is left out, so
-// that the Spoor follows the smallest battles.
+// that the Spoor follows the smallest battles; one at its edge does not count (see atTheEdge).
 export function track(battles, label) {
   const placed = battles.filter((b) => b.lat != null && b.lng != null && matchesLabels(b, [label]));
   const kept = placed.filter((outer) =>
     !placed.some((inner) => inner !== outer && inner.start >= outer.start && inner.end <= outer.end
-      && durationDays(inner) < durationDays(outer)));
+      && durationDays(inner) < durationDays(outer) && !atTheEdge(outer, inner)));
   return sortBattles(kept, "datum");
 }

@@ -101,7 +101,7 @@ Een land dat aan een Veldslag deelnam, aan welke kant dan ook. Elk Land hoort bi
 _Avoid_: Natie, partij
 
 **Spoor**:
-De Veldslagen van één Eenheid of Bevelhebber op volgorde van datum, op de kaart verbonden door een lijn met pijlen. Een Veldslag die een kortere Veldslag uit hetzelfde Spoor helemaal omvat, telt niet mee.
+De Veldslagen van één Eenheid of Bevelhebber op volgorde van datum, op de kaart verbonden door een lijn met pijlen. Een Veldslag die een kortere Veldslag uit hetzelfde Spoor helemaal omvat, telt niet mee, behalve als die kortere alleen in zijn eerste of laatste 2 dagen valt: dan gaat de ene slag over in de andere en tellen ze allebei mee.
 _Avoid_: Route (dat is van een boot), pad
 
 **Label**:
