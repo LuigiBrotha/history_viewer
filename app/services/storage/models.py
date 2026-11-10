@@ -1,3 +1,4 @@
+import datetime as dt
 from datetime import date, datetime, timezone
 
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
@@ -79,7 +80,7 @@ class RoutePoint(Base):
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lng: Mapped[float] = mapped_column(Float, nullable=False)
-    date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
 
     patrol: Mapped["Patrol"] = relationship(back_populates="route_points")
 
@@ -122,7 +123,7 @@ class ShipHit(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ship_external_id: Mapped[str] = mapped_column(String, nullable=False)
     boat_slug: Mapped[str] = mapped_column(String, nullable=False)
-    date: Mapped[date] = mapped_column(Date, nullable=False)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     tons: Mapped[int] = mapped_column(Integer, nullable=False)
     nationality: Mapped[str | None] = mapped_column(String, nullable=True)
