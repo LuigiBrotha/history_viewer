@@ -111,6 +111,8 @@ test("the labels and the sort order are kept and carried, the date sort is the d
   assert.deepEqual(readView(writeView(view, "period"), "period"), view);
   assert.deepEqual(readView("?sorteer=datum&filter=", "date"), {});
   assert.deepEqual(readView("?sorteer=onzin", "date"), {});
+  assert.deepEqual(readView("?sorteer=afwijking", "date"), { sort: "afwijking" });
+  assert.deepEqual(readView("?sorteer=afwijking-klein", "date"), { sort: "afwijking-klein" });
   assert.deepEqual(carriedView({ date: "1942-01-01", filter: "taal:nl", sort: "duur" }), { filter: "taal:nl", sort: "duur" });
 });
 

@@ -106,8 +106,9 @@ The search field also offers *Labels* under "Filters": a Land (`Polen`), a Winna
 Bevelhebber also draws its *Spoor*: its battles in date order, numbered and joined by a line with arrows,
 whatever the date or period; a battle that holds a shorter one of the same Spoor (a campaign around its
 battles) is left out. Chosen labels appear above the battle list with a ✕ and narrow the list and
-the squares on the map; a battle must match all of them. The list can be sorted by date, name or
-duration. The Landen, Bevelhebbers and Eenheden come from `poetry run python -m tools.enrich_battles`,
+the squares on the map; a battle must match all of them. The list can be sorted by date, name,
+duration, Nog te verfijnen, or Afwijking (largest or smallest first: the km from where a battle
+stands to the middle of its Plaatshints). The Landen, Bevelhebbers and Eenheden come from `poetry run python -m tools.enrich_battles`,
 which reads the stored articles and, when present, the result of
 `poetry run python -m tools.extract_unit_battles` (the battles listed in the articles of units and people).
 

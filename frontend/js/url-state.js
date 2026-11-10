@@ -7,7 +7,7 @@ const SHIP_PATTERN = /^[\w.-]+$/;
 const MAP_DECIMALS = 4;
 const MAX_ZOOM = 18;
 // The sort orders other than the default (by date).
-const SORTS = new Set(["naam", "duur", "verfijnen"]);
+const SORTS = new Set(["naam", "duur", "verfijnen", "afwijking", "afwijking-klein"]);
 
 function validDate(text) {
   if (!text || !DATE_PATTERN.test(text)) return undefined;

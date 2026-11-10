@@ -586,3 +586,15 @@ test("battles found in the texts are listed at the top, whatever the sort", () =
   pane.setTextHits(null);
   assert.equal(rows().filter((r) => !r.hidden).length, 0);
 });
+
+test("sorting on the Afwijking follows the summary of the Plaatshints, also when it arrives later", () => {
+  const { pane, rootEl, shown } = labelled();
+  pane.setSort("afwijking");
+  assert.equal(rootEl.byClass("battle-sort")[0].value, "afwijking");
+  const at = (lat) => ({ count: 2, lat, lng: 0, spread_km: 10 });
+  // Every LABELLED battle stands at latitude 51.7 (see battle()), so a middle at 10 lies farthest.
+  pane.setPlaceSummary({ Bzura: at(30), Arnhem: at(10), Kursk: at(20) });
+  assert.deepEqual(shown(), ["Arnhem", "Kursk", "Bzura"]);
+  pane.setSort("afwijking-klein");
+  assert.deepEqual(shown(), ["Bzura", "Kursk", "Arnhem"]);
+});

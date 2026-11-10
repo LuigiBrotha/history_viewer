@@ -196,7 +196,7 @@ export function createBattlePane({
 
   function applyOrder() {
     const byBattle = new Map(rows.map((r) => [r.battle, r]));
-    const sorted = sortBattles(rows.map((r) => r.battle), sort);
+    const sorted = sortBattles(rows.map((r) => r.battle), sort, placeSummary);
     if (textHits !== null) {
       const placeOf = (battle) => textHits.get(battle.title) ?? textHits.size;
       sorted.sort((a, b) => placeOf(a) - placeOf(b));
@@ -461,6 +461,7 @@ export function createBattlePane({
     setPlaceSummary(summary) {
       placeSummary = summary ?? {};
       rows.forEach(renderPlaces);
+      applyOrder();
       applyFilter();
     },
     // From the URL or the page: not reported back.

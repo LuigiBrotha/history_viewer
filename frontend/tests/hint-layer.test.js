@@ -46,6 +46,7 @@ test("placeText gives the distance of the position from the middle of the hints 
   const summary = { count: 9, lat: 0, lng: 0, spread_km: 120.4 };
   assert.equal(placeText({ lat: 1, lng: 0 }, summary), "111 km van 9 plaatsen · spreiding 120 km");
   assert.equal(placeText({ lat: null, lng: null }, summary), "9 plaatsen · spreiding 120 km");
+  assert.equal(placeText({ lat: null, lng: null, voorzet: { lat: 1, lng: 0 } }, summary), "111 km van 9 plaatsen · spreiding 120 km");
   assert.equal(placeText({ lat: 0, lng: 0 }, { ...summary, count: 1 }), "0 km van 1 plaats · spreiding 120 km");
   assert.equal(placeText({ lat: 0, lng: 0 }, undefined), "");
 });
