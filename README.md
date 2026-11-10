@@ -105,7 +105,7 @@ The search field also offers *Labels* under "Filters": a Land (`Polen`), a Winna
 `Wikipedia-positie`), an Eenheid (`7th Panzer Division`) or a Bevelhebber (`Erwin Rommel`). An Eenheid or
 Bevelhebber also draws its *Spoor*: its battles in date order, numbered and joined by a line with arrows,
 whatever the date or period; a battle that holds a shorter one of the same Spoor (a campaign around its
-battles) is left out. Chosen labels appear above the battle list with a ✕ and narrow the list and
+battles) is left out, unless that shorter one lies only in its first or last 2 days (one battle passing into the next). Chosen labels appear above the battle list with a ✕ and narrow the list and
 the squares on the map; a battle must match all of them. The list can be sorted by date, name,
 duration, Nog te verfijnen, or Afwijking (largest or smallest first: the km from where a battle
 stands to the middle of its Plaatshints). The Landen, Bevelhebbers and Eenheden come from `poetry run python -m tools.enrich_battles`,
