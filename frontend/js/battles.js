@@ -96,6 +96,7 @@ export function initBattles({
       setSort() {},
       onSortChange() {},
       setNamesVisible() {},
+      setOthersVisible() {},
       setTextHits() {},
       column: null,
       showSubject() {},
@@ -140,6 +141,8 @@ export function initBattles({
   let editable = false;
   let positionsLoaded = false;
   let selected = null;
+  // "Overige" off: only the selected battle's square on the map.
+  let othersVisible = true;
   let lastSelected = null;
   let labels = [];
   let labelMode = "en";
@@ -193,6 +196,7 @@ export function initBattles({
     articleSplit.close();
     articlePane.clear();
     selected = null;
+    if (!othersVisible) drawSquares();
     onBattleChange(null);
     articleClosedListeners.forEach((listener) => listener());
   }
@@ -201,6 +205,7 @@ export function initBattles({
   function showSubject(subject) {
     cancelEdit();
     selected = null;
+    if (!othersVisible) drawSquares();
     layer.setSelected(null);
     showHints(null);
     pane.unreveal();
@@ -523,6 +528,7 @@ export function initBattles({
       onPickDate?.(battle.start);
     }
     selected = battle.title;
+    if (!othersVisible) drawSquares();
     layer.setSelected(battle);
     layer.showBattle(battle);
     showHints(battle);
@@ -553,7 +559,8 @@ export function initBattles({
   }
 
   function drawSquares() {
-    const list = shown().filter((b) => inSpreadRange(hintSummary[b.title], spreadRange));
+    const all = shown().filter((b) => inSpreadRange(hintSummary[b.title], spreadRange));
+    const list = othersVisible || selected === null ? all : all.filter((b) => b.title === selected);
     const outside = widened() ? new Set(list.filter((b) => !matching(b)).map((b) => b.title)) : new Set();
     layer.setBattles(list, outside);
   }
@@ -693,6 +700,10 @@ export function initBattles({
       else split.open();
     },
     setNamesVisible: (visible) => layer.setNamesVisible(visible),
+    setOthersVisible(visible) {
+      othersVisible = visible;
+      drawSquares();
+    },
     setTextHits: (titles) => pane.setTextHits(titles),
     column,
     showSubject,
