@@ -48,3 +48,15 @@ test("the infobox floats only inside the container query of the article pane", (
   assert.match(outside, /#article-pane\s*\{[^{}]*container-type\s*:\s*inline-size/);
   assert.doesNotMatch(inside, /container-type/);
 });
+
+test("every map button made in map-toggle.js gets the same rules as the others", () => {
+  const css = readFileSync(new URL("../css/style.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const toggles = readFileSync(new URL("../js/map-toggle.js", import.meta.url), "utf8");
+  const ids = [...toggles.matchAll(/id: "([\w-]+)"/g)].map(([, id]) => id);
+  assert.ok(ids.includes("names-toggle") && ids.includes("others-toggle"));
+  const selectors = [...css.matchAll(/([^{}]+)\{[^{}]*\}/g)].map(([, selector]) => selector).filter((s) => s.includes("#names-toggle"));
+  assert.equal(selectors.length, 5);
+  for (const selector of selectors) {
+    for (const id of ids) assert.ok(selector.includes(`#${id}`), `#${id} missing from: ${selector.trim()}`);
+  }
+});

@@ -956,3 +956,20 @@ test("the Spreiding sizes the squares and its range hides battles out of it, but
   assert.deepEqual(ctx.squares(), ["None", "Wide"]);
   assert.equal(heard.length, 1);
 });
+
+test("with Overige off only the selected battle stands on the map, all of them when none is", async () => {
+  const { controller, squares, ready } = setup({ mode: "period" });
+  await ready();
+  controller.setPeriod(null, null);
+  controller.setOthersVisible(false);
+  assert.deepEqual(squares(), ["Battle of Kursk", "Midway"]);
+  controller.selectBattle("Midway");
+  assert.deepEqual(squares(), ["Midway"]);
+  controller.selectBattle("Battle of Kursk");
+  assert.deepEqual(squares(), ["Battle of Kursk"]);
+  controller.setOthersVisible(true);
+  assert.deepEqual(squares(), ["Battle of Kursk", "Midway"]);
+  controller.setOthersVisible(false);
+  controller.closeArticle();
+  assert.deepEqual(squares(), ["Battle of Kursk", "Midway"]);
+});

@@ -16,7 +16,7 @@ import { mergeShips } from "./ship-model.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
-import { createNamesToggle } from "./map-toggle.js";
+import { createNamesToggle, createOthersToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
 import { sameView, viewOf } from "./status-map.js";
 
@@ -203,6 +203,7 @@ function main() {
   });
   battles.placeToggle();
   createNamesToggle({ map, battles, urlSync, shown: !readView(location.search, "period").namesOff });
+  createOthersToggle({ map, battles, urlSync, shown: !readView(location.search, "period").othersOff });
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   initAtlas(map).then((loaded) => {

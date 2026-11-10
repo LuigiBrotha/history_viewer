@@ -12,7 +12,7 @@ import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setBoatsVisible, setRoutesVisible } from "./map.js";
-import { createBoatToggle, createNamesToggle, createRouteToggle, createShipsToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createOthersToggle, createRouteToggle, createShipsToggle } from "./map-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -396,6 +396,7 @@ function main() {
         battles.setEditable(editable);
         initSearch(mapState.map);
         createNamesToggle({ map: mapState.map, battles, urlSync, shown: !initialView.namesOff });
+        createOthersToggle({ map: mapState.map, battles, urlSync, shown: !initialView.othersOff });
         routeToggle = createRouteToggle({
           map: mapState.map,
           visible: !initialView.routesOff,
