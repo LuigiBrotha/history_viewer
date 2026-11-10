@@ -127,6 +127,7 @@ Maps open on a background of ocean depth (Esri Ocean). A layer button switches t
 street map; the choice is remembered in the browser.
 
 - `/grafiek` shows stacked bars of the cumulative sunk tonnage per day, week or month, with a block per boat. The eight biggest boats have a colour, the others are grey until you hover over them, search for them or pick them in the table. `poetry run python -m app.crawl_ships --lists-only` reads only each boat's list of ships, one request per boat.
+- `/histogram` shows how long the Veldslagen last, in eight bars from one day to more than two years, each split by Benaming: the word their English name uses (Battle, Operation, Offensive, Siege, Campaign, Raid or bombing, another word, or only a machine-translated title). Battles known only by month or year are hatched. A click on a block lists its Veldslagen, each linked to the map.
 
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the

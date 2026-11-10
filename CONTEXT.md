@@ -48,6 +48,10 @@ _Avoid_: Succes, slachtoffer
 Een militair conflict of operatie uit de Tweede Wereldoorlog-periode met een eigen artikel op een Wikipedia, met een begin- en einddatum en soms een positie. Artikelen in meerdere talen over dezelfde slag (verbonden door taallinks) vormen één Veldslag.
 _Avoid_: Operatie, gevecht
 
+**Benaming**:
+Het soort Veldslag zoals zijn Engelse naam het noemt: Battle, Operation, Offensive, Siege, Campaign of Raid (ook Bombing). De Engelse naam is de titel van het Engelse artikel of het Engelse label op Wikidata, nooit een machinevertaling. Een Engelse naam zonder een van die woorden heeft als Benaming 'Ander woord'; een Veldslag met alleen een vertaalde titel heeft geen Benaming.
+_Avoid_: Soort, type, overig (dat is een Kamp)
+
 **Onderwerp**:
 Een Veldslag, boot of Schip: alles wat in de gelijknamige kolom staat en waarover het vak Artikel iets kan tonen.
 _Avoid_: Item, topic

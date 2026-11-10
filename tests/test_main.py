@@ -89,6 +89,12 @@ def test_reload_server_serves_the_tonnage_chart_without_a_redirect(reload_server
     assert "js/tonnage.js" in response.text
 
 
+def test_reload_server_serves_the_histogram_without_a_redirect(reload_server):
+    response = requests.get(f"{reload_server}/histogram", timeout=5, allow_redirects=False)
+    assert response.status_code == 200
+    assert "js/histogram.js" in response.text
+
+
 def test_reload_server_serves_the_heatmap_without_a_redirect(reload_server):
     response = requests.get(f"{reload_server}/heatmap", timeout=5, allow_redirects=False)
     assert response.status_code == 200
