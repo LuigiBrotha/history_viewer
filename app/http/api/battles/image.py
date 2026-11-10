@@ -1,8 +1,6 @@
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.wiki.image_cache import ImageCache, is_servable_name
@@ -13,7 +11,7 @@ IMMUTABLE = "max-age=31536000, immutable"
 class RequestHandler:
     router = APIRouter(tags=["api"], route_class=WireupRoute)
 
-    def __init__(self, images: Annotated[ImageCache, Inject()]):
+    def __init__(self, images: ImageCache):
         self.images = images
 
     @router.get("/api/battles/images/{file_name:path}", name="battles_image")

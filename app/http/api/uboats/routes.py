@@ -4,7 +4,6 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Response
 from pydantic import TypeAdapter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.export.uboats import PatrolRouteOut
@@ -20,8 +19,8 @@ class RequestHandler:
 
     def __init__(
         self,
-        session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()],
-        cache: Annotated[RouteCache, Inject()],
+        session_factory: async_sessionmaker[AsyncSession],
+        cache: RouteCache,
     ):
         self.session_factory = session_factory
         self.cache = cache
