@@ -1,8 +1,6 @@
-from typing import Annotated
 
 from fastapi import APIRouter
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.export.uboats import PatrolPeriodOut
@@ -12,7 +10,7 @@ from app.services.storage.patrol_repository import PatrolRepository
 class RequestHandler:
     router = APIRouter(tags=["api"], route_class=WireupRoute)
 
-    def __init__(self, session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()]):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self.session_factory = session_factory
 
     @router.get("/api/uboats/patrol-periods", name="uboats_patrol_periods")

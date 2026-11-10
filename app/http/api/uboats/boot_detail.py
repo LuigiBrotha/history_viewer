@@ -1,9 +1,7 @@
 from dataclasses import replace
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.export.uboats import BoatDetail
@@ -16,8 +14,8 @@ class RequestHandler:
 
     def __init__(
         self,
-        session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()],
-        articles: Annotated[ArticleService, Inject()],
+        session_factory: async_sessionmaker[AsyncSession],
+        articles: ArticleService,
     ):
         self.session_factory = session_factory
         self.articles = articles

@@ -1,9 +1,7 @@
-from typing import Annotated
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.places.nominatim import NominatimClient, PlaceSearchError
@@ -24,8 +22,8 @@ class PlaceOut(BaseModel):
 class RequestHandler:
     router = APIRouter(tags=["api"], route_class=WireupRoute)
 
-    def __init__(self, session_factory: Annotated[async_sessionmaker[AsyncSession], Inject()],
-                 places: Annotated[NominatimClient, Inject()]):
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession],
+                 places: NominatimClient):
         self.session_factory = session_factory
         self.places = places
 

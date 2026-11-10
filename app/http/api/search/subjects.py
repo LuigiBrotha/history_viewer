@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query
-from wireup import Inject
 from wireup.integration.fastapi import WireupRoute
 
 from app.services.search.search_service import SearchOut, SearchService
@@ -12,7 +11,7 @@ MAX_QUERY_LENGTH = 200
 class RequestHandler:
     router = APIRouter(tags=["api"], route_class=WireupRoute)
 
-    def __init__(self, search: Annotated[SearchService, Inject()]):
+    def __init__(self, search: SearchService):
         self.search = search
 
     @router.get("/api/search", name="search_subjects")
