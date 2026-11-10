@@ -723,6 +723,7 @@ html, body {
 #route-toggle,
 #boat-toggle,
 #names-toggle,
+#others-toggle,
 #ships-toggle {
   position: absolute;
   top: 12px;
@@ -743,6 +744,7 @@ html, body {
 #route-toggle.leaflet-control,
 #boat-toggle.leaflet-control,
 #names-toggle.leaflet-control,
+#others-toggle.leaflet-control,
 #ships-toggle.leaflet-control {
   position: static;
 }
@@ -751,6 +753,7 @@ html, body {
 #route-toggle[aria-pressed="true"],
 #boat-toggle[aria-pressed="true"],
 #names-toggle[aria-pressed="true"],
+#others-toggle[aria-pressed="true"],
 #ships-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
@@ -2090,6 +2093,7 @@ select {
 #route-toggle,
 #boat-toggle,
 #names-toggle,
+#others-toggle,
 #ships-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
@@ -2101,6 +2105,7 @@ select {
 #route-toggle[aria-pressed="true"],
 #boat-toggle[aria-pressed="true"],
 #names-toggle[aria-pressed="true"],
+#others-toggle[aria-pressed="true"],
 #ships-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
