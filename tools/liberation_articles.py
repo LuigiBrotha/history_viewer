@@ -117,9 +117,9 @@ def _unwrap_dates(text):
     return FIRST.sub("1", text)
 
 
-# A full stop that ends no sentence: after a number ("8. 5. 1945", "1945 r.") or a short
+# A full stop that ends no sentence: after a day or month ("8. 5. 1945") or a short
 # abbreviation of year or "number" (Polish r., Russian г., Ukrainian р., Czech č.).
-NO_END = re.compile(r"(?:\b\d{1,4}|\b(?:r|g|г|р|č|n|nr|ok|tzw|gen|płk))\.$", re.IGNORECASE)
+NO_END = re.compile(r"(?:\b\d{1,2}|\b(?:r|g|г|р|č|n|nr|ok|tzw|gen|płk))\.$", re.IGNORECASE)
 
 
 def _split(text):
