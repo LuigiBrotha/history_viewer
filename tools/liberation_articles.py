@@ -106,13 +106,35 @@ def _dates(sentence, months):
     return found
 
 
+# Date templates whose arguments are the date itself ({{date|4 octobre 1943}}, {{date-|10|août|1944}},
+# {{data|25|aprile|1945}}): their words stay, named arguments go; "{{1er}} septembre" is the 1st.
+DATE_TEMPLATE = re.compile(r"\{\{\s*(?:date-?|data|datum|дата)\s*\|([^{}]*)\}\}", re.IGNORECASE)
+FIRST = re.compile(r"\{\{\s*1er\s*\}\}")
+
+
+def _unwrap_dates(text):
+    text = DATE_TEMPLATE.sub(lambda m: " ".join(p.strip() for p in m.group(1).split("|") if "=" not in p), text)
+    return FIRST.sub("1", text)
+
+
+def _split(text):
+    """Sentences: a full stop and a space, unless the next word begins in lower case."""
+    found = []
+    for part in re.split(r"(?<=[.!?])\s+", text):
+        if found and part[:1].islower():
+            found[-1] += " " + part
+        else:
+            found.append(part)
+    return found
+
+
 def sentences(wikitext):
     """The plain sentences of an article that mention a year of the war."""
     found = []
     # Line by line first: a table row (the fallen of a village) stays apart from the prose.
-    for line in strip_refs(wikitext).replace("&nbsp;", " ").split("\n"):
+    for line in _unwrap_dates(strip_refs(wikitext)).replace("&nbsp;", " ").split("\n"):
         text = plain(line)
-        found += [s for s in re.split(r"(?<=[.!?])\s+(?=[A-ZА-ЯІЇЄҐ\d\[])", text) if re.search(r"\b19(39|4[0-5])\b", s)]
+        found += [s for s in _split(text) if re.search(r"\b19(39|4[0-5])\b", s)]
     return found
 
 

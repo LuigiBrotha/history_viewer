@@ -59,3 +59,10 @@ def test_a_rule_can_adjust_or_drop_each_place(monkeypatch):
     monkeypatch.setattr(la.lists, "lookup", lambda lang, titles: {"A": {"lat": 49.0, "lng": 25.0}, "B": {"lat": 49.0, "lng": 35.0}})
     found = la.harvest(rule, [])
     assert [(b.title, b.verb) for b in found] == [("A", "ingenomen")]
+
+
+def test_date_templates_keep_their_words_and_sentences_start_with_any_capital():
+    from tools.liberation_articles import sentences
+    text = "La ville est libérée le {{date|4 octobre 1943}}. Élus en 1944, puis le {{date-|10|août|1944}}. Le {{1er}} septembre 1944."
+    assert sentences(text) == [
+        "La ville est libérée le 4 octobre 1943.", "Élus en 1944, puis le 10 août 1944.", "Le 1 septembre 1944."]
