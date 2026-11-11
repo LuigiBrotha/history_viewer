@@ -131,9 +131,9 @@ street map; the choice is remembered in the browser.
 
 Both `/dag-tot-dag` and `/` also show *Bevrijdingen*: when a place was liberated (or, in an Axis
 country, taken), from three Wikipedia lists (Dutch places; Soviet towns; towns abroad taken by the
-Soviet Army), as points. On the timeline a place is an open circle while occupied and a filled circle
-in the liberator's Kamp colour from its liberation date; on `/` only the Bevrijdingen in the selected
-period show, filled. The tooltip gives the date, liberator and occupied-since; a click opens the
+Soviet Army), as points. On the timeline a place is filled in the As's colour while occupied and in the
+liberator's Kamp colour from its liberation date; on `/` the Bevrijdingen in the selected period
+show, and the places still occupied at its end. The tooltip gives the date, liberator and occupied-since; a click opens the
 operation's Veldslag when there is one. The `Bevrijdingen` button hides the layer (`bevrijdingen=uit`).
 The data is `frontend/battles/bevrijdingen.json`, built by `poetry run python -m tools.liberations`
 (see `frontend/battles/README.md`).

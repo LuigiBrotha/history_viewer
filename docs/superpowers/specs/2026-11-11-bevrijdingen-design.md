@@ -17,11 +17,11 @@ Show when places were liberated, taken only from Wikipedia and Wikidata, with as
 | Two days | Of "2 of 3 oktober" or "nacht van 28-29 oktober" the last counts; the list's words are kept for the tooltip |
 | A row the list repeats | Counts once (Havelte, 13 april 1945, stands twice in the nl list) |
 | Liberator | Soviet fronts, fleets and flotillas in Dutch (1e Oekraïense Front, Zwarte Zeevloot); smaller units keep their Russian names; the nl list's units as written |
-| Taken, not liberated | Towns in Axis countries (Germany, Austria, Hungary, Romania, Bulgaria) are "ingenomen" |
+| Taken, not liberated | Towns in Axis countries (Germany, Austria, Hungary, Romania, Bulgaria) are "ingenomen". The ru list sorts towns abroad by today's borders: a "Polish" town outside a rough outline of interwar Poland was German (Breslau, Danzig: 137 towns), a Czechoslovak one east of the Moravia–Slovakia line lay in the Axis state Slovakia (32); both count as taken, without an occupied state |
 | Layer | Its own layer on the Tijdlijn (`/dag-tot-dag`) and Alle routes (`/`); button "Bevrijdingen", URL `bevrijdingen=uit` |
-| Tijdlijn | Open circle while occupied, filled circle in the liberator's Kamp colour (nl → Westerse geallieerden, ru → Sovjet-Unie) from the liberation date; a town occupied twice (Kharkov) turns open again |
+| Tijdlijn | Filled in the As's colour while occupied (first built as an open circle; changed after the browser check, "De bezetting door de Duitsers zie ik nu niet op de kaart terug"), filled in the liberator's Kamp colour (nl → Westerse geallieerden, ru → Sovjet-Unie) from the liberation date; a town occupied twice (Kharkov) turns As-grey again |
 | Occupied since | The Soviet town's own date; otherwise per country: Nederland 1940-05-10, Polen 1939-09-01, Noorwegen 1940-04-09, Tsjechoslowakije 1939-03-15, Joegoslavië 1941-04-06. Axis countries, China and Korea have no occupied state |
-| Alle routes | Only the Bevrijdingen in the selected period, filled |
+| Alle routes | The Bevrijdingen in the selected period in the liberator's colour, and the places still occupied at the end of the period in the As's colour (the atlas also shows the end of the period); an open end shows no occupation |
 | A place listed twice | A record with its own occupation date starts a new occupation (Kharkov); one without joins the occupation before it, so Gulpen and Meijel stay liberated from their first date. Only a place's first occupation takes the country's start |
 | Colour | Liberated circles use the Veldslag squares' own Kamp colour variables (`win1-westers`, `win1-sovjet`), so the paper theme changes both; a 1px dark outline like the ships |
 | Load | Once, after the first routes are drawn, like the ships; the map works without it |
@@ -39,7 +39,7 @@ Show when places were liberated, taken only from Wikipedia and Wikidata, with as
 
 `frontend/battles/bevrijdingen.json` after the build:
 
-- 2101 Bevrijdingen of 2021 places, 2068 with a position: nl 867 (864), Soviet towns 744 (740), towns abroad 490 (464; Polen 249, Duitsland 81, Hongarije 57, Tsjechoslowakije 43, Roemenië 24, China 13, Oostenrijk 12, Korea 5, Bulgarije 4, Joegoslavië 1, Noorwegen 1). 178 are "ingenomen".
+- 2101 Bevrijdingen of 2021 places, 2068 with a position: nl 867 (864), Soviet towns 744 (740), towns abroad 490 (464; by wartime country: Duitsland 218, Polen 112, Hongarije 57, Slowakije 32, Roemenië 24, China 13, Oostenrijk 12, Tsjechoslowakije 11, Korea 5, Bulgarije 4, Joegoslavië 1, Noorwegen 1). 347 are "ingenomen".
 - Dates run from 1941-07-13 to 1945-08-22; none outside 1939-09-01..1945-09-02, and no liberation before or on its occupation date.
 - 56 Soviet towns have more than one Bevrijding (occupied twice); 4 were only partly occupied (Naro-Fominsk, Voronezj, Wolgograd, Novorossiejsk).
 - The only places with two Bevrijdingen on one day are two places sharing one article (Cadier and Keer, Groot and Klein Genhout).

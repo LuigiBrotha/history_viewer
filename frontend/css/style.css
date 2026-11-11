@@ -2094,9 +2094,10 @@ select {
 .win2-sovjet { --win2: #b8322a; }
 .win2-overig { --win2: #3c7d46; }
 
-/* A liberated place is filled in the Kamp of its liberator, through the same custom property
-   as the squares; CSS fill wins over the fill attribute Leaflet sets. */
-.liberation-free {
+/* A liberated place is filled in the Kamp of its liberator, an occupied one in the As's, through
+   the same custom property as the squares; CSS fill wins over the fill attribute Leaflet sets. */
+.liberation-free,
+.liberation-occupied {
   fill: var(--win1);
 }
 

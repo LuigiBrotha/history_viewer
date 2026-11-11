@@ -45,6 +45,12 @@ export function liberationPlaces(liberations) {
   });
 }
 
+// A record without its own occupation date gets its occupation's start, so the tooltip says
+// since when; an Axis town (start = taken) keeps none.
+function withStart(record, start) {
+  return record.occupied || start >= record.liberated ? record : { ...record, occupied: start };
+}
+
 // day is an ISO date. Per place the last occupation begun by then: occupied until its first
 // liberation, after that liberated as its newest record says. Nothing before the first one.
 export function liberationsOnDate(places, day) {
@@ -54,24 +60,35 @@ export function liberationsOnDate(places, day) {
     if (occupation === undefined) continue;
     const [first] = occupation.records;
     if (day < first.liberated) {
-      shown.push({ key, liberation: first, state: "occupied" });
+      shown.push({ key, liberation: withStart(first, occupation.start), state: "occupied" });
     } else {
-      shown.push({ key, liberation: occupation.records.findLast((record) => record.liberated <= day), state: "liberated" });
+      const newest = occupation.records.findLast((record) => record.liberated <= day);
+      shown.push({ key, liberation: withStart(newest, occupation.start), state: "liberated" });
     }
   }
   return shown;
 }
 
-// from and to are ISO dates or null (open ended), as for the ships.
+// from and to are ISO dates or null (open ended), as for the ships. The liberations within the
+// period, and the places still occupied at its end: the atlas shows the end of the period too.
 export function liberationsInPeriod(liberations, from, to) {
-  return liberations
-    .filter((liberation) => (from === null || liberation.liberated >= from) && (to === null || liberation.liberated <= to))
-    .map((liberation) => ({
-      // Two places can share an article (Cadier and Keer), so the place's own name is in the key.
-      key: `${placeKey(liberation)}|${liberation.liberated}|${liberation.place}`,
-      liberation,
-      state: "liberated",
-    }));
+  const shown = [];
+  for (const { key, occupations } of liberationPlaces(liberations)) {
+    for (const { start, records } of occupations) {
+      for (const liberation of records) {
+        if ((from === null || liberation.liberated >= from) && (to === null || liberation.liberated <= to)) {
+          // Two places can share an article (Cadier and Keer), so the place's own name is in the key.
+          shown.push({ key: `${key}|${liberation.liberated}|${liberation.place}`, liberation: withStart(liberation, start), state: "liberated" });
+        }
+      }
+      // An Axis town starts on the day it was taken: never occupied.
+      const [first] = records;
+      if (to !== null && start < first.liberated && start <= to && to < first.liberated) {
+        shown.push({ key: `${key}|bezet|${start}|${first.place}`, liberation: withStart(first, start), state: "occupied" });
+      }
+    }
+  }
+  return shown;
 }
 
 // The Dutch list is of the Western Allies' advance, the Russian lists of the Red Army's.
@@ -80,10 +97,10 @@ export function liberationKamp(liberation) {
 }
 
 // The fill is left to the style sheet: the class win1-<kamp> gives it the same custom property
-// as the Veldslag squares, so both keep the same colours.
+// as the Veldslag squares, so both keep the same colours. Occupied takes the As's colour.
 export function liberationStyle(state, liberation) {
   if (state === "occupied") {
-    return { color: DARK, weight: 1.5, fill: false, className: "liberation" };
+    return { color: DARK, weight: 1, fill: true, fillOpacity: 1, className: "liberation liberation-occupied win1-as" };
   }
   return {
     color: DARK,

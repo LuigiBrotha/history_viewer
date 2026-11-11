@@ -232,3 +232,18 @@ def test_english_titles_of_operations_in_one_request(monkeypatch, tmp_path):
     assert result == {"Берлинская операция": "Battle of Berlin", "Малая операция": None}
     assert liberations.english_titles("ru", ["Малая операция"]) == result
     assert len(calls) == 1
+
+
+def test_towns_sorted_by_todays_borders_get_their_wartime_country():
+    from tools.liberations import wartime_country
+    # German before the war: taken.
+    for lat, lng in [(51.11, 17.03), (54.35, 18.65), (53.43, 14.55), (53.78, 20.49), (50.29, 18.67)]:
+        assert wartime_country("Polen", lat, lng) == ("Duitsland", "ingenomen")
+    # Polish between the wars: stays Polish (Warsaw, Kraków, Gdynia, Poznań, Katowice, Białystok).
+    for lat, lng in [(52.23, 21.01), (50.06, 19.94), (54.52, 18.53), (52.41, 16.93), (50.26, 19.02), (53.13, 23.16)]:
+        assert wartime_country("Polen", lat, lng) is None
+    # Slovakia (Bratislava, Košice, Žilina) was an Axis state; Moravia (Brno, Ostrava, Zlín) occupied.
+    for lat, lng in [(48.15, 17.11), (48.72, 21.26), (49.22, 18.74)]:
+        assert wartime_country("Tsjechoslowakije", lat, lng) == ("Slowakije", "ingenomen")
+    for lat, lng in [(49.19, 16.61), (49.83, 18.29), (49.22, 17.66)]:
+        assert wartime_country("Tsjechoslowakije", lat, lng) is None

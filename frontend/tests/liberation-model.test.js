@@ -74,13 +74,36 @@ test("one place keeps one key over the dates, so its marker is updated, not doub
   assert.deepEqual(keys("1943-02-20"), keys("1943-04-01"));
 });
 
-test("Alle routes shows the liberations within the period, all liberated", () => {
+test("Alle routes shows the liberations within the period, and the places still occupied at its end", () => {
   const all = [kharkov1, kharkov2, mesch];
-  const names = (from, to) => liberationsInPeriod(all, from, to).map(({ liberation, state }) => [liberation.liberated, state]);
-  assert.deepEqual(names("1943-01-01", "1943-12-31"), [["1943-02-16", "liberated"], ["1943-08-23", "liberated"]]);
-  assert.deepEqual(names("1944-01-01", null), [["1944-09-12", "liberated"]]);
+  const names = (from, to) => liberationsInPeriod(all, from, to).map(({ liberation, state }) => [liberation.name, liberation.liberated, state]);
+  // Mesch is occupied at the end of 1943; Kharkov was liberated twice within it.
+  assert.deepEqual(names("1943-01-01", "1943-12-31"), [
+    ["Charkiv", "1943-02-16", "liberated"], ["Charkiv", "1943-08-23", "liberated"], ["Mesch", "1944-09-12", "occupied"],
+  ]);
+  // In spring 1943 Kharkov is liberated and taken again: occupied at the end.
+  assert.deepEqual(names("1943-02-01", "1943-04-30"), [
+    ["Charkiv", "1943-02-16", "liberated"], ["Charkiv", "1943-08-23", "occupied"], ["Mesch", "1944-09-12", "occupied"],
+  ]);
+  // Occupied since before the period counts too, as the atlas shows the end of the period.
+  assert.deepEqual(names("1942-01-01", "1942-12-31"), [["Charkiv", "1943-02-16", "occupied"], ["Mesch", "1944-09-12", "occupied"]]);
+  assert.deepEqual(names("1944-01-01", null), [["Mesch", "1944-09-12", "liberated"]]);
+  assert.deepEqual(names("1939-01-01", "1940-05-09"), []);
+  // An Axis town is never occupied, only taken.
+  assert.deepEqual(liberationsInPeriod([berlin], "1944-01-01", "1944-12-31"), []);
   assert.equal(names(null, null).length, 3);
-  assert.equal(new Set(liberationsInPeriod(all, null, null).map(({ key }) => key)).size, 3);
+  const keys = liberationsInPeriod(all, "1943-02-01", "1943-04-30").map(({ key }) => key);
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test("a place without its own occupation date says since when its country was occupied", () => {
+  const [onDate] = liberationsOnDate(liberationPlaces([mesch]), "1942-01-01");
+  assert.match(liberationTooltip(onDate.liberation), /^Mesch — bezet sinds 10 mei 1940 — bevrijd op 12 september 1944/);
+  const [inPeriod] = liberationsInPeriod([mesch], "1942-01-01", "1942-12-31");
+  assert.match(liberationTooltip(inPeriod.liberation), /bezet sinds 10 mei 1940/);
+  // A town in an Axis country was never occupied.
+  const [taken] = liberationsOnDate(liberationPlaces([berlin]), "1945-06-01");
+  assert.doesNotMatch(liberationTooltip(taken.liberation), /bezet/);
 });
 
 test("the liberator's Kamp: Dutch list westers, Russian lists sovjet", () => {
@@ -89,18 +112,18 @@ test("the liberator's Kamp: Dutch list westers, Russian lists sovjet", () => {
   assert.equal(liberationKamp(berlin), "sovjet");
 });
 
-test("occupied is an open dark circle, liberated is filled in the colour of the Kamp", () => {
-  const open = liberationStyle("occupied", mesch);
-  assert.equal(open.color, "#222");
-  assert.equal(open.weight, 1.5);
-  assert.equal(open.fill, false);
+test("occupied is filled in the colour of the As, liberated in the colour of its liberator's Kamp", () => {
+  const occupied = liberationStyle("occupied", mesch);
+  assert.equal(occupied.fill, true);
+  assert.equal(occupied.fillOpacity, 1);
+  // The colours come from the same custom property as the Veldslag squares.
+  assert.match(occupied.className, /\bwin1-as\b/);
+  assert.match(occupied.className, /\bliberation-occupied\b/);
   const filled = liberationStyle("liberated", mesch);
   assert.equal(filled.fill, true);
-  assert.equal(filled.fillOpacity, 1);
-  // The colour comes from the same custom property as the Veldslag squares.
   assert.match(filled.className, /\bwin1-westers\b/);
   assert.match(liberationStyle("liberated", kharkov1).className, /\bwin1-sovjet\b/);
-  assert.doesNotMatch(open.className, /win1-/);
+  assert.doesNotMatch(occupied.className, /win1-westers|win1-sovjet/);
 });
 
 test("the tooltip says when and by whom, in Dutch", () => {

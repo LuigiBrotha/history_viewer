@@ -54,6 +54,43 @@ def within(country, lat, lng):
     return south <= lat <= north and west <= lng <= east
 
 
+# Poland between the wars, roughly (lat, lng): the list sorts towns by today's borders, so
+# Breslau, Stettin and Danzig stand under Poland, but they were German and were taken, not
+# liberated. Fine enough for the towns of the list, not for a border village.
+INTERWAR_POLAND = [
+    (54.83, 18.05), (54.80, 18.60), (54.45, 18.58), (54.25, 18.55), (54.00, 18.85), (53.30, 19.50),
+    (53.20, 20.50), (53.30, 21.50), (53.50, 22.50), (54.35, 22.80), (54.30, 23.50), (55.30, 25.80),
+    (55.90, 26.70), (55.60, 28.10), (54.60, 27.80), (53.70, 27.00), (52.70, 26.90), (51.80, 27.50),
+    (50.60, 27.20), (49.50, 26.20), (48.55, 26.20), (48.30, 25.30), (48.00, 24.90), (48.40, 23.60),
+    (48.90, 22.80), (49.10, 22.60), (49.40, 21.30), (49.40, 20.00), (49.60, 19.20), (49.80, 18.80),
+    (50.00, 18.55), (50.25, 18.85), (50.50, 19.00), (50.80, 18.70), (51.00, 18.40), (51.30, 18.00),
+    (51.60, 17.20), (51.70, 16.60), (52.10, 16.00), (52.50, 15.95), (52.90, 16.10), (53.05, 16.80),
+    (53.40, 17.20), (53.70, 17.45), (54.15, 17.75), (54.55, 17.55), (54.60, 17.95),
+]
+
+
+def inside(polygon, lat, lng):
+    """Point in polygon by ray casting."""
+    result = False
+    for (lat1, lng1), (lat2, lng2) in zip(polygon, polygon[1:] + polygon[:1]):
+        if (lat1 > lat) != (lat2 > lat):
+            if lng < lng1 + (lat - lat1) * (lng2 - lng1) / (lat2 - lat1):
+                result = not result
+    return result
+
+
+def wartime_country(country, lat, lng):
+    """(country, verb) as during the war, for a town the list sorts by today's borders: a Polish
+    town outside interwar Poland was German, a Czechoslovak one in Slovakia lay in an Axis state;
+    both were taken, not liberated."""
+    if country == "Polen" and not inside(INTERWAR_POLAND, lat, lng):
+        return "Duitsland", "ingenomen"
+    # The border of Moravia and Slovakia, as a line from (48.6, 17.0) to (49.5, 18.8).
+    if country == "Tsjechoslowakije" and lat < 49.6 and lng > 17.0 + (lat - 48.6) * 2.0:
+        return "Slowakije", "ingenomen"
+    return None
+
+
 # The country sections of the list of towns abroad, in Dutch; the Axis countries were taken,
 # not liberated.
 ABROAD = {
@@ -602,6 +639,9 @@ def harvest(refresh=False):
             entry = known.get(b.title or b.place, {})
             if "lat" in entry and within(b.country, entry["lat"], entry["lng"]):
                 b.lat, b.lng = entry["lat"], entry["lng"]
+                wartime = wartime_country(b.country, b.lat, b.lng)
+                if wartime:
+                    b.country, b.verb = wartime
             b.name = dutch_name(b, known)
     # Most Veldslagen are English articles, so the operation also gets its English title.
     english = english_titles("ru", {b.operation for b in found if b.lang == "ru" and b.operation})
