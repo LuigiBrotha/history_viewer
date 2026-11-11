@@ -129,6 +129,15 @@ street map; the choice is remembered in the browser.
 - `/grafiek` shows stacked bars of the cumulative sunk tonnage per day, week or month, with a block per boat. The eight biggest boats have a colour, the others are grey until you hover over them, search for them or pick them in the table. `poetry run python -m app.crawl_ships --lists-only` reads only each boat's list of ships, one request per boat.
 - `/histogram` shows how long the Veldslagen last, in eight bars from one day to more than two years, each split by Benaming: the word their English name uses (Battle, Operation, Offensive, Siege, Campaign, Raid or bombing, another word, or only a machine-translated title). Battles known only by month or year are hatched. A click on a block lists its Veldslagen, each linked to the map.
 
+Both `/dag-tot-dag` and `/` also show *Bevrijdingen*: when a place was liberated (or, in an Axis
+country, taken), from three Wikipedia lists (Dutch places; Soviet towns; towns abroad taken by the
+Soviet Army), as points. On the timeline a place is filled in the As's colour while occupied and in the
+liberator's Kamp colour from its liberation date; on `/` the Bevrijdingen in the selected period
+show, and the places still occupied at its end. The tooltip gives the date, liberator and occupied-since; a click opens the
+operation's Veldslag when there is one. The `Bevrijdingen` button hides the layer (`bevrijdingen=uit`).
+The data is `frontend/battles/bevrijdingen.json`, built by `poetry run python -m tools.liberations`
+(see `frontend/battles/README.md`).
+
 All maps show a soft historical layer of who controlled what, from world maps on
 Wikimedia Commons (CC BY-SA 3.0, see `frontend/atlas/README.md`). The timeline uses the
 last map on or before the selected date, `/` the last map on or before the end of

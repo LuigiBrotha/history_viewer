@@ -2,6 +2,8 @@ import { canEdit, fetchPlaces, fetchShips, fetchStatus } from "./api.js";
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsInPeriod } from "./ship-model.js";
+import { createLiberationLayer, loadLiberations } from "./liberation-layer.js";
+import { liberationBattle, liberationsInPeriod } from "./liberation-model.js";
 import { createLoadIndicator } from "./load-indicator.js";
 import { initAtlas } from "./atlas.js";
 import { initBattles } from "./battles.js";
@@ -15,7 +17,7 @@ import { rampGradient } from "./color-ramp.js";
 import { initPeriodSlider } from "./period-slider.js";
 import { createPeriodView } from "./period-view.js";
 import { createUrlSync } from "./url-sync.js";
-import { createBoatToggle, createNamesToggle, createOthersToggle, createShipsToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createOthersToggle, createShipsToggle, createLiberationsToggle } from "./map-toggle.js";
 import { readView } from "./url-state.js";
 import { createStatusMap, fitAllRoutes, fitBoat, highlightPatrol, setHistory, selectBoat, updateRoutes, setLastPatrol, setBoatsVisible, setPeriod, visibleCount } from "./status-map.js";
 
@@ -44,6 +46,27 @@ function main() {
   if (periodView.mapPinned()) state.fitted = true;
 
   const shipLayer = createShipLayer(state.map, { onShipClick: (ship) => subjects.openShip(ship) });
+  // A liberation that was part of a Veldslag opens it, as the list does.
+  const liberationLayer = createLiberationLayer(state.map, {
+    onLiberationClick: (liberation) => {
+      const title = liberationBattle(liberation, battles.allBattles());
+      if (title !== null) battles.selectBattle(title, { pickDate: true });
+    },
+  });
+  let liberations = [];
+
+  function renderLiberations() {
+    liberationLayer.setLiberations(liberationsInPeriod(liberations, state.from, state.to));
+  }
+
+  // Once, after the first routes: the map works without them.
+  loadIndicator.firstDrawn
+    .then(() => loadLiberations())
+    .then((loaded) => {
+      liberations = loaded;
+      renderLiberations();
+    })
+    .catch((error) => console.error(error));
   let ships = [];
   state.onRouteClick = (patrol) => subjects.openBoat(patrol.boat_slug);
 
@@ -153,6 +176,7 @@ function main() {
     },
   });
   createShipsToggle({ map: state.map, shipLayer, urlSync, shown: !readView(location.search, "period").shipsOff });
+  createLiberationsToggle({ map: state.map, liberationLayer, urlSync, shown: !readView(location.search, "period").liberationsOff });
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => search, help: createShortcutHelp() }) });
 
   const slider = initPeriodSlider({
@@ -169,6 +193,7 @@ function main() {
       battles.setPeriod(from, to);
       subjects.setPeriod(from, to);
       renderShips();
+      renderLiberations();
       renderCount();
       renderAtlas();
     },

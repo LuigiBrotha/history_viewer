@@ -52,3 +52,39 @@ poetry run python -m tools.fill_battle_articles [--dir DIR] [--database URL] [--
 
 Only the bz2 streams that hold a battle are read (peak memory about 60 MB). A rerun replaces
 the articles and redirects and rewrites `winner` in `battles.json`, keeping everything else.
+
+## Bevrijdingen
+
+`bevrijdingen.json` lists when places were liberated (and, for Soviet towns, occupied), one
+Bevrijding per line. It is harvested from three list articles:
+
+- nl: *Chronologisch overzicht van de bevrijding van Nederlandse plaatsen in de Tweede
+  Wereldoorlog* (date, place, who liberated it);
+- ru: *Список городов СССР, оккупированных и освобождённых во время Великой Отечественной войны*
+  (occupied and liberated, fronts, operation; a town occupied twice has two records);
+- ru: *Список зарубежных городов, освобождённых Советской Армией во время Великой Отечественной
+  войны* (the date a town abroad was taken, per country; Axis countries get `verb: "ingenomen"`).
+
+Positions and the Dutch or English names come from the Wikipedia API (coordinates and the Wikidata
+item of each linked article) and Wikidata (labels, and coordinates when the article has none). A
+position outside the country's rough 1939–1945 bounds belongs to a namesake and is dropped, and
+then so is its Wikidata name. The map name is the Dutch label, else the English label, else a
+Dutch-style transliteration of the Russian. Soviet fronts and fleets are translated; smaller units
+keep their Russian names. Of two days ("2 of 3 oktober") the last counts; the list's own words stay
+in `date_text`.
+
+Licence: the text of the lists is from Wikipedia, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/);
+the labels and coordinates from Wikidata are [CC0](https://creativecommons.org/publicdomain/zero/1.0/).
+
+### Rebuilding
+
+```
+poetry run python -m tools.liberations [--output FILE] [--refresh]
+```
+
+The lists and every place looked up are cached in `~/.cache/uboats/liberations/`, so a rerun makes
+no requests at all. `--refresh` fetches the three lists again (3 requests); only places not yet in
+the cache are then looked up, one request per 50 places on Wikipedia and one per 50 Wikidata items.
+A build from an empty cache takes about 85 requests: 3 lists, 41 for the 2016 linked
+places (850 nl, 1166 ru) and at most as many for their Wikidata items. The command prints how many
+places have no position.

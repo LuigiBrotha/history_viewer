@@ -131,3 +131,7 @@ _Avoid_: Schatting, voorstel
 **Nog te verfijnen**:
 Een Veldslag die alleen een Voorzet heeft: geen positie uit Wikipedia en geen Eigen positie. Zodra de gebruiker een Eigen positie bewaart, is hij definitief geplaatst.
 _Avoid_: Concept, voorlopig
+
+**Bevrijding**:
+Een plaats en de datum waarop die werd bevrijd, of voor een stad in een As-land ingenomen, met soms de datum waarop hij bezet werd en wie hem bevrijdde. Een plaats kan meer dan één Bevrijding hebben: een stad die twee keer bezet werd, werd ook twee keer bevrijd.
+_Avoid_: Inname (behalve voor een stad in een As-land), verovering, bezetting (dat is de tijd ervoor)

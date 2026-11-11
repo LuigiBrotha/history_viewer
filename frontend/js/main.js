@@ -12,7 +12,7 @@ import { matchBattles, matchBoats, matchShips } from "./search-model.js";
 import { searchLabels } from "./battle-labels.js";
 import { restoreLabels } from "./period-view.js";
 import { createMap, renderActiveBoats, renderFollowedRoute, clearFollowedRoute, setBoatsVisible, setRoutesVisible } from "./map.js";
-import { createBoatToggle, createNamesToggle, createOthersToggle, createRouteToggle, createShipsToggle } from "./map-toggle.js";
+import { createBoatToggle, createNamesToggle, createOthersToggle, createRouteToggle, createShipsToggle, createLiberationsToggle } from "./map-toggle.js";
 import {
   beginEdit,
   clearEditError,
@@ -30,6 +30,8 @@ import { boatsHeading, renderExcludedPoints, renderShipSummary, updateDateLabel 
 import { createShipLoader, mergeRoutes, statusLine, startPolling, uncomputedLegs } from "./live.js";
 import { createShipLayer } from "./ship-layer.js";
 import { mergeShips, shipsUpToDate } from "./ship-model.js";
+import { createLiberationLayer, loadLiberations } from "./liberation-layer.js";
+import { liberationBattle, liberationPlaces, liberationsOnDate } from "./liberation-model.js";
 
 const COLLAPSED_BY_DEFAULT_QUERY = "(max-width: 699px)";
 const POLL_INTERVAL_MS = 5000;
@@ -83,6 +85,8 @@ function main() {
   installShortcuts({ actions: pageActions({ battles: () => battles, search: () => mapSearch, help: createShortcutHelp() }) });
   let ships = [];
   let shipLayer = null;
+  let liberationLayer = null;
+  let places = [];
   let editable = false;
   // Edit errors and in-flight requests outlive every redraw.
   const editState = createEditState();
@@ -132,6 +136,7 @@ function main() {
     followStatusEl.textContent = followStatusText(notOnPatrol, editState.error);
 
     renderShips(date);
+    renderLiberations(date);
 
     boatsHeadingEl.textContent = boatsHeading(active.length);
     subjects?.setDate(date.toISOString().slice(0, 10), new Set(active.map((boat) => boat.boatSlug)));
@@ -142,6 +147,16 @@ function main() {
     const visible = shipsUpToDate(ships, date, followedSlug);
     shipLayer.setShips(visible);
     renderShipSummary({ totalsEl: shipTotalsEl, unknownEl: shipUnknownEl }, visible, followedSlug !== null);
+  }
+
+  function renderLiberations(date) {
+    liberationLayer?.setLiberations(liberationsOnDate(places, date.toISOString().slice(0, 10)));
+  }
+
+  // A liberation that was part of a Veldslag opens it, as the list does.
+  function onLiberationClick(liberation) {
+    const title = liberationBattle(liberation, battles.allBattles());
+    if (title !== null) battles.selectBattle(title, { pickDate: true });
   }
 
   const loadShips = createShipLoader({
@@ -380,6 +395,7 @@ function main() {
       if (mapState === null) {
         mapState = createMap("map");
         shipLayer = createShipLayer(mapState.map, { onShipClick: (ship) => subjects.openShip(ship) });
+        liberationLayer = createLiberationLayer(mapState.map, { onLiberationClick });
         battles = initBattles({
           map: mapState.map,
           mode: "date",
@@ -414,6 +430,7 @@ function main() {
           },
         });
         createShipsToggle({ map: mapState.map, shipLayer, urlSync, shown: !initialView.shipsOff });
+        createLiberationsToggle({ map: mapState.map, liberationLayer, urlSync, shown: !initialView.liberationsOff });
         initAtlas(mapState.map).then((loaded) => {
           atlas = loaded;
           atlas.setDate(currentDate.toISOString().slice(0, 10));
@@ -466,6 +483,15 @@ function main() {
   }
 
   const loadIndicator = createLoadIndicator(document.getElementById("load-indicator"));
+
+  // Once, after the first routes: the map works without them.
+  loadIndicator.firstDrawn
+    .then(() => loadLiberations())
+    .then((liberations) => {
+      places = liberationPlaces(liberations);
+      if (currentDate !== null) renderLiberations(currentDate);
+    })
+    .catch((error) => console.error(error));
 
   startPolling({
     intervalMs: POLL_INTERVAL_MS,

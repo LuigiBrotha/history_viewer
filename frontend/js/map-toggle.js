@@ -88,3 +88,19 @@ export function createShipsToggle({ map, doc, shipLayer, urlSync, shown }) {
     },
   });
 }
+
+// The Bevrijdingen: occupied and liberated places; the same on both route maps.
+export function createLiberationsToggle({ map, doc, liberationLayer, urlSync, shown }) {
+  return createMapToggle({
+    map,
+    doc,
+    id: "liberations-toggle",
+    label: "Bevrijdingen",
+    title: "Bevrijde en bezette plaatsen aan of uit",
+    visible: shown,
+    onChange: (visible) => {
+      liberationLayer.setVisible(visible);
+      urlSync.update({ liberationsOff: visible ? null : true });
+    },
+  });
+}

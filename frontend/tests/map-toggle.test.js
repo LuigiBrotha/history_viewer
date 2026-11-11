@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { createBoatToggle, createNamesToggle, createOthersToggle, createRouteToggle, createShipsToggle } from "../js/map-toggle.js";
+import { createBoatToggle, createNamesToggle, createOthersToggle, createRouteToggle, createShipsToggle, createLiberationsToggle } from "../js/map-toggle.js";
 
 function fakeDoc() {
   return {
@@ -102,4 +102,20 @@ test("the Veldslagen button tells the battles and keeps the choice in the URL", 
   button.click();
   assert.deepEqual(seen, [false, true]);
   assert.deepEqual(writes, [{ othersOff: true }, { othersOff: null }]);
+});
+
+test("the Bevrijdingen button tells the layer and keeps the choice in the URL", () => {
+  const seen = [];
+  const writes = [];
+  const { button } = setup(true, ({ map, doc, visible }) => createLiberationsToggle({
+    map, doc, shown: visible,
+    liberationLayer: { setVisible: (shown) => seen.push(shown) },
+    urlSync: { update: (partial) => writes.push(partial) },
+  }));
+  assert.equal(button.id, "liberations-toggle");
+  assert.equal(button.textContent, "Bevrijdingen");
+  assert.equal(button.attributes.title, "Bevrijde en bezette plaatsen aan of uit");
+  button.click();
+  assert.deepEqual(seen, [true, false]);
+  assert.deepEqual(writes, [{ liberationsOff: null }, { liberationsOff: true }]);
 });
