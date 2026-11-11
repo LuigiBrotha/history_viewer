@@ -15,6 +15,12 @@ LT_MONTHS = {m: i for i, m in enumerate(
     "sausio vasario kovo balandžio gegužės birželio liepos rugpjūčio rugsėjo spalio lapkričio gruodžio".split(), 1)}
 
 
+# A month without a day: "1944 m. liepą" (accusative) or "liepos mėn." (genitive). The engine's
+# month reader wants the year after the month, which Lithuanian seldom writes, so it finds few.
+LT_MONTH_FORMS = {**LT_MONTHS, **{m: i for i, m in enumerate(
+    "sausį vasarį kovą balandį gegužę birželį liepą rugpjūtį rugsėjį spalį lapkritį gruodį".split(), 1)}}
+
+
 def lithuanian_dates(sentence, months):
     """"1944 m. liepos 13 d." (also without "m." or "d."): (position, ISO date)."""
     pattern = "|".join(months)
@@ -49,5 +55,7 @@ RULE = ArticleRule(
     first_liberation=1944,
     occupation_years=(1941, 1941),
     dates=lithuanian_dates,
+    month_forms=LT_MONTH_FORMS,
     adjust=_adjust,
+    last_liberation="1945-05-31",
 )

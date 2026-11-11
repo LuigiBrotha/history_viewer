@@ -45,4 +45,5 @@ RULE = ArticleRule(
         "Q37800986",  # city of Serbia
     }),
     month_forms=SR_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )

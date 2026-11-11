@@ -33,5 +33,6 @@ RULE = ArticleRule(
         "Q97660032",   # city of oblast significance
     }),
     month_forms=UK_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )
 

@@ -47,4 +47,5 @@ RULE = ArticleRule(
     }),
     adjust=_before_autumn_1944,
     month_forms=BE_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )

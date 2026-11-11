@@ -88,4 +88,5 @@ RULE = ArticleRule(
         "Q15303838",  # municipality seat
     }),
     month_forms=IT_MONTHS,  # "nell'aprile 1945": the same words
+    last_liberation="1945-05-31",
 )

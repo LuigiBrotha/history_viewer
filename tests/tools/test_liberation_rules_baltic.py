@@ -15,3 +15,4 @@ def test_latvian_year_first_dates():
             "1944. gada 13. oktobrī Sarkanā armija ieņēma Rīgu.")
     assert read_article(LV, text) == ("1941-07-01", "1944-10-13")
 
+

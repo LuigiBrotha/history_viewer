@@ -62,6 +62,8 @@ RULE = ArticleRule(
     area=(49.4, 53.6, 2.5, 7.3),
     first_liberation=1944,
     occupation_years=(1940, 1940),
+    # "in september 1944 bevrijd": the same names, kept apart when no day is given.
+    month_forms=NL_MONTHS,
     settlements=frozenset({
         "Q493522",    # municipality of Belgium
         "Q2785216",   # section of a municipality of Belgium (deelgemeente)
@@ -72,4 +74,5 @@ RULE = ArticleRule(
         "Q1484611",   # hamlet (buurtschap)
     }),
     adjust=_adjust,
+    last_liberation="1945-05-31",
 )

@@ -53,6 +53,9 @@ class ArticleRule:
     # month. With them an article that gives only a month and year still counts, apart, as a
     # Bevrijding known to the month (kept for later, not on the map).
     month_forms: object = None
+    # The last day a liberation can fall on: in Europe the war ended in May 1945, in Asia the
+    # Japanese garrisons gave up into September.
+    last_liberation: str = "1945-09-30"
 
 
 def _rules():
@@ -353,7 +356,7 @@ def harvest(rule, listed, months=None):
     found = []
     for title, (occupied, liberated) in sorted(read.items()):
         entry = known.get(title, {})
-        if not inside(entry):
+        if not inside(entry) or liberated > rule.last_liberation:
             continue
         b = place(title, entry, liberated=liberated, occupied=occupied)
         if rule.adjust is not None:

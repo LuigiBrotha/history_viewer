@@ -63,4 +63,5 @@ RULE = ArticleRule(
     area=(34.7, 41.8, 19.3, 29.7),
     adjust=adjust,
     month_forms=EL_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )

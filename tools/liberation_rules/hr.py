@@ -96,4 +96,5 @@ RULE = ArticleRule(
         "Q4845841",   # settlement of Croatia
     }),
     month_forms=HR_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )

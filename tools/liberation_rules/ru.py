@@ -119,4 +119,5 @@ RULE = ArticleRule(
     },
     adjust=_clauses,
     month_forms=RU_MONTH_FORMS,
+    last_liberation="1945-05-31",
 )

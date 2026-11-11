@@ -48,6 +48,10 @@ RULE = ArticleRule(
     first_liberation=1944,
     occupation_years=(1941, 1941),
     dates=latvian_dates,
+    # "1944. gada oktobrī": the engine's month reader wants the year after the month, so it seldom
+    # finds these.
+    month_forms=LV_MONTHS,
     # The Wikidata classes Latvian towns and villages carry here (cities, towns, villages).
     settlements=frozenset({"Q15584664", "Q22580836", "Q109329953", "Q15127838", "Q16355778", "Q16362394"}),
+    last_liberation="1945-05-31",
 )

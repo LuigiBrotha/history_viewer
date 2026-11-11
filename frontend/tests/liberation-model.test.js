@@ -48,6 +48,9 @@ test("each occupied country has its own start; Axis countries are never occupied
   assert.equal(at("Noorwegen", "1940-04-09").length, 1);
   assert.equal(at("Tsjechoslowakije", "1939-03-15").length, 1);
   assert.equal(at("Joegoslavië", "1941-04-06").length, 1);
+  assert.equal(at("België", "1940-05-10").length, 1);
+  assert.equal(at("Filipijnen", "1941-12-07").length, 0);
+  assert.equal(at("Filipijnen", "1941-12-08").length, 1);
   assert.deepEqual(stateOn(liberationPlaces([berlin]), "1945-05-01"), []);
   assert.deepEqual(stateOn(liberationPlaces([berlin]), "1945-05-02"), [["Berlijn", "1945-05-02", "liberated"]]);
 });

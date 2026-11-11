@@ -12,6 +12,12 @@ const OCCUPATION_STARTS = {
   Noorwegen: "1940-04-09",
   Tsjechoslowakije: "1939-03-15",
   Joegoslavië: "1941-04-06",
+  België: "1940-05-10",
+  // Japan's invasions.
+  Filipijnen: "1941-12-08",
+  Malakka: "1941-12-08",
+  "Brits-Borneo": "1941-12-16",
+  Birma: "1942-01-15",
 };
 
 function placeKey(liberation) {

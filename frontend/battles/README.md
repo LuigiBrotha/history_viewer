@@ -71,8 +71,16 @@ Bevrijding per line. It is harvested from four list articles and one article wit
 - nl: *Bevrijding van de Duitse bezetting in België (Tweede Wereldoorlog)*: its bullets ("Op 4
   september werd Antwerpen bevrijd, evenals …"), every place linked in them, occupied since May 1940.
 
-A search of the other Wikipedias (it, da, no, el, the Yugoslav languages, cs, sk, pl, uk, be, de,
-hu, ro, bg, the Baltic languages, zh, ja, ko, en) found no other list with a date per place.
+Beyond the lists, `tools/liberation_articles.py` reads the articles of single places, one rule per
+language in `tools/liberation_rules/` (Ukrainian, Belarusian, Russian, Polish, Czech, Slovak,
+Hungarian, Italian, Serbian, Croatian, Macedonian, Greek, French, Dutch, German, English, Latvian,
+Lithuanian): the date nearest a liberation word, only for settlements inside the language's area that
+no list has. A place whose article names only the month goes to `bevrijdingen-maand.json` instead
+(`precision: "month"`), which the map does not read yet. Trial run of one language:
+`poetry run python -m tools.liberation_articles <source>`; build with only some:
+`poetry run python -m tools.liberations --rules uk-articles,ru-articles`.
+
+A search of the other Wikipedias found no other list with a date per place.
 
 Positions and the Dutch or English names come from the Wikipedia API (coordinates and the Wikidata
 item of each linked article) and Wikidata (labels, and coordinates when the article has none). A

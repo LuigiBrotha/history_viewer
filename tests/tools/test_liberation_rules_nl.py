@@ -37,3 +37,8 @@ def test_a_flemish_village_dates_its_occupation():
     text = "De gemeente werd rond 23 mei 1940 bezet door het Duitse leger en bevrijd op 5 september 1944."
     assert read_article(NL, text) == ("1940-05-23", "1944-09-05")
     assert NL.adjust(_place(51.226, 3.750)).country == "België"   # Assenede
+
+
+def test_a_liberation_known_only_to_the_month():
+    from tools.liberation_articles import read_month
+    assert read_month(NL, "Het dorp werd in oktober 1944 bevrijd.") == "1944-10"

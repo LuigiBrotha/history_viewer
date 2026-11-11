@@ -62,3 +62,18 @@ A search of the Wikipedias in it, da, no, el, sr, hr, sh, sl, mk, cs, sk, pl, uk
 | Kamp | Only the Russian lists are the Red Army's; the Dutch, Belgian and French ones are the Western Allies' (the Résistance counted with them) |
 | Veldslag | The French notes column's first link is the operation; a click opens the Veldslag of that French article or of the English one it links to (37 of 54) |
 | Not used | mk Macedonia (prose, about 15 towns), it *Repubbliche partigiane* (areas, often only a month), sh list of battles in Slavonia (few liberations), and the free-text village articles in ru/uk/be (inconsistent wording, a request per 50 places and much checking) |
+
+## Articles of single places
+
+Asked on 2026-11-11: "iedere keer 1 taal pakken, die alvast omzetten, op de kaart zetten en dan door", "meer agents voor meer talen", and "als je alleen maanden hebt sla dat ook maar op". Built by four agents, one per group of languages, each language put on the map as soon as it was done.
+
+| Topic | Decision |
+|---|---|
+| Engine | `tools/liberation_articles.py`: per language a search (500 hits per request), the article lines that name a war year 50 per request, cached as wikitext (`lines-<lang>.json`) so a change in reading needs no new requests; the date nearest a liberation word in a sentence; only settlements by their Wikidata class (P31), inside the language's area, not within 3 km and 3 days of a place a list already has |
+| Rules | One module per language in `tools/liberation_rules/`; `python -m tools.liberation_articles <source>` makes a trial run; `python -m tools.liberations --rules a,b` builds with only some |
+| Per place | A rule's `adjust` sets verb, Kamp, country or occupation by where the place lies: German towns in today's Poland and Germany's 1937 east are "ingenomen"; west Bohemia and western Germany were the Western Allies', the rest of Germany the Red Army's (the 1945 meeting line); Italy before the armistice of 8 September 1943 "ingenomen" |
+| Occupation | Only the Axis's: the Soviet annexations of 1939–1940 in Ukraine, Belarus and the Baltics are no occupation. France without a date gets `french_occupation`; the frontend has defaults for België (10 May 1940) and Japan's invasions (Philippines and Malaya 8 Dec 1941, British Borneo 16 Dec 1941, Burma 15 Jan 1942) |
+| Known only to the month | Kept apart in `bevrijdingen-maand.json` (liberated YYYY-MM, precision month); the map does not read it yet. Hungarian, Lithuanian and Latvian put the year first and have no month forms yet |
+| Dropped | Slovene and Estonian (nothing found), Romanian (8 places, half wrong), Bulgarian (the 1944 dates are the coup, "освободено" is 1878), Serbo-Croatian (duplicates sr and hr), Danish and Norwegian (one day for the whole country) |
+| Precision | Estimated by the agents from 20–60 read sentences per language: 83–95%. Typical errors: a neighbouring town's date, an air raid or a killing next to a liberation word, a temporary liberation |
+| Partisans | Count as Western Allies everywhere in Yugoslavia, also where the Red Army took a village |
