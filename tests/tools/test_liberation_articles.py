@@ -40,3 +40,22 @@ def test_a_soviet_annexation_is_no_occupation_and_a_table_no_sentence():
             "\n| 1 | Петро | 1944 | Загинув 10 жовтня 1944 року, звільнений з полону |\n"
             "28 липня 1944 року село звільнено від німецьких окупантів.")
     assert read_article(UK, text) == (None, "1944-07-28")
+
+
+def test_a_rule_can_adjust_or_drop_each_place(monkeypatch):
+    import dataclasses
+    from tools import liberation_articles as la
+
+    def adjust(b):
+        if b.lng > 30:
+            return None
+        b.verb = "ingenomen"
+        return b
+
+    rule = dataclasses.replace(UK, adjust=adjust)
+    monkeypatch.setattr(la, "search", lambda rule: ["A", "B"])
+    monkeypatch.setattr(la, "texts", lambda rule, titles: {t: "5 березня 1944 року село звільнено від німецьких окупантів." for t in titles})
+    monkeypatch.setattr(la, "classes", lambda lang, titles: {t: ["Q532"] for t in titles})
+    monkeypatch.setattr(la.lists, "lookup", lambda lang, titles: {"A": {"lat": 49.0, "lng": 25.0}, "B": {"lat": 49.0, "lng": 35.0}})
+    found = la.harvest(rule, [])
+    assert [(b.title, b.verb) for b in found] == [("A", "ingenomen")]

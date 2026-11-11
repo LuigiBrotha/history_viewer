@@ -45,6 +45,10 @@ class ArticleRule:
     # A language whose dates are not "day month year" (Hungarian "1944. október 20.") gives its
     # own finder: (sentence, months) → [(position, ISO date)].
     dates: object = None
+    # Per place, after its position is known: a function (Bevrijding) → Bevrijding or None (drop)
+    # that may change verb, kamp, country or occupied by where the place lies (a German town in
+    # today's Poland was taken, not liberated; west Bohemia was the US Army's).
+    adjust: object = None
 
 
 def _rules():
@@ -278,6 +282,10 @@ def harvest(rule, listed):
         )
         b.kamp = rule.kamp
         b.verb = rule.verb
+        if rule.adjust is not None:
+            b = rule.adjust(b)
+            if b is None:
+                continue
         b.name = entry.get("nl") or entry.get("en") or lists.transliterate(b.place)
         if not already_listed(b, listed):
             found.append(b)
