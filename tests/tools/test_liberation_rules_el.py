@@ -25,3 +25,9 @@ def test_a_town_north_of_the_greek_border_is_left_out():
     assert adjust(at(41.35, 21.55)) is None       # Prilep
     assert adjust(at(41.33, 19.82)) is None       # Tirana
     assert adjust(at(41.65, 25.37)) is None       # Kardzhali
+
+
+def test_a_liberation_known_only_to_the_month():
+    from tools.liberation_articles import read_month
+    assert read_month(EL, "Η πόλη απελευθερώθηκε τον Οκτώβριο του 1944.") == "1944-10"
+    assert read_month(EL, "Η πόλη απελευθερώθηκε τον Οκτώβριο του 1912.") is None

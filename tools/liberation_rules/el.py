@@ -38,6 +38,11 @@ def adjust(b):
         return None
     return b
 
+# A month without a day: "τον Οκτώβριο του 1944" (accusative) or "τέλη Οκτωβρίου 1944".
+EL_MONTH_FORMS = {m: i for i, m in enumerate(
+    "ιανουάριο φεβρουάριο μάρτιο απρίλιο μάιο ιούνιο ιούλιο αύγουστο σεπτέμβριο οκτώβριο νοέμβριο δεκέμβριο".split(), 1)}
+EL_MONTH_FORMS |= EL_MONTHS
+
 
 RULE = ArticleRule(
     lang="el",
@@ -57,4 +62,5 @@ RULE = ArticleRule(
     # Greece within its borders of today, roughly (Crete and the Dodecanese included).
     area=(34.7, 41.8, 19.3, 29.7),
     adjust=adjust,
+    month_forms=EL_MONTH_FORMS,
 )

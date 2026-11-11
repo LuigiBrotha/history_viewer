@@ -24,4 +24,5 @@ RULE = ArticleRule(
     # North Macedonia, roughly.
     area=(40.8, 42.4, 20.4, 23.1),
     dates=dated,
+    month_forms=MK_MONTHS,  # "во ноември 1944": the same words
 )

@@ -14,3 +14,9 @@ def test_the_liberation_of_1912_is_not_counted():
 def test_the_final_liberation_counts_not_the_first():
     text = "Градот бил ослободен на 9 септември 1944, а конечното ослободување е на 3 ноември истата година."
     assert read_article(MK, text) == (None, "1944-11-03")
+
+
+def test_a_liberation_known_only_to_the_month():
+    from tools.liberation_articles import read_month
+    assert read_month(MK, "Селото е ослободено во ноември 1944 година.") == "1944-11"
+    assert read_month(MK, "Селото е ослободено во ноември 1912 година.") is None
