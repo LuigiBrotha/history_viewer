@@ -80,7 +80,9 @@ no list has. A place whose article names only the month goes to `bevrijdingen-ma
 `poetry run python -m tools.liberation_articles <source>`; build with only some:
 `poetry run python -m tools.liberations --rules uk-articles,ru-articles`.
 
-A search of the other Wikipedias found no other list with a date per place.
+A search of the other Wikipedias found no other list with a date per place. For Denmark,
+`tools/liberation_osm.py` takes the liberation stones of [OpenStreetMap](https://www.openstreetmap.org/copyright)
+(ODbL; two Overpass queries, cached), and the capitals of Norway and Slovenia get their country's day.
 
 Positions and the Dutch or English names come from the Wikipedia API (coordinates and the Wikidata
 item of each linked article) and Wikidata (labels, and coordinates when the article has none). A
