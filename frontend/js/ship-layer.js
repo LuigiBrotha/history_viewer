@@ -1,7 +1,9 @@
 import { shipStyle, shipTooltip } from "./ship-model.js";
+import { starMarker } from "./ship-star.js";
 
-const RADIUS = 4;
-const FINGER_RADIUS = 7;
+// A star needs a little more room than a circle to read as one.
+const RADIUS = 6;
+const FINGER_RADIUS = 9;
 const PANE = "ships";
 // Above Leaflet's overlay pane (400: boats and routes), below its marker pane (600: Veldslagen).
 const PANE_Z_INDEX = 450;
@@ -48,7 +50,7 @@ export function createShipLayer(map, { onShipClick = null } = {}) {
       }
       for (const [id, ship] of wanted) {
         if (markers.has(id)) continue;
-        const marker = L.circleMarker([ship.lat, ship.lng], {
+        const marker = starMarker([ship.lat, ship.lng], {
           renderer,
           radius: COARSE_POINTER() ? FINGER_RADIUS : RADIUS,
           weight: 1,

@@ -34,14 +34,16 @@ function install() {
   globalThis.L = {
     svg: (options) => ({ kind: "svg", options }),
     layerGroup: () => ({ addTo() { return this; }, addLayer() {}, removeLayer() {} }),
-    circleMarker: (latlng, options) => new FakeMarker(latlng, options),
   };
   const markers = [];
-  const make = globalThis.L.circleMarker;
-  globalThis.L.circleMarker = (...args) => {
-    const marker = make(...args);
-    markers.push(marker);
-    return marker;
+  // The star is a CircleMarker subclass: every marker made through it is recorded.
+  globalThis.L.CircleMarker = {
+    extend: () => class extends FakeMarker {
+      constructor(...args) {
+        super(...args);
+        markers.push(this);
+      }
+    },
   };
   return markers;
 }
@@ -102,7 +104,7 @@ test("a ship is big enough for a finger on a touch screen", () => {
   globalThis.matchMedia = () => ({ matches: true });
   try {
     createShipLayer(fakeMap()).setShips([ship()]);
-    assert.equal(markers[0].options.radius, 7);
+    assert.equal(markers[0].options.radius, 9);
   } finally {
     delete globalThis.matchMedia;
   }
