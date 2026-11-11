@@ -77,3 +77,14 @@ Asked on 2026-11-11: "iedere keer 1 taal pakken, die alvast omzetten, op de kaar
 | Dropped | Slovene and Estonian (nothing found), Romanian (8 places, half wrong), Bulgarian (the 1944 dates are the coup, "освободено" is 1878), Serbo-Croatian (duplicates sr and hr), Danish and Norwegian (one day for the whole country) |
 | Precision | Estimated by the agents from 20–60 read sentences per language: 83–95%. Typical errors: a neighbouring town's date, an air raid or a killing next to a liberation word, a temporary liberation |
 | Partisans | Count as Western Allies everywhere in Yugoslavia, also where the Red Army took a village |
+
+## The dropped countries, from OpenStreetMap
+
+Asked on 2026-11-11: "De landen die nu 'laten vallen' hebben staan … Zoek daarvan de bevrijdingsdagen op via OSM"; the user chose "Deense stenen + landdatums".
+
+| Topic | Decision |
+|---|---|
+| Search | One Overpass query for memorials with a liberation word (osvobo, vabasta, elibera, освобо, befri, frigj) in Slovenia, Estonia, Romania, Bulgaria, Denmark and Norway: 528 memorials. Only Denmark gave liberation dates (its befrielsessten, 4 or 5 May 1945); Norway's and Slovenia's are the fallen, a Slovene "Liberator" is a B-24 |
+| Denmark | 349 places with a liberation stone, named after the nearest OpenStreetMap place within 5 km (a second Overpass query), on 5 May 1945 (the capitulation took effect that morning), occupied since 9 April 1940; Bornholm on 9 May by the Red Army |
+| Country days | Norway's Oslo, Bergen, Trondheim and Stavanger on 8 May 1945 (Kirkenes, 25 October 1944, the Red Army's, is in the ru list already); Slovenia's Ljubljana and Maribor on 9 May 1945; Estonia's Tallinn and Tartu are in the ru list. Positioned by their English article |
+| Not added | Romania and Bulgaria: the ru list of towns abroad has 24 and 4 of their towns already |

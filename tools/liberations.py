@@ -773,6 +773,10 @@ def harvest(refresh=False, rules=None, months=None):
         if rules is not None and source not in rules:
             continue
         found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None], months)
+    # Last the countries no list or article covers: Denmark's liberation stones (OpenStreetMap) and
+    # the capitals of Norway, Slovenia and Estonia.
+    from tools import liberation_osm
+    found += liberation_osm.harvest([b for b in found if b.lat is not None])
     for lang in ("ru", "fr"):
         english = english_titles(lang, {b.operation for b in found if b.lang == lang and b.operation})
         for b in found:
