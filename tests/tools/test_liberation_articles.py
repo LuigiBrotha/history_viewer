@@ -66,3 +66,9 @@ def test_date_templates_keep_their_words_and_sentences_start_with_any_capital():
     text = "La ville est libérée le {{date|4 octobre 1943}}. Élus en 1944, puis le {{date-|10|août|1944}}. Le {{1er}} septembre 1944."
     assert sentences(text) == [
         "La ville est libérée le 4 octobre 1943.", "Élus en 1944, puis le 10 août 1944.", "Le 1 septembre 1944."]
+
+
+def test_a_full_stop_after_a_number_or_an_abbreviation_ends_no_sentence():
+    from tools.liberation_articles import sentences
+    assert sentences("Dnia 21 stycznia 1945 r. Armia Czerwona wkroczyła do miasta. Obec osvobozena 8. 5. 1945 Rudou armádou.") == [
+        "Dnia 21 stycznia 1945 r. Armia Czerwona wkroczyła do miasta.", "Obec osvobozena 8. 5. 1945 Rudou armádou."]

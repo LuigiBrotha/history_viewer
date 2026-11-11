@@ -117,11 +117,17 @@ def _unwrap_dates(text):
     return FIRST.sub("1", text)
 
 
+# A full stop that ends no sentence: after a number ("8. 5. 1945", "1945 r.") or a short
+# abbreviation of year or "number" (Polish r., Russian г., Ukrainian р., Czech č.).
+NO_END = re.compile(r"(?:\b\d{1,4}|\b(?:r|g|г|р|č|n|nr|ok|tzw|gen|płk))\.$", re.IGNORECASE)
+
+
 def _split(text):
-    """Sentences: a full stop and a space, unless the next word begins in lower case."""
+    """Sentences: a full stop and a space, unless the next word begins in lower case or the stop
+    belongs to a number or an abbreviation."""
     found = []
     for part in re.split(r"(?<=[.!?])\s+", text):
-        if found and part[:1].islower():
+        if found and (part[:1].islower() or NO_END.search(found[-1])):
             found[-1] += " " + part
         else:
             found.append(part)
@@ -190,8 +196,8 @@ def search(rule):
 
 
 def texts(rule, titles):
-    """{title: the article's war-year sentences joined}, 50 articles per request, cached."""
-    path = lists.CACHE / f"texts-{rule.lang}.json"
+    """{title: the article's lines that name a year of the war}, 50 articles per request, cached."""
+    path = lists.CACHE / f"lines-{rule.lang}.json"
     cached = json.loads(path.read_text()) if path.exists() else {}
     wanted = [t for t in titles if t not in cached]
     for start in range(0, len(wanted), lists.BATCH):
@@ -207,8 +213,10 @@ def texts(rule, titles):
             page = pages.get(alias.get(title, title), {})
             revisions = page.get("revisions") or [{}]
             content = revisions[0].get("slots", {}).get("main", {}).get("content", "")
-            # Only what can hold a date of the war is kept: the cache stays small.
-            cached[title] = "\n".join(sentences(content))
+            # Only the lines that can hold a date of the war are kept, as wikitext: the cache stays
+            # small, and a change in how sentences are read needs no new requests.
+            cached[title] = "\n".join(line for line in strip_refs(content).split("\n")
+                                      if re.search(r"19(39|4[0-5])", line))
         time.sleep(lists.PAUSE)
         lists.CACHE.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(cached, ensure_ascii=False))
