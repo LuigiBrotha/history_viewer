@@ -42,6 +42,9 @@ class ArticleRule:
     verb: str = "bevrijd"  # "ingenomen" for a town in an Axis country
     # Wikidata classes of this language's villages and towns, on top of SETTLEMENTS.
     settlements: frozenset = frozenset()
+    # A language whose dates are not "day month year" (Hungarian "1944. október 20.") gives its
+    # own finder: (sentence, months) → [(position, ISO date)].
+    dates: object = None
 
 
 def _rules():
@@ -109,10 +112,10 @@ def sentences(wikitext):
     return found
 
 
-def _nearest(sentence, verb, months, first_year, last_year):
+def _nearest(sentence, verb, months, first_year, last_year, finder=None):
     """The date in `sentence` nearest a match of `verb`, within the years; None without both."""
     verbs = [m.start() for m in verb.finditer(sentence)]
-    dates = [(at, iso) for at, iso in _dates(sentence, months) if first_year <= int(iso[:4]) <= last_year]
+    dates = [(at, iso) for at, iso in (finder or _dates)(sentence, months) if first_year <= int(iso[:4]) <= last_year]
     if not verbs or not dates:
         return None
     return min(dates, key=lambda d: min(abs(d[0] - v) for v in verbs))[1]
@@ -126,9 +129,9 @@ def read_article(rule, wikitext):
         if sentence.count("|") >= 3:
             continue
         if liberated is None:
-            liberated = _nearest(sentence, rule.liberated, rule.months, rule.first_liberation, 1945)
+            liberated = _nearest(sentence, rule.liberated, rule.months, rule.first_liberation, 1945, rule.dates)
         if occupied is None and rule.occupied is not None:
-            occupied = _nearest(sentence, rule.occupied, rule.months, *rule.occupation_years)
+            occupied = _nearest(sentence, rule.occupied, rule.months, *rule.occupation_years, rule.dates)
     if liberated and occupied and occupied >= liberated:
         occupied = None
     return occupied, liberated
