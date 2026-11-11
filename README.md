@@ -124,7 +124,9 @@ the map pages carry the Veldslag, the Kaartuitsnede, the boat and `zonderpositie
 the date or period.
 
 Maps open on a background of ocean depth (Esri Ocean). A layer button switches to the
-street map; the choice is remembered in the browser.
+street map or to *Nederlandse namen*, a world map (OpenFreeMap vector tiles, drawn by MapLibre,
+which loads only when picked) with Dutch names for countries, cities, rivers and seas where
+OpenStreetMap has them; the choice is remembered in the browser.
 
 - `/grafiek` shows stacked bars of the cumulative sunk tonnage per day, week or month, with a block per boat. The eight biggest boats have a colour, the others are grey until you hover over them, search for them or pick them in the table. `poetry run python -m app.crawl_ships --lists-only` reads only each boat's list of ships, one request per boat.
 - `/histogram` shows how long the Veldslagen last, in eight bars from one day to more than two years, each split by Benaming: the word their English name uses (Battle, Operation, Offensive, Siege, Campaign, Raid or bombing, another word, or only a machine-translated title). Battles known only by month or year are hatched. A click on a block lists its Veldslagen, each linked to the map.

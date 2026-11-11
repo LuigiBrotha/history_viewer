@@ -1,3 +1,5 @@
+import { dutchMapLayer } from "./dutch-map.js";
+
 const STORAGE_KEY = "uboats.baseMap";
 const DEFAULT_MAP = "Oceaandiepte";
 
@@ -15,6 +17,8 @@ export const BASE_MAPS = {
       attribution: "Dieptekaart: Esri, Garmin, GEBCO, NOAA NGDC en anderen",
     },
   },
+  // Vector tiles with Dutch place, country, river and sea names; MapLibre loads only when chosen.
+  "Nederlandse namen": { vector: dutchMapLayer },
 };
 
 export function savedBaseMap(storage) {
@@ -28,8 +32,8 @@ export function savedBaseMap(storage) {
 
 export function addBaseMaps(map, storage = globalThis.localStorage) {
   const layers = {};
-  for (const [name, { url, options }] of Object.entries(BASE_MAPS)) {
-    layers[name] = L.tileLayer(url, options);
+  for (const [name, { url, options, vector }] of Object.entries(BASE_MAPS)) {
+    layers[name] = vector ? vector() : L.tileLayer(url, options);
   }
   layers[savedBaseMap(storage)].addTo(map);
   L.control.layers(layers, null, { position: "topleft", collapsed: true }).addTo(map);

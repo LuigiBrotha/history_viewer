@@ -19,6 +19,18 @@ function fakeLeaflet() {
   const added = [];
   const controls = [];
   globalThis.L = {
+    Layer: {
+      extend(methods) {
+        return function Layer() {
+          Object.assign(this, methods);
+          this.options = { ...methods.options };
+          this.addTo = () => {
+            added.push("vector");
+            return this;
+          };
+        };
+      },
+    },
     tileLayer: (url, options) => {
       const layer = {
         url,
@@ -74,13 +86,22 @@ test("the depth map credits its sources and does not ask for tiles that don't ex
   assert.ok(options.maxZoom >= options.maxNativeZoom);
 });
 
-test("addBaseMaps shows the saved map and offers both", () => {
+test("addBaseMaps shows the saved map and offers all three", () => {
   const { added, controls } = fakeLeaflet();
 
   addBaseMaps(fakeMap(), fakeStorage("Oceaandiepte"));
 
   assert.deepEqual(added, [BASE_MAPS.Oceaandiepte.url]);
-  assert.deepEqual(controls, [["Straatkaart", "Oceaandiepte"]]);
+  assert.deepEqual(controls, [["Straatkaart", "Oceaandiepte", "Nederlandse namen"]]);
+});
+
+test("the map with Dutch names can be the saved choice", () => {
+  const { added } = fakeLeaflet();
+
+  assert.equal(savedBaseMap(fakeStorage("Nederlandse namen")), "Nederlandse namen");
+  addBaseMaps(fakeMap(), fakeStorage("Nederlandse namen"));
+
+  assert.deepEqual(added, ["vector"]);
 });
 
 test("a choice is remembered", () => {
