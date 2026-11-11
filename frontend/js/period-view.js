@@ -76,6 +76,7 @@ export function createPeriodView({ search, urlSync, map }) {
       if (initial.routesOff) urlSync.update({ routesOff: true });
       if (initial.boatsOff) urlSync.update({ boatsOff: true });
       if (initial.shipsOff) urlSync.update({ shipsOff: true });
+      if (initial.liberationsOff) urlSync.update({ liberationsOff: true });
       restoreLabels(initial, urlSync, battles);
       if (initial.battle !== undefined) {
         pinnedBattle = initial.battle;

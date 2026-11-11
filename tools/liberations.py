@@ -88,6 +88,7 @@ class Bevrijding:
     date_text: str | None = None  # the list's own words when they are more than one plain date
     by: str | None = None          # who liberated it, as the list names them
     operation: str | None = None   # the article of the operation, in the list's language
+    operation_en: str | None = None  # the English article on the same operation, if there is one
     partial: bool = False          # only part of the town was occupied
     lat: float | None = None
     lng: float | None = None
@@ -266,7 +267,8 @@ def parse_date(text, months, year=None):
 
 def _plain_date(text):
     """True when the cell is one date and nothing else, so the record needs no date_text."""
-    return re.fullmatch(r"\d{1,2} \S+ \d{4}( г\.?| года)?", plain(text)) is not None
+    # "г." (год), also as "г," or the Ukrainian "р.", is only the word "year".
+    return re.fullmatch(r"\d{1,2} \S+ \d{4}( [гр]\.?,?| года)?", plain(text)) is not None
 
 
 # --- The three lists -----------------------------------------------------------------------
@@ -406,9 +408,13 @@ def parse_ru_abroad(wikitext):
 # --- Requests ------------------------------------------------------------------------------
 
 def _get(url, params=None):
-    if params:
+    """GET, or POST for the APIs: 50 Cyrillic titles make a URL too long (HTTP 414)."""
+    body = None
+    if params and url.endswith("api.php"):
+        body = urllib.parse.urlencode(params).encode()
+    elif params:
         url += "?" + urllib.parse.urlencode(params)
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(url, data=body, headers={"User-Agent": USER_AGENT})
     for attempt in range(ATTEMPTS):
         try:
             with urllib.request.urlopen(request, timeout=60) as response:
@@ -540,10 +546,54 @@ def dutch_name(b, known):
     return entry.get("nl") or entry.get("en") or transliterate(b.place)
 
 
+def english_titles(lang, titles):
+    """{title: English article title or None}, from the language links, 50 titles per request,
+    following redirects; cached like `lookup`."""
+    CACHE.mkdir(parents=True, exist_ok=True)
+    path = CACHE / f"english-{lang}.json"
+    cached = json.loads(path.read_text()) if path.exists() else {}
+    titles = sorted(set(titles) - set(cached))
+    for start in range(0, len(titles), BATCH):
+        chunk = titles[start:start + BATCH]
+        data = json.loads(_get(f"https://{lang}.wikipedia.org/w/api.php", {
+            "action": "query", "format": "json", "formatversion": "2", "redirects": "1",
+            "prop": "langlinks", "lllang": "en", "lllimit": "max", "titles": "|".join(chunk),
+        }))
+        query = data.get("query", {})
+        alias = {}
+        for kind in ("normalized", "redirects"):
+            for entry in query.get(kind, []):
+                alias[entry["from"]] = entry["to"]
+        pages = {page["title"]: page for page in query.get("pages", [])}
+        for title in chunk:
+            name = title
+            while name in alias:
+                name = alias[name]
+            links = pages.get(name, {}).get("langlinks", [])
+            cached[title] = links[0]["title"] if links else None
+        time.sleep(PAUSE)
+    if titles:
+        path.write_text(json.dumps(cached, ensure_ascii=False, indent=0))
+    return cached
+
+
+def drop_repeats(found):
+    """Without a row the list repeats word for word (Havelte twice on 13 april 1945); the first
+    keeps its place. Two places on one article (Cadier and Keer) both stay."""
+    seen, kept = set(), []
+    for b in found:
+        key = (b.source, b.place, b.title, b.liberated, b.occupied)
+        if key not in seen:
+            seen.add(key)
+            kept.append(b)
+    return kept
+
+
 def harvest(refresh=False):
     found = parse_nl(fetch_list("nl", NL_LIST, refresh))
     found += parse_ru_ussr(fetch_list("ru", RU_USSR, refresh))
     found += parse_ru_abroad(fetch_list("ru", RU_ABROAD, refresh))
+    found = drop_repeats(found)
     for lang in ("nl", "ru"):
         known = lookup(lang, {b.title or b.place for b in found if b.lang == lang})
         for b in found:
@@ -553,6 +603,11 @@ def harvest(refresh=False):
             if "lat" in entry and within(b.country, entry["lat"], entry["lng"]):
                 b.lat, b.lng = entry["lat"], entry["lng"]
             b.name = dutch_name(b, known)
+    # Most Veldslagen are English articles, so the operation also gets its English title.
+    english = english_titles("ru", {b.operation for b in found if b.lang == "ru" and b.operation})
+    for b in found:
+        if b.lang == "ru" and b.operation:
+            b.operation_en = english.get(b.operation)
     found.sort(key=lambda b: (b.liberated, b.country, b.name))
     return found
 

@@ -724,7 +724,8 @@ html, body {
 #boat-toggle,
 #names-toggle,
 #others-toggle,
-#ships-toggle {
+#ships-toggle,
+#liberations-toggle {
   position: absolute;
   top: 12px;
   left: 56px;
@@ -745,7 +746,8 @@ html, body {
 #boat-toggle.leaflet-control,
 #names-toggle.leaflet-control,
 #others-toggle.leaflet-control,
-#ships-toggle.leaflet-control {
+#ships-toggle.leaflet-control,
+#liberations-toggle.leaflet-control {
   position: static;
 }
 
@@ -754,7 +756,8 @@ html, body {
 #boat-toggle[aria-pressed="true"],
 #names-toggle[aria-pressed="true"],
 #others-toggle[aria-pressed="true"],
-#ships-toggle[aria-pressed="true"] {
+#ships-toggle[aria-pressed="true"],
+#liberations-toggle[aria-pressed="true"] {
   background: #ffe9a8;
 }
 
@@ -2091,6 +2094,12 @@ select {
 .win2-sovjet { --win2: #b8322a; }
 .win2-overig { --win2: #3c7d46; }
 
+/* A liberated place is filled in the Kamp of its liberator, through the same custom property
+   as the squares; CSS fill wins over the fill attribute Leaflet sets. */
+.liberation-free {
+  fill: var(--win1);
+}
+
 .battle-square.selected span {
   box-shadow: 0 0 0 2px var(--paper-light), 0 0 0 4px var(--accent);
 }
@@ -2115,7 +2124,8 @@ select {
 #boat-toggle,
 #names-toggle,
 #others-toggle,
-#ships-toggle {
+#ships-toggle,
+#liberations-toggle {
   border: 1px solid var(--ink);
   border-radius: 0;
   background: var(--paper-light);
@@ -2127,7 +2137,8 @@ select {
 #boat-toggle[aria-pressed="true"],
 #names-toggle[aria-pressed="true"],
 #others-toggle[aria-pressed="true"],
-#ships-toggle[aria-pressed="true"] {
+#ships-toggle[aria-pressed="true"],
+#liberations-toggle[aria-pressed="true"] {
   background: var(--ink);
   color: var(--paper-light);
 }

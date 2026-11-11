@@ -4,9 +4,12 @@ from tools import liberations
 from tools.liberations import (
     NL_MONTHS,
     RU_MONTHS,
+    _plain_date,
+    Bevrijding,
     lookup,
     transliterate,
     dutch_troops,
+    drop_repeats,
     parse_date,
     parse_nl,
     parse_ru_abroad,
@@ -192,3 +195,40 @@ def test_transliteration_in_dutch_letters():
     assert transliterate("Харьков") == "Charkov"
     assert transliterate("Чугуев") == "Tsjoegoejev"
     assert transliterate("Елец") == "Jelets"
+
+
+def test_a_row_the_list_repeats_counts_once():
+    havelte = dict(place="Havelte", title="Havelte", lang="nl", country="Nederland",
+                   liberated="1945-04-13", source="nl")
+    cadier = dict(havelte, place="Cadier", title="Cadier en Keer", liberated="1944-09-13")
+    found = drop_repeats([Bevrijding(**havelte), Bevrijding(**cadier),
+                          Bevrijding(**dict(cadier, place="Keer")), Bevrijding(**havelte)])
+    assert [b.place for b in found] == ["Havelte", "Cadier", "Keer"]
+
+
+def test_a_date_with_only_the_word_year_after_it_is_a_plain_date():
+    assert _plain_date("15 февраля 1945 г.")
+    assert _plain_date("15 февраля 1945 р.")
+    assert _plain_date("4 марта 1945 г,")
+    assert not _plain_date("2 of 3 oktober 1944")
+
+
+def test_english_titles_of_operations_in_one_request(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_get(url, params=None):
+        calls.append(params["titles"])
+        return json.dumps({"query": {
+            "redirects": [{"from": "Берлинская операция", "to": "Берлинская наступательная операция"}],
+            "pages": [
+                {"title": "Берлинская наступательная операция", "langlinks": [{"lang": "en", "title": "Battle of Berlin"}]},
+                {"title": "Малая операция"},
+            ]}})
+
+    monkeypatch.setattr(liberations, "_get", fake_get)
+    monkeypatch.setattr(liberations, "PAUSE", 0)
+    monkeypatch.setattr(liberations, "CACHE", tmp_path)
+    result = liberations.english_titles("ru", ["Берлинская операция", "Малая операция"])
+    assert result == {"Берлинская операция": "Battle of Berlin", "Малая операция": None}
+    assert liberations.english_titles("ru", ["Малая операция"]) == result
+    assert len(calls) == 1

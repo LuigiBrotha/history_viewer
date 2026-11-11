@@ -65,6 +65,7 @@ export function readView(search, kind) {
     // overige=uit was its name on the first day; a Pin from then still works.
     ["othersOff", params.get("veldslagen") === "uit" || params.get("overige") === "uit" ? true : undefined],
     ["shipsOff", params.get("schepen") === "uit" ? true : undefined],
+    ["liberationsOff", params.get("bevrijdingen") === "uit" ? true : undefined],
     ["spread", /^\d+-\d*$/.test(params.get("spreiding") ?? "") ? params.get("spreiding") : undefined],
   );
   return Object.fromEntries(fields.filter(([, value]) => value !== undefined));
@@ -99,6 +100,7 @@ export function writeView(view, kind) {
   add("namen", view.namesOff === true && "uit");
   add("veldslagen", view.othersOff === true && "uit");
   add("schepen", view.shipsOff === true && "uit");
+  add("bevrijdingen", view.liberationsOff === true && "uit");
   add("spreiding", view.spread && encode(view.spread));
   add("artikel", view.version === "nl" && "nl");
   return pairs.length ? `?${pairs.join("&")}` : "";
@@ -106,8 +108,8 @@ export function writeView(view, kind) {
 
 // What a link to another map page carries: not the date or period, which are per page.
 export function carriedView(view) {
-  const { battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, othersOff, shipsOff } = view;
+  const { battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, othersOff, shipsOff, liberationsOff } = view;
   return Object.fromEntries(
-    Object.entries({ battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, othersOff, shipsOff }).filter(([, value]) => value !== undefined),
+    Object.entries({ battle, boat, ship, map, nopos, filter, sort, labelMode, showAll, spread, version, routesOff, boatsOff, namesOff, othersOff, shipsOff, liberationsOff }).filter(([, value]) => value !== undefined),
   );
 }
