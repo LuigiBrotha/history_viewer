@@ -112,6 +112,7 @@ test("the liberator's Kamp: Dutch list westers, Russian lists sovjet", () => {
   assert.equal(liberationKamp(berlin), "sovjet");
   assert.equal(liberationKamp({ ...mesch, source: "fr" }), "westers");
   assert.equal(liberationKamp({ ...mesch, source: "nl-be" }), "westers");
+  assert.equal(liberationKamp({ ...mesch, source: "uk-articles", kamp: "sovjet" }), "sovjet");
 });
 
 test("occupied is filled in the colour of the As, liberated in the colour of its liberator's Kamp", () => {

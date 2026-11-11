@@ -91,10 +91,11 @@ export function liberationsInPeriod(liberations, from, to) {
   return shown;
 }
 
-// The Russian lists are of the Red Army's advance, the Dutch, Belgian and French ones of the
-// Western Allies' (the Resistance included).
+// A record from a place's own article says who liberated it; of the lists, the Russian ones are
+// the Red Army's advance, the Dutch, Belgian and French ones the Western Allies' (the Resistance
+// included).
 export function liberationKamp(liberation) {
-  return liberation.source.startsWith("ru") ? "sovjet" : "westers";
+  return liberation.kamp ?? (liberation.source.startsWith("ru") ? "sovjet" : "westers");
 }
 
 // The fill is left to the style sheet: the class win1-<kamp> gives it the same custom property

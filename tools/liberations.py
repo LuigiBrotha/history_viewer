@@ -14,6 +14,7 @@ Three requests fetch the lists; the coordinates of their places take one request
 """
 
 import argparse
+from collections import Counter
 import json
 import re
 import sys
@@ -135,6 +136,7 @@ class Bevrijding:
     lng: float | None = None
     source: str = ""              # which list: a key of LISTS
     name: str = ""                # the name on the map: Dutch, else English, else transliterated
+    kamp: str | None = None       # who liberated it, when the source does not say it already
 
 
 # --- Wikitext ------------------------------------------------------------------------------
@@ -554,7 +556,7 @@ CYRILLIC = {
     "и": "i", "й": "j", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r",
     "с": "s", "т": "t", "у": "oe", "ф": "f", "х": "ch", "ц": "ts", "ч": "tsj", "ш": "sj",
     "щ": "sjtsj", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "joe", "я": "ja",
-    "і": "i", "ї": "ji", "є": "je",
+    "і": "i", "ї": "ji", "є": "je", "ґ": "g",
 }
 
 
@@ -764,6 +766,10 @@ def harvest(refresh=False):
                     b.occupied = french_occupation(b.lat, b.lng)
             b.name = dutch_name(b, known)
     # Most Veldslagen are English articles, so the operation also gets its English title.
+    # Then the places only an article of their own covers, language by language.
+    from tools import liberation_articles
+    for rule in liberation_articles._rules().values():
+        found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None])
     for lang in ("ru", "fr"):
         english = english_titles(lang, {b.operation for b in found if b.lang == lang and b.operation})
         for b in found:
@@ -785,6 +791,8 @@ def main(argv=None):
     Path(args.output).write_text("[\n" + lines + "\n]\n")
     placed = sum(1 for b in found if b.lat is not None)
     print(f"{len(found)} Bevrijdingen, {placed} met positie → {args.output}", file=sys.stderr)
+    for source, count in sorted(Counter(b.source for b in found).items()):
+        print(f"{source}: {count}", file=sys.stderr)
     for lang in ("nl", "ru", "fr"):
         missing = [b.name for b in found if b.lang == lang and b.lat is None]
         print(f"{lang}: {len(missing)} zonder positie: {', '.join(missing[:15])}", file=sys.stderr)
