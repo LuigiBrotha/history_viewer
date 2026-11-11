@@ -46,3 +46,19 @@ Show when places were liberated, taken only from Wikipedia and Wikidata, with as
 - No nl place lies more than 40 km from every other place liberated on the same day by the same unit; by day alone 22 do, all checked as genuine (Zeeuws-Vlaanderen, Kornwerderzand, Arnhem).
 - A Latin name sharing little with the transliteration of the Russian (103) is a renamed place (German names now Polish, Диршау → Tczew; Soviet names changed since, Калинин → Tver, Сталино → Donetsk), except one: the list links Аллендорф to the river Łyna, so it stands at the river's mouth in the Kaliningrad region. The map shows today's names, not the wartime ones.
 - 1209 records name an operation (136 articles); 241 of them match a Veldslag in `battles.json` by the ru article, 1022 once the English article of the operation counts too.
+
+## Other languages
+
+Asked on 2026-11-11 after the merge: "Ga verder met de andere talen". Built without further questions on branch `uboat-bevrijdingen-talen`.
+
+A search of the Wikipedias in it, da, no, el, sr, hr, sh, sl, mk, cs, sk, pl, uk, be, de, hu, ro, bg, lt, lv, et, zh, ja, ko, tl and en (about 50 requests) found two more sources with a date per place; everything else is single "Liberation of X" articles or prose.
+
+| Topic | Decision |
+|---|---|
+| France | fr *Chronologie de la Libération en France*: 194 Bevrijdingen in 1 request, all with a position. The liberators' nation in Dutch ("Frans: 73e goum"), the units as the list writes them; "?" leaves only the nation |
+| Undone liberations | A date in parentheses (Tulle, Guéret, Ussel) was undone by the Germans: kept when the place has a later row, which then starts a new occupation the day after; Nantua, without a later row, keeps none |
+| Occupied in France | From 10 May 1940 in the north and on the Atlantic coast, from 11 November 1942 (Case Anton) in the free zone and on Corsica, by a rough outline of the demarcation line |
+| Belgium | nl *Bevrijding van de Duitse bezetting in België*: the bullets that say "bevrijd" or "ingenomen", every linked place in them except provinces, streets and people (35 places), occupied from 10 May 1940 |
+| Kamp | Only the Russian lists are the Red Army's; the Dutch, Belgian and French ones are the Western Allies' (the Résistance counted with them) |
+| Veldslag | The French notes column's first link is the operation; a click opens the Veldslag of that French article or of the English one it links to (37 of 54) |
+| Not used | mk Macedonia (prose, about 15 towns), it *Repubbliche partigiane* (areas, often only a month), sh list of battles in Slavonia (few liberations), and the free-text village articles in ru/uk/be (inconsistent wording, a request per 50 places and much checking) |

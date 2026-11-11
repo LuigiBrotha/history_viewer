@@ -247,3 +247,75 @@ def test_towns_sorted_by_todays_borders_get_their_wartime_country():
         assert wartime_country("Tsjechoslowakije", lat, lng) == ("Slowakije", "ingenomen")
     for lat, lng in [(49.19, 16.61), (49.83, 18.29), (49.22, 17.66)]:
         assert wartime_country("Tsjechoslowakije", lat, lng) is None
+
+
+FR = """{| class="wikitable sortable alternance"
+|-
+! Date
+! Lieu
+! Dép.
+! Région
+! Armée(s) libératrice(s)
+! Notes
+|-
+|align=right|{{date-|4|10|1943}} || [[Bastia]] || 2B || Corse || Française : [[Goumiers marocains|{{73e|goum}}]] || [[Libération de la Corse]]
+|-
+|align=right|({{date-|8|6|1944}}) || [[Tulle]] || 19 || Limousin || Française : [[maquis du Limousin]]. || Réoccupée
+|-
+|align=right|({{date-|8|6|1944}}) || [[Nantua]] || 01 || Rhône-Alpes || Française : maquis || Réoccupée en juillet
+|-
+|align=right|{{date-|16|8|1944}} || [[Tulle]] || 19 || Limousin || Française : FTP ||
+|}
+"""
+
+BE = """* Op 2 september bereikten de geallieerden de Belgische zuidergrens in de provincie [[Henegouwen]]. Dezelfde dag werden [[Bergen (België)|Bergen]] en [[Doornik]] bevrijd.
+* Op 4 september trokken geallieerde troepen in een overwinningsparade door de Belgische hoofdstad
+* Op 4 september werd [[Antwerpen (stad)|Antwerpen]] bevrijd, evenals [[Slag om Leuven (1944)|Leuven]]<ref>x</ref>
+* Op 27 oktober werd [[Meer (Antwerpen)]] bevrijd
+* Op 7 september werden [[Verviers]] en de provincie [[Luxemburg (provincie)|Luxemburg]] bevrijd.
+"""
+
+
+def test_french_chronology_with_a_liberation_the_germans_undid():
+    from tools.liberations import parse_fr
+    found = parse_fr(FR)
+    assert [(b.place, b.liberated, b.occupied, b.date_text) for b in found] == [
+        ("Bastia", "1943-10-04", None, None),
+        # Tulle was liberated for a day; the final liberation starts a new occupation the day after.
+        ("Tulle", "1944-06-08", None, "tijdelijk, daarna weer bezet"),
+        ("Tulle", "1944-08-16", "1944-06-09", None),
+    ]
+    assert found[0].by == "Frans: 73e goum"
+    assert found[1].by == "Frans: maquis du Limousin"
+    assert found[0].operation == "Libération de la Corse"
+    assert {b.country for b in found} == {"Frankrijk"}
+
+
+def test_unknown_french_units_leave_only_the_nation():
+    from tools.liberations import french_liberators
+    assert french_liberators("Britannique : ?") == "Brits"
+    assert french_liberators("Américaine et française : ?") == "Amerikaans en Frans"
+
+
+def test_france_was_occupied_in_1940_or_from_case_anton_in_1942():
+    from tools.liberations import french_occupation
+    # Paris, Bordeaux, Brest, Strasbourg: occupied from May 1940.
+    for lat, lng in [(48.86, 2.35), (44.84, -0.58), (48.39, -4.49), (48.58, 7.75)]:
+        assert french_occupation(lat, lng) == "1940-05-10"
+    # Lyon, Marseille, Toulouse, Limoges, Bastia: the free zone and Corsica, from November 1942.
+    for lat, lng in [(45.76, 4.84), (43.30, 5.37), (43.60, 1.44), (45.83, 1.26), (42.70, 9.45)]:
+        assert french_occupation(lat, lng) == "1942-11-11"
+
+
+def test_belgian_bullets_give_each_linked_place_its_day():
+    from tools.liberations import parse_be
+    found = parse_be(BE)
+    assert [(b.place, b.title, b.liberated) for b in found] == [
+        ("Bergen", "Bergen (België)", "1944-09-02"),
+        ("Doornik", "Doornik", "1944-09-02"),
+        ("Antwerpen", "Antwerpen (stad)", "1944-09-04"),
+        ("Leuven", "Leuven", "1944-09-04"),
+        ("Meer", "Meer (Antwerpen)", "1944-10-27"),
+        ("Verviers", "Verviers", "1944-09-07"),
+    ]
+    assert {(b.country, b.occupied, b.source) for b in found} == {("België", "1940-05-10", "nl-be")}

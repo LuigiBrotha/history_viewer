@@ -56,14 +56,23 @@ the articles and redirects and rewrites `winner` in `battles.json`, keeping ever
 ## Bevrijdingen
 
 `bevrijdingen.json` lists when places were liberated (and, for Soviet towns, occupied), one
-Bevrijding per line. It is harvested from three list articles:
+Bevrijding per line. It is harvested from four list articles and one article with a list in it:
 
 - nl: *Chronologisch overzicht van de bevrijding van Nederlandse plaatsen in de Tweede
   Wereldoorlog* (date, place, who liberated it);
 - ru: *Список городов СССР, оккупированных и освобождённых во время Великой Отечественной войны*
   (occupied and liberated, fronts, operation; a town occupied twice has two records);
 - ru: *Список зарубежных городов, освобождённых Советской Армией во время Великой Отечественной
-  войны* (the date a town abroad was taken, per country; Axis countries get `verb: "ingenomen"`).
+  войны* (the date a town abroad was taken, per country; Axis countries get `verb: "ingenomen"`);
+- fr: *Chronologie de la Libération en France* (date, place, liberating army; a date in parentheses
+  was a liberation the Germans undid, kept only when the place has a later row, which then starts a
+  new occupation the day after; occupied since May 1940, or November 1942 in the free zone and on
+  Corsica, by a rough outline of the demarcation line);
+- nl: *Bevrijding van de Duitse bezetting in België (Tweede Wereldoorlog)*: its bullets ("Op 4
+  september werd Antwerpen bevrijd, evenals …"), every place linked in them, occupied since May 1940.
+
+A search of the other Wikipedias (it, da, no, el, the Yugoslav languages, cs, sk, pl, uk, be, de,
+hu, ro, bg, the Baltic languages, zh, ja, ko, en) found no other list with a date per place.
 
 Positions and the Dutch or English names come from the Wikipedia API (coordinates and the Wikidata
 item of each linked article) and Wikidata (labels, and coordinates when the article has none). A
@@ -83,7 +92,7 @@ poetry run python -m tools.liberations [--output FILE] [--refresh]
 ```
 
 The lists and every place looked up are cached in `~/.cache/uboats/liberations/`, so a rerun makes
-no requests at all. `--refresh` fetches the three lists again (3 requests); only places not yet in
+no requests at all. `--refresh` fetches the five articles again (5 requests); only places not yet in
 the cache are then looked up, one request per 50 places on Wikipedia and one per 50 Wikidata items.
 A build from an empty cache takes about 85 requests: 3 lists, 41 for the 2016 linked
 places (850 nl, 1166 ru) and at most as many for their Wikidata items. The command prints how many
