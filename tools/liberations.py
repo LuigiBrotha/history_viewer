@@ -744,7 +744,7 @@ def drop_repeats(found):
     return kept
 
 
-def harvest(refresh=False):
+def harvest(refresh=False, rules=None):
     found = parse_nl(fetch_list("nl", NL_LIST, refresh))
     found += parse_ru_ussr(fetch_list("ru", RU_USSR, refresh))
     found += parse_ru_abroad(fetch_list("ru", RU_ABROAD, refresh))
@@ -768,7 +768,9 @@ def harvest(refresh=False):
     # Most Veldslagen are English articles, so the operation also gets its English title.
     # Then the places only an article of their own covers, language by language.
     from tools import liberation_articles
-    for rule in liberation_articles._rules().values():
+    for source, rule in liberation_articles._rules().items():
+        if rules is not None and source not in rules:
+            continue
         found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None])
     for lang in ("ru", "fr"):
         english = english_titles(lang, {b.operation for b in found if b.lang == lang and b.operation})
@@ -783,8 +785,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--output", default="frontend/battles/bevrijdingen.json")
     parser.add_argument("--refresh", action="store_true", help="fetch the lists again instead of the cache")
+    parser.add_argument("--rules", help="only these article rules (sources, comma separated); default all")
     args = parser.parse_args(argv)
-    found = harvest(args.refresh)
+    found = harvest(args.refresh, set(args.rules.split(",")) if args.rules else None)
     records = [{k: v for k, v in asdict(b).items() if v not in (None, False)} for b in found]
     # One Bevrijding per line, so a rerun shows as a readable diff.
     lines = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
