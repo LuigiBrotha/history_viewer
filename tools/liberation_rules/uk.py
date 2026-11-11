@@ -8,6 +8,11 @@ from tools.liberation_articles import ArticleRule
 UK_MONTHS = {m: i for i, m in enumerate(
     "січня лютого березня квітня травня червня липня серпня вересня жовтня листопада грудня".split(), 1)}
 
+# The months without a day ("в марте 1943"): kept apart, known only to the month.
+UK_MONTH_FORMS = {m: i for i, m in enumerate(
+    "січні лютому березні квітні травні червні липні серпні вересні жовтні листопаді грудні".split(), 1)}
+
+
 RULE = ArticleRule(
     lang="uk",
     country="Sovjet-Unie",
@@ -27,5 +32,6 @@ RULE = ArticleRule(
         "Q12131624",   # city in Ukraine
         "Q97660032",   # city of oblast significance
     }),
+    month_forms=UK_MONTH_FORMS,
 )
 

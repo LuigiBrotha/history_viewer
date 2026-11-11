@@ -72,3 +72,11 @@ def test_a_full_stop_after_a_number_or_an_abbreviation_ends_no_sentence():
     from tools.liberation_articles import sentences
     assert sentences("Dnia 21 stycznia 1945 r. Armia Czerwona wkroczyła do miasta. Obec osvobozena 8. 5. 1945 Rudou armádou.") == [
         "Dnia 21 stycznia 1945 r. Armia Czerwona wkroczyła do miasta.", "Obec osvobozena 8. 5. 1945 Rudou armádou."]
+
+
+def test_a_month_without_a_day_is_read_apart():
+    from tools.liberation_articles import read_month
+    text = "Село засноване у 1920 році. У березні 1944 року село звільнено від німецьких окупантів."
+    assert read_article(UK, text) == (None, None)
+    assert read_month(UK, text) == "1944-03"
+    assert read_month(UK, "У березні 1944 року відкрито школу.") is None

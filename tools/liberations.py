@@ -137,6 +137,7 @@ class Bevrijding:
     source: str = ""              # which list: a key of LISTS
     name: str = ""                # the name on the map: Dutch, else English, else transliterated
     kamp: str | None = None       # who liberated it, when the source does not say it already
+    precision: str | None = None  # "month" when only the month is known (liberated is then YYYY-MM)
 
 
 # --- Wikitext ------------------------------------------------------------------------------
@@ -744,7 +745,7 @@ def drop_repeats(found):
     return kept
 
 
-def harvest(refresh=False, rules=None):
+def harvest(refresh=False, rules=None, months=None):
     found = parse_nl(fetch_list("nl", NL_LIST, refresh))
     found += parse_ru_ussr(fetch_list("ru", RU_USSR, refresh))
     found += parse_ru_abroad(fetch_list("ru", RU_ABROAD, refresh))
@@ -771,7 +772,7 @@ def harvest(refresh=False, rules=None):
     for source, rule in liberation_articles._rules().items():
         if rules is not None and source not in rules:
             continue
-        found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None])
+        found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None], months)
     for lang in ("ru", "fr"):
         english = english_titles(lang, {b.operation for b in found if b.lang == lang and b.operation})
         for b in found:
@@ -781,17 +782,26 @@ def harvest(refresh=False, rules=None):
     return found
 
 
+def write(found, path):
+    records = [{k: v for k, v in asdict(b).items() if v not in (None, False)} for b in found]
+    # One Bevrijding per line, so a rerun shows as a readable diff.
+    lines = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
+    Path(path).write_text("[\n" + lines + "\n]\n")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--output", default="frontend/battles/bevrijdingen.json")
     parser.add_argument("--refresh", action="store_true", help="fetch the lists again instead of the cache")
     parser.add_argument("--rules", help="only these article rules (sources, comma separated); default all")
     args = parser.parse_args(argv)
-    found = harvest(args.refresh, set(args.rules.split(",")) if args.rules else None)
-    records = [{k: v for k, v in asdict(b).items() if v not in (None, False)} for b in found]
-    # One Bevrijding per line, so a rerun shows as a readable diff.
-    lines = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
-    Path(args.output).write_text("[\n" + lines + "\n]\n")
+    months = []
+    found = harvest(args.refresh, set(args.rules.split(",")) if args.rules else None, months)
+    write(found, args.output)
+    # Known only to the month: kept apart for later, the map does not read this file.
+    months.sort(key=lambda b: (b.liberated, b.country, b.name))
+    write(months, str(Path(args.output).with_name(Path(args.output).stem + "-maand.json")))
+    print(f"{len(months)} Bevrijdingen alleen op de maand → {Path(args.output).stem}-maand.json", file=sys.stderr)
     placed = sum(1 for b in found if b.lat is not None)
     print(f"{len(found)} Bevrijdingen, {placed} met positie → {args.output}", file=sys.stderr)
     for source, count in sorted(Counter(b.source for b in found).items()):

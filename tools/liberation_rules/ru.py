@@ -88,6 +88,11 @@ def _clauses(b):
     return b
 
 
+# The months without a day ("в марте 1943"): kept apart, known only to the month.
+RU_MONTH_FORMS = {m: i for i, m in enumerate(
+    "январе феврале марте апреле мае июне июле августе сентябре октябре ноябре декабре".split(), 1)}
+
+
 RULE = ArticleRule(
     lang="ru",
     country="Sovjet-Unie",
@@ -113,4 +118,5 @@ RULE = ArticleRule(
         "Q2023000",    # khutor
     },
     adjust=_clauses,
+    month_forms=RU_MONTH_FORMS,
 )

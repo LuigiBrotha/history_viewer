@@ -14,6 +14,11 @@ def _before_autumn_1944(b):
     return b if b.liberated <= "1944-08-31" else None
 
 
+# The months without a day ("в марте 1943"): kept apart, known only to the month.
+BE_MONTH_FORMS = {m: i for i, m in enumerate(
+    "студзені лютым сакавіку красавіку траўні чэрвені ліпені жніўні верасні кастрычніку лістападзе снежні".split(), 1)}
+
+
 RULE = ArticleRule(
     lang="be",
     country="Sovjet-Unie",
@@ -41,4 +46,5 @@ RULE = ArticleRule(
         "Q22674925",   # former settlement (a village burnt in the war and not rebuilt)
     }),
     adjust=_before_autumn_1944,
+    month_forms=BE_MONTH_FORMS,
 )

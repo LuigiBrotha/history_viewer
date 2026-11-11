@@ -49,6 +49,10 @@ class ArticleRule:
     # that may change verb, kamp, country or occupied by where the place lies (a German town in
     # today's Poland was taken, not liberated; west Bohemia was the US Army's).
     adjust: object = None
+    # The month names as they stand without a day ("в марте 1943", "у березні 1944"): word →
+    # month. With them an article that gives only a month and year still counts, apart, as a
+    # Bevrijding known to the month (kept for later, not on the map).
+    month_forms: object = None
 
 
 def _rules():
@@ -169,6 +173,30 @@ def read_article(rule, wikitext):
     return occupied, liberated
 
 
+def _months(sentence, forms):
+    """Every month-and-year without a day in a sentence: (position, "YYYY-MM")."""
+    pattern = "|".join(sorted(forms, key=len, reverse=True))
+    found = []
+    for match in re.finditer(rf"\b({pattern})\b\D{{0,12}}?(19[34]\d)", sentence.lower()):
+        found.append((match.start(), f"{match.group(2)}-{forms[match.group(1)]:02d}"))
+    return found
+
+
+def read_month(rule, wikitext):
+    """The month (YYYY-MM) a place was liberated, from an article that gives no day: the month
+    nearest a liberation word, 1943–1945. None without month forms or without such a month."""
+    if not rule.month_forms:
+        return None
+    for sentence in sentences(wikitext):
+        if sentence.count("|") >= 3:
+            continue
+        verbs = [m.start() for m in rule.liberated.finditer(sentence)]
+        months = [(at, ym) for at, ym in _months(sentence, rule.month_forms) if 1943 <= int(ym[:4]) <= 1945]
+        if verbs and months:
+            return min(months, key=lambda m: min(abs(m[0] - v) for v in verbs))[1]
+    return None
+
+
 # --- Requests ------------------------------------------------------------------------------
 
 def search(rule):
@@ -287,38 +315,63 @@ def already_listed(b, listed):
     )
 
 
-def harvest(rule, listed):
-    """The Bevrijdingen of the rule's language that the lists do not have yet."""
+def harvest(rule, listed, months=None):
+    """The Bevrijdingen of the rule's language that the lists do not have yet. When `months` is a
+    list, the places known only to the month are added to it (liberated "YYYY-MM", precision
+    "month"), unless a place with a day already stands within 3 km."""
     titles = search(rule)
     found_texts = texts(rule, titles)
-    read = {}
+    read, by_month = {}, {}
     for title in titles:
         occupied, liberated = read_article(rule, found_texts.get(title, ""))
         if liberated:
             read[title] = (occupied, liberated)
-    kinds = classes(rule.lang, read)
+        elif months is not None:
+            month = read_month(rule, found_texts.get(title, ""))
+            if month:
+                by_month[title] = month
+    kinds = classes(rule.lang, [*read, *by_month])
     accepted = SETTLEMENTS | rule.settlements
     read = {title: dates for title, dates in read.items() if accepted & set(kinds.get(title, []))}
-    known = lists.lookup(rule.lang, read)
+    by_month = {title: month for title, month in by_month.items() if accepted & set(kinds.get(title, []))}
+    known = lists.lookup(rule.lang, [*read, *by_month])
     south, north, west, east = rule.area
-    found = []
-    for title, (occupied, liberated) in sorted(read.items()):
-        entry = known.get(title, {})
-        if "lat" not in entry or not (south <= entry["lat"] <= north and west <= entry["lng"] <= east):
-            continue
+
+    def place(title, entry, **dates):
         b = Bevrijding(
             place=re.sub(r"\s*\(.*\)$", "", title), title=title, lang=rule.lang, country=rule.country,
-            liberated=liberated, occupied=occupied, lat=entry["lat"], lng=entry["lng"], source=rule.source,
+            lat=entry["lat"], lng=entry["lng"], source=rule.source, **dates,
         )
         b.kamp = rule.kamp
         b.verb = rule.verb
+        b.name = entry.get("nl") or entry.get("en") or lists.transliterate(b.place)
+        return b
+
+    def inside(entry):
+        return "lat" in entry and south <= entry["lat"] <= north and west <= entry["lng"] <= east
+
+    found = []
+    for title, (occupied, liberated) in sorted(read.items()):
+        entry = known.get(title, {})
+        if not inside(entry):
+            continue
+        b = place(title, entry, liberated=liberated, occupied=occupied)
         if rule.adjust is not None:
             b = rule.adjust(b)
             if b is None:
                 continue
-        b.name = entry.get("nl") or entry.get("en") or lists.transliterate(b.place)
         if not already_listed(b, listed):
             found.append(b)
+    if months is not None:
+        placed = [b for b in [*listed, *found, *months] if b.lat is not None]
+        for title, month in sorted(by_month.items()):
+            entry = known.get(title, {})
+            if not inside(entry):
+                continue
+            b = place(title, entry, liberated=month, precision="month")
+            if not any(_km((b.lat, b.lng), (other.lat, other.lng)) <= 3 for other in placed):
+                months.append(b)
+                placed.append(b)
     return found
 
 
