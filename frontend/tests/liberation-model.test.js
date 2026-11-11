@@ -48,6 +48,9 @@ test("each occupied country has its own start; Axis countries are never occupied
   assert.equal(at("Noorwegen", "1940-04-09").length, 1);
   assert.equal(at("Tsjechoslowakije", "1939-03-15").length, 1);
   assert.equal(at("Joegoslavië", "1941-04-06").length, 1);
+  assert.equal(at("België", "1940-05-10").length, 1);
+  assert.equal(at("Filipijnen", "1941-12-07").length, 0);
+  assert.equal(at("Filipijnen", "1941-12-08").length, 1);
   assert.deepEqual(stateOn(liberationPlaces([berlin]), "1945-05-01"), []);
   assert.deepEqual(stateOn(liberationPlaces([berlin]), "1945-05-02"), [["Berlijn", "1945-05-02", "liberated"]]);
 });
@@ -110,6 +113,9 @@ test("the liberator's Kamp: Dutch list westers, Russian lists sovjet", () => {
   assert.equal(liberationKamp(mesch), "westers");
   assert.equal(liberationKamp(kharkov1), "sovjet");
   assert.equal(liberationKamp(berlin), "sovjet");
+  assert.equal(liberationKamp({ ...mesch, source: "fr" }), "westers");
+  assert.equal(liberationKamp({ ...mesch, source: "nl-be" }), "westers");
+  assert.equal(liberationKamp({ ...mesch, source: "uk-articles", kamp: "sovjet" }), "sovjet");
 });
 
 test("occupied is filled in the colour of the As, liberated in the colour of its liberator's Kamp", () => {
@@ -156,6 +162,14 @@ test("the operation leads to the Veldslag of that Russian article", () => {
   assert.equal(liberationBattle(kharkov2, battles), null);
   assert.equal(liberationBattle(mesch, battles), null);
   assert.equal(liberationBattle(kharkov1, []), null);
+});
+
+test("a French liberation leads to the Veldslag of its French article", () => {
+  const carentan = { ...mesch, lang: "fr", source: "fr", country: "Frankrijk", operation: "Bataille de Carentan" };
+  const battles = [{ title: "Bataille de Carentan", url: "https://fr.wikipedia.org/wiki/Bataille_de_Carentan" }];
+  assert.equal(liberationBattle(carentan, battles), "Bataille de Carentan");
+  // A Russian title never matches a French article of the same name.
+  assert.equal(liberationBattle({ ...carentan, lang: "ru" }, battles), null);
 });
 
 test("without a Russian Veldslag, the English article of the same operation leads to it", () => {

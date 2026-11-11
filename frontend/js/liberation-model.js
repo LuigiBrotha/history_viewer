@@ -12,6 +12,12 @@ const OCCUPATION_STARTS = {
   Noorwegen: "1940-04-09",
   Tsjechoslowakije: "1939-03-15",
   Joegoslavië: "1941-04-06",
+  België: "1940-05-10",
+  // Japan's invasions.
+  Filipijnen: "1941-12-08",
+  Malakka: "1941-12-08",
+  "Brits-Borneo": "1941-12-16",
+  Birma: "1942-01-15",
 };
 
 function placeKey(liberation) {
@@ -91,9 +97,11 @@ export function liberationsInPeriod(liberations, from, to) {
   return shown;
 }
 
-// The Dutch list is of the Western Allies' advance, the Russian lists of the Red Army's.
+// A record from a place's own article says who liberated it; of the lists, the Russian ones are
+// the Red Army's advance, the Dutch, Belgian and French ones the Western Allies' (the Resistance
+// included).
 export function liberationKamp(liberation) {
-  return liberation.source === "nl" ? "westers" : "sovjet";
+  return liberation.kamp ?? (liberation.source.startsWith("ru") ? "sovjet" : "westers");
 }
 
 // The fill is left to the style sheet: the class win1-<kamp> gives it the same custom property
@@ -128,14 +136,18 @@ export function liberationTooltip(liberation) {
   return parts.join(" — ");
 }
 
-const ARTICLES = { ru: "https://ru.wikipedia.org/wiki/", en: "https://en.wikipedia.org/wiki/" };
+const ARTICLES = {
+  ru: "https://ru.wikipedia.org/wiki/",
+  fr: "https://fr.wikipedia.org/wiki/",
+  en: "https://en.wikipedia.org/wiki/",
+};
 const indexes = new WeakMap();
 
 // The battles file is the same list until it is reloaded, so its index is made once:
 // language → article title → Veldslag title.
 function articleTitles(battles) {
   if (!indexes.has(battles)) {
-    const index = { ru: new Map(), en: new Map() };
+    const index = Object.fromEntries(Object.keys(ARTICLES).map((lang) => [lang, new Map()]));
     for (const battle of battles) {
       for (const [lang, prefix] of Object.entries(ARTICLES)) {
         if (!battle.url?.startsWith(prefix)) continue;
@@ -151,12 +163,13 @@ function articleTitles(battles) {
   return indexes.get(battles);
 }
 
-// The title of the Veldslag whose article is the operation's: its Russian article, or else the
-// English one it links to (most Veldslagen come from the English Wikipedia). Null without one.
+// The title of the Veldslag whose article is the operation's: its article in the list's language,
+// or else the English one it links to (most Veldslagen come from the English Wikipedia). Null
+// without one.
 export function liberationBattle(liberation, battles) {
   const index = articleTitles(battles);
   return (
-    (liberation.operation && index.ru.get(liberation.operation)) ||
+    (liberation.operation && index[liberation.lang]?.get(liberation.operation)) ||
     (liberation.operation_en && index.en.get(liberation.operation_en)) ||
     null
   );

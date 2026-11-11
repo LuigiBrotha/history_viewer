@@ -14,6 +14,7 @@ Three requests fetch the lists; the coordinates of their places take one request
 """
 
 import argparse
+from collections import Counter
 import json
 import re
 import sys
@@ -32,14 +33,18 @@ ATTEMPTS = 8
 NL_LIST = "Chronologisch overzicht van de bevrijding van Nederlandse plaatsen in de Tweede Wereldoorlog"
 RU_USSR = "Список городов СССР, оккупированных и освобождённых во время Великой Отечественной войны"
 RU_ABROAD = "Список зарубежных городов, освобождённых Советской Армией во время Великой Отечественной войны"
+FR_LIST = "Chronologie de la Libération en France"
+BE_ARTICLE = "Bevrijding van de Duitse bezetting in België (Tweede Wereldoorlog)"
 
 # The lists, by the key each Bevrijding names as its source.
-LISTS = {"nl": ("nl", NL_LIST), "ru-ussr": ("ru", RU_USSR), "ru-abroad": ("ru", RU_ABROAD)}
+LISTS = {"nl": ("nl", NL_LIST), "ru-ussr": ("ru", RU_USSR), "ru-abroad": ("ru", RU_ABROAD),
+         "fr": ("fr", FR_LIST), "nl-be": ("nl", BE_ARTICLE)}
 
 # Rough bounds per country (south, north, west, east), wide enough for the borders of 1939–1945;
 # a place outside them got the article of a namesake elsewhere and keeps no position.
 BOUNDS = {
-    "Nederland": (50.7, 53.6, 3.3, 7.3), "Sovjet-Unie": (38.0, 70.0, 20.0, 180.0),
+    "Nederland": (50.7, 53.6, 3.3, 7.3), "Frankrijk": (41.3, 51.2, -5.2, 9.6), "België": (49.4, 51.6, 2.5, 6.5),
+    "Sovjet-Unie": (38.0, 70.0, 20.0, 180.0),
     "Polen": (48.9, 55.0, 14.0, 24.2), "Duitsland": (50.0, 55.5, 9.0, 23.0),
     "Hongarije": (45.7, 48.6, 16.0, 22.9), "Tsjechoslowakije": (47.7, 51.1, 12.0, 24.7),
     "Roemenië": (43.6, 48.3, 20.2, 29.8), "Oostenrijk": (46.3, 49.1, 9.5, 17.2),
@@ -131,6 +136,8 @@ class Bevrijding:
     lng: float | None = None
     source: str = ""              # which list: a key of LISTS
     name: str = ""                # the name on the map: Dutch, else English, else transliterated
+    kamp: str | None = None       # who liberated it, when the source does not say it already
+    precision: str | None = None  # "month" when only the month is known (liberated is then YYYY-MM)
 
 
 # --- Wikitext ------------------------------------------------------------------------------
@@ -550,7 +557,7 @@ CYRILLIC = {
     "и": "i", "й": "j", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p", "р": "r",
     "с": "s", "т": "t", "у": "oe", "ф": "f", "х": "ch", "ц": "ts", "ч": "tsj", "ш": "sj",
     "щ": "sjtsj", "ъ": "", "ы": "y", "ь": "", "э": "e", "ю": "joe", "я": "ja",
-    "і": "i", "ї": "ji", "є": "je",
+    "і": "i", "ї": "ji", "є": "je", "ґ": "g",
 }
 
 
@@ -614,6 +621,118 @@ def english_titles(lang, titles):
     return cached
 
 
+FR_DATE = re.compile(r"\{\{\s*date-?\s*\|\s*(\d{1,2})\s*\|\s*(\d{1,2})\s*\|\s*(\d{4})")
+# The free zone of Vichy France, roughly (lat, lng), from the Pyrenees west of Orthez along the
+# demarcation line past Angoulême, Vierzon, Moulins and Chalon to Geneva, then the Alps, the
+# Mediterranean coast and the Pyrenees. The north and the Atlantic coast were occupied from
+# May 1940, the free zone from 11 November 1942 (Case Anton), Corsica by Italy from then too.
+FREE_ZONE = [
+    (43.20, -1.00), (43.60, -0.70), (44.30, -0.20), (45.00, 0.00), (45.60, 0.20), (46.20, 0.60),
+    (46.60, 1.50), (47.20, 2.10), (46.60, 3.30), (46.80, 4.80), (46.40, 5.60), (46.20, 6.10),
+    (45.90, 6.90), (45.10, 6.70), (44.10, 7.70), (43.75, 7.50), (43.00, 6.00), (43.30, 4.00),
+    (42.50, 3.20), (42.40, 1.50), (42.70, 0.00), (43.00, -0.70),
+]
+FRANCE_INVADED = "1940-05-10"
+CASE_ANTON = "1942-11-11"
+
+
+def french_occupation(lat, lng):
+    """When the Germans (or, on Corsica, the Italians) occupied a place in France."""
+    if lng > 8.0 or inside(FREE_ZONE, lat, lng):
+        return CASE_ANTON
+    return FRANCE_INVADED
+
+
+def _next_day(iso):
+    import datetime as dt
+    return (dt.date.fromisoformat(iso) + dt.timedelta(days=1)).isoformat()
+
+
+FR_ORDINAL = re.compile(r"\{\{\s*(\d+(?:e|er|re|ère))\s*(?:\|([^{}|]*))?\}\}")
+FR_NATIONS = {"française": "Frans", "françaises": "Frans", "américaine": "Amerikaans", "américaines": "Amerikaans",
+              "britannique": "Brits", "britanniques": "Brits", "canadienne": "Canadees", "polonaise": "Pools",
+              "belge": "Belgisch", "et": "en", "résistance": "verzet", "fFI": "FFI"}
+
+
+def french_liberators(cell):
+    """The liberators in Dutch words where it is simple: "Française : 73e goum" → "Frans: 73e goum"."""
+    text = plain(FR_ORDINAL.sub(lambda m: f"{m.group(1)} {m.group(2) or ''}".strip(), cell)).rstrip(" .")
+    head, colon, rest = text.partition(":")
+    if not colon:
+        return text or None
+    words = [FR_NATIONS.get(word.lower(), word) for word in re.split(r"[\s,]+", head.strip()) if word]
+    rest = rest.strip(" ?")  # "?": the list does not know which units
+    return f"{' '.join(words)}: {rest}" if rest else " ".join(words) or None
+
+
+def parse_fr(wikitext):
+    """The French chronology: a date (day, month and year in a template), the place and its
+    liberators. A date in parentheses was a liberation the Germans undid (Tulle, 8 June 1944):
+    it counts when the place has a later row, which then starts a new occupation the day after;
+    without one (Nantua) the place has only its final liberation, and here none."""
+    rows = []
+    for table in tables(wikitext):
+        for _, cells in table.rows:
+            if len(cells) < 2:
+                continue
+            match = FR_DATE.search(cells[0])
+            if not match or not plain(cells[1]):
+                continue
+            day, month, year = (int(g) for g in match.groups())
+            rows.append((cells, f"{year:04d}-{month:02d}-{day:02d}", "(" in plain(cells[0]) or cells[0].strip().startswith("(")))
+    found, temporary = [], {}
+    for cells, liberated, undone in rows:
+        title = first_link(cells[1])
+        key = title or plain(cells[1])
+        b = Bevrijding(
+            place=plain(cells[1]),
+            title=title,
+            lang="fr",
+            country="Frankrijk",
+            liberated=liberated,
+            by=french_liberators(cells[4]) if len(cells) > 4 else None,
+            operation=first_link(cells[5]) if len(cells) > 5 else None,
+            source="fr",
+        )
+        if undone:
+            b.date_text = "tijdelijk, daarna weer bezet"
+            temporary[key] = b
+            continue
+        if key in temporary:
+            found.append(temporary.pop(key))
+            b.occupied = _next_day(found[-1].liberated)
+        found.append(b)
+    return found
+
+
+BE_EXCLUDE = {"Henegouwen", "Luxemburg (provincie)", "Tervurenlaan", "Albertkanaal", "Brigade Piron",
+              "Bernard Montgomery", "Stadhuis van Brussel", "Fort van Breendonk"}
+
+
+def parse_be(wikitext):
+    """The Belgian article lists its liberations as bullets ("Op 4 september werd [[Antwerpen]]
+    bevrijd, evenals …"); every place linked in such a line counts, 1944 being the year of all."""
+    found = []
+    for line in strip_refs(wikitext).split("\n"):
+        if not line.startswith("* Op ") or not re.search(r"bevrijd|ingenomen", line):
+            continue
+        liberated = parse_date(line[:40], NL_MONTHS, "1944")
+        if liberated is None:
+            continue
+        for match in LINK.finditer(line):
+            target = match.group(1).split("#")[0].strip()
+            label = (match.group(2) or target).strip()
+            if target in BE_EXCLUDE:
+                continue
+            # A battle linked under the town's name ("[[Slag om Leuven (1944)|Leuven]]").
+            title = label if target.startswith("Slag om") else target
+            found.append(Bevrijding(
+                place=re.sub(r"\s*\(.*\)$", "", label), title=title, lang="nl", country="België", liberated=liberated,
+                occupied="1940-05-10", source="nl-be",
+            ))
+    return found
+
+
 def drop_repeats(found):
     """Without a row the list repeats word for word (Havelte twice on 13 april 1945); the first
     keeps its place. Two places on one article (Cadier and Keer) both stay."""
@@ -626,12 +745,14 @@ def drop_repeats(found):
     return kept
 
 
-def harvest(refresh=False):
+def harvest(refresh=False, rules=None, months=None):
     found = parse_nl(fetch_list("nl", NL_LIST, refresh))
     found += parse_ru_ussr(fetch_list("ru", RU_USSR, refresh))
     found += parse_ru_abroad(fetch_list("ru", RU_ABROAD, refresh))
+    found += parse_fr(fetch_list("fr", FR_LIST, refresh))
+    found += parse_be(fetch_list("nl", BE_ARTICLE, refresh))
     found = drop_repeats(found)
-    for lang in ("nl", "ru"):
+    for lang in ("nl", "ru", "fr"):
         known = lookup(lang, {b.title or b.place for b in found if b.lang == lang})
         for b in found:
             if b.lang != lang:
@@ -642,29 +763,50 @@ def harvest(refresh=False):
                 wartime = wartime_country(b.country, b.lat, b.lng)
                 if wartime:
                     b.country, b.verb = wartime
+                if b.source == "fr" and b.occupied is None:
+                    b.occupied = french_occupation(b.lat, b.lng)
             b.name = dutch_name(b, known)
     # Most Veldslagen are English articles, so the operation also gets its English title.
-    english = english_titles("ru", {b.operation for b in found if b.lang == "ru" and b.operation})
-    for b in found:
-        if b.lang == "ru" and b.operation:
-            b.operation_en = english.get(b.operation)
+    # Then the places only an article of their own covers, language by language.
+    from tools import liberation_articles
+    for source, rule in liberation_articles._rules().items():
+        if rules is not None and source not in rules:
+            continue
+        found += liberation_articles.harvest(rule, [b for b in found if b.lat is not None], months)
+    for lang in ("ru", "fr"):
+        english = english_titles(lang, {b.operation for b in found if b.lang == lang and b.operation})
+        for b in found:
+            if b.lang == lang and b.operation:
+                b.operation_en = english.get(b.operation)
     found.sort(key=lambda b: (b.liberated, b.country, b.name))
     return found
+
+
+def write(found, path):
+    records = [{k: v for k, v in asdict(b).items() if v not in (None, False)} for b in found]
+    # One Bevrijding per line, so a rerun shows as a readable diff.
+    lines = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
+    Path(path).write_text("[\n" + lines + "\n]\n")
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--output", default="frontend/battles/bevrijdingen.json")
     parser.add_argument("--refresh", action="store_true", help="fetch the lists again instead of the cache")
+    parser.add_argument("--rules", help="only these article rules (sources, comma separated); default all")
     args = parser.parse_args(argv)
-    found = harvest(args.refresh)
-    records = [{k: v for k, v in asdict(b).items() if v not in (None, False)} for b in found]
-    # One Bevrijding per line, so a rerun shows as a readable diff.
-    lines = ",\n".join(json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in records)
-    Path(args.output).write_text("[\n" + lines + "\n]\n")
+    months = []
+    found = harvest(args.refresh, set(args.rules.split(",")) if args.rules else None, months)
+    write(found, args.output)
+    # Known only to the month: kept apart for later, the map does not read this file.
+    months.sort(key=lambda b: (b.liberated, b.country, b.name))
+    write(months, str(Path(args.output).with_name(Path(args.output).stem + "-maand.json")))
+    print(f"{len(months)} Bevrijdingen alleen op de maand → {Path(args.output).stem}-maand.json", file=sys.stderr)
     placed = sum(1 for b in found if b.lat is not None)
     print(f"{len(found)} Bevrijdingen, {placed} met positie → {args.output}", file=sys.stderr)
-    for lang in ("nl", "ru"):
+    for source, count in sorted(Counter(b.source for b in found).items()):
+        print(f"{source}: {count}", file=sys.stderr)
+    for lang in ("nl", "ru", "fr"):
         missing = [b.name for b in found if b.lang == lang and b.lat is None]
         print(f"{lang}: {len(missing)} zonder positie: {', '.join(missing[:15])}", file=sys.stderr)
 
